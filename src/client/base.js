@@ -1,24 +1,20 @@
+var Argonaut = {}; // alias for class|library definitions & access
+var argo = Argonaut; // short alias for namespace variable access
 
-
-/* Root object of atropos, represents the client's tabletop (the app) */
-function Tabletop() {
-    /* Public (aka. Reliable) variables */
+Argonaut.Tabletop = function() {
+    /* "Public" variables */
     this.status = 'created';
     this.hostname = ;
     this.components = [];
-}
-function Component(name) {
-    this.name = name;
-    this.hookEvents = function() {};
-}
-Tabletop.prototype.addComponent(component) {
+};
+Argonaut.Tabletop.prototype.addComponent(component) {
     this.components.push(component);
     if(this.status === 'ready') { this.runComponent(component); }
 }
-Tabletop.prototype.runComponent(component) {
+Argonaut.Tabletop.prototype.runComponent(component) {
     component.hookEvents(this.socket);
 }
-Tabletop.prototype.start() {
+Argonaut.Tabletop.prototype.start() {
     this.status = 'loading';
     this.socket = io.connect('http://'+/* Hostname */+':6058/');
     for(var i=0; i < components.length; ++i) {
@@ -26,6 +22,10 @@ Tabletop.prototype.start() {
     }
     this.status = 'ready';
 }
+Argonaut.Component(name) {
+    this.name = name;
+    this.hookEvents = function() {};
+}
 
-var atropos = new Tabletop();
-atropos.start();
+argo.tabletop = new Tabletop();
+argo.tabletop.start();

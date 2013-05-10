@@ -1,3 +1,4 @@
+// Anonymous Namespace. Runs on page-load.
 jQuery(function() {
     /* Fetch functions from vendor-specific aliases */
     window.RTCPeerConnection = window.RTCPeerConnection
@@ -14,7 +15,7 @@ jQuery(function() {
                           || navigator.mozGetUserMedia;
 
     /* Define WebRTC Component */
-    var webRTC = new Component('webRTC');
+    var webRTC = new Argonaut.Component('webRTC');
     webRTC.hookEvents = function(socket) {
         webRTC.socket = socket;
 
