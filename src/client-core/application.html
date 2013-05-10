@@ -1,29 +1,38 @@
 <!doctype html>
 <html>
 <head>
-	<meta charset="utf-8" />
-	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-	<meta name="description" content="<!-- Search Engine Description-->" />
-	<meta name="viewport" content="width=device-width" />
-	<title>Argonaut Tabletop</title>
-	<link rel="stylesheet" type="text/css" href="core.css" />
+
+<!-- Metadata -->
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="description" content="<!-- Search Engine Description-->" />
+<meta name="viewport" content="width=device-width" />
+<title>Argonaut Tabletop</title>
+
+<!-- Stylesheets -->
+<link rel="stylesheet" type="text/css" href="vendor/bootstrap.min.css" />
+<link rel="stylesheet" type="text/css" href="core.css" />
 </head>
+
+<!-- Main Content -->
 <body>
 <div id="flow">
-	<div class="col" id="lft-major"></div>
-	<div class="col" id="mid-major">
-		<div class="row" id="top-major"></div>
-		<div class="col" id="lft-minor"></div>
-		<div class="col" id="mid-minor"></div>
-		<div class="col" id="rgt-minor"></div>
-	</div>
-	<div class="col" id="rgt-major"></div>
+    <div class="col" id="lft-major"></div>
+    <div class="col" id="mid-major">
+        <div class="row" id="top-major"></div>
+        <div class="col" id="lft-minor"></div>
+        <div class="col" id="mid-minor"></div>
+        <div class="col" id="rgt-minor"></div>
+    </div>
+    <div class="col" id="rgt-major"></div>
 </div>
 <div id="fixed"></div>
 <div id="hidden"></div>
 
-<!-- Page Scripts -->
+<!-- Javascript -->
+<script type="text/javascript" src="/socket.io/socket.io.js"></script>
 <script type="text/javascript" src="vendor/jquery-1.9.1.min.js" />
+<script type="text/javascript" src="vendor/bootstrap.min.js" />
 <script type="text/javascript" src="core.js" />
 
 </body>
