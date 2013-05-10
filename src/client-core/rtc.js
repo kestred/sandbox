@@ -1,5 +1,5 @@
-// Anonymous Namespace. Runs on page-load.
-jQuery(function() {
+/*! === WebRTC Component === */
+(function() { // Open anonymous namespace
     /* Fetch functions from vendor-specific aliases */
     window.RTCPeerConnection = window.RTCPeerConnection
                             || window.webkitRTCPeerConnection
@@ -97,4 +97,4 @@ jQuery(function() {
                     {username: peername, callee: desc});
         }
     };
-});
+})(); // Close anonymous namespace
