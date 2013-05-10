@@ -4,7 +4,6 @@ var argo = Argonaut; // short alias for namespace variable access
 Argonaut.Tabletop = function() {
     /* "Public" variables */
     this.status = 'created';
-    this.hostname = ;
     this.components = [];
 };
 Argonaut.Tabletop.prototype.addComponent(component) {
@@ -13,10 +12,11 @@ Argonaut.Tabletop.prototype.addComponent(component) {
 }
 Argonaut.Tabletop.prototype.runComponent(component) {
     component.hookEvents(this.socket);
+    component.run();
 }
 Argonaut.Tabletop.prototype.start() {
     this.status = 'loading';
-    this.socket = io.connect('http://'+/* Hostname */+':6058/');
+    this.socket = io.connect(document.URL);
     for(var i=0; i < components.length; ++i) {
         this.loadComponent(this.components[i]);
     }
@@ -24,6 +24,7 @@ Argonaut.Tabletop.prototype.start() {
 }
 Argonaut.Component(name) {
     this.name = name;
+    this.run = function() {};
     this.hookEvents = function() {};
 }
 
