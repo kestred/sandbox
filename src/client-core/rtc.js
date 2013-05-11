@@ -44,7 +44,7 @@
     };
 
     /* Ask web-browser for Webcam access, load into 'video' element */
-    webRTC.startLocalVideo = function()(callback, video) {
+    webRTC.startLocalVideo = function(callback, video) {
         navigator.getUserMedia({'audio': true, 'video': true},
             function(stream) {
                 webRTC.localStream = stream;

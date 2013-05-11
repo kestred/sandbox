@@ -4,20 +4,20 @@ var argo = Argonaut; // short alias for namespace globals access
 
 Argonaut.Tabletop = function() { this.init('tabletop'); };
 Argonaut.Tabletop.prototype.constructor = Tabletop;
-Argonaut.Tabletop.prototype.init(type) {
+Argonaut.Tabletop.prototype.init = function(type) {
     this.type = type;
     this.status = 'created';
     this.components = [];
 };
-Argonaut.Tabletop.prototype.addComponent(component) {
+Argonaut.Tabletop.prototype.addComponent = function(component) {
     this.components.push(component);
     if(this.status == 'ready') { this.runComponent(component); }
 }
-Argonaut.Tabletop.prototype.runComponent(component) {
+Argonaut.Tabletop.prototype.runComponent = function(component) {
     component.hookEvents(this.socket);
     component.run();
 }
-Argonaut.Tabletop.prototype.start() {
+Argonaut.Tabletop.prototype.start = function() {
     this.status = 'loading';
     this.socket = io.connect(document.URL);
     for(var i=0; i < components.length; ++i) {
@@ -26,9 +26,9 @@ Argonaut.Tabletop.prototype.start() {
     this.status = 'ready';
 }
 
-Argonaut.Component(name) { this.init('component', name); }
+Argonaut.Component = function(name) { this.init('component', name); }
 Argonaut.Component.prototype.constructor = Component;
-Argonaut.Component.prototype.init(type, name) {
+Argonaut.Component.prototype.init = function(type, name) {
     this.type = type;
     this.name = name;
     this.hookEvents = function() {};
