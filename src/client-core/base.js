@@ -3,7 +3,7 @@ var Argonaut = {}; // namespace for class|methods definitions & access
 var argo = Argonaut; // short alias for namespace globals access
 
 Argonaut.Tabletop = function() { this.init('tabletop'); };
-Argonaut.Tabletop.prototype.constructor = Tabletop;
+Argonaut.Tabletop.prototype.constructor = Argonaut.Tabletop;
 Argonaut.Tabletop.prototype.init = function(type) {
     this.type = type;
     this.status = 'created';
@@ -14,20 +14,19 @@ Argonaut.Tabletop.prototype.addComponent = function(component) {
     if(this.status == 'ready') { this.runComponent(component); }
 }
 Argonaut.Tabletop.prototype.runComponent = function(component) {
-    component.hookEvents(this.socket);
     component.run();
 }
 Argonaut.Tabletop.prototype.start = function() {
     this.status = 'loading';
-    this.socket = io.connect(document.URL);
-    for(var i=0; i < components.length; ++i) {
-        this.loadComponent(this.components[i]);
+    this.socket = io.connect(document.URL + '/core');
+    for(var i=0; i < this.components.length; ++i) {
+        this.runComponent(this.components[i]);
     }
     this.status = 'ready';
 }
 
 Argonaut.Component = function(name) { this.init('component', name); }
-Argonaut.Component.prototype.constructor = Component;
+Argonaut.Component.prototype.constructor = Argonaut.Component;
 Argonaut.Component.prototype.init = function(type, name) {
     this.type = type;
     this.name = name;
@@ -35,5 +34,5 @@ Argonaut.Component.prototype.init = function(type, name) {
     this.run = function() {};
 }
 
-argo.tabletop = new Tabletop();
-argo.tabletop.start();
+argo.tabletop = new Argonaut.Tabletop();
+jQuery(function() { argo.tabletop.start(); });

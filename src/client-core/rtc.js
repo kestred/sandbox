@@ -16,22 +16,23 @@
 
     /* Define WebRTC Component */
     var webRTC = new Argonaut.Component('webRTC');
-    webRTC.hookEvents = function(socket) {
-        webRTC.socket = socket;
+    webRTC.run = function() {
+        webRTC.socket = io.connect(document.URL + '/rtc');
+		var socket = webRTC.socket;
 
         /* On recieve rtc-syn */
-        socket.on('rtc-syn', function(data) {
+        socket.on('syn', function(data) {
             webRTC.recieveConnection(data.username, data.caller);
         });
 
         /* On recieve rtc-ack */
-        socket.on('rtc-ack', function(data) {
+        socket.on('ack', function(data) {
             var desc = new RTCSessionDescription(data.callee);
             webRTC.peers[data.username].setRemoteDescription(desc);
         });
 
         /* On recieve rtc-ice */
-        socket.on('rtc-ice', function(data) {
+        socket.on('ice', function(data) {
             var peer = webRTC.peers[data.username];
             if(webRTC.peer && !webRTC.peer.rtcIceSuccess) {
                 webRTC.peer.rtsIceSuccess = true;
@@ -59,7 +60,7 @@
     webRTC.connectToPeer = function(peername, video) {
         var peer = new RTCPeerConnection(null);
         peer.onicecandidate = function(event) {
-            webRTC.socket.emit('rtc-ice', {candidate: event.candidate});
+            webRTC.socket.emit('ice', {candidate: event.candidate});
         };
         peer.onaddstream = function (event) {
             video.src = URL.createObjectURL(event.stream);
@@ -71,7 +72,7 @@
         peer.createOffer(sendCallerDescription);
         function sendCallerDescription(desc) {
             peer.setLocalDescription(desc);
-            webRTC.socket.emit('rtc-syn',
+            webRTC.socket.emit('syn',
                     {username: peername, caller: desc});
         }
     };
@@ -80,7 +81,7 @@
     webRTC.recieveConnection = function(peername, video, remote) {
         var peer = new RTCPeerConnection(null);
         peer.onicecandidate = function(event) {
-            webRTC.socket.emit('rtc-ice', {candidate: event.candidate});
+            webRTC.socket.emit('ice', {candidate: event.candidate});
         };
         peer.onaddstream = function (event) {
             video.src = URL.createObjectURL(event.stream);
@@ -93,8 +94,11 @@
         peer.createAnswer(sendCallerDescription);
         function sendCallerDescription(desc) {
             peer.setLocalDescription(desc);
-            webRTC.socket.emit('rtc-ack',
+            webRTC.socket.emit('ack',
                     {username: peername, callee: desc});
         }
     };
+
+    /* Load WebRTC Component */
+    argo.tabletop.addComponent(webRTC);
 })(); // Close anonymous namespace
