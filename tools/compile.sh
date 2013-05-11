@@ -16,10 +16,10 @@ while [ "$1" != "" ]; do
       "-d" | "--debug")
         debugMode="true"
         ;;
-      "-py" | "--python")
+      "-p" | "--python")
         pyServer="true"
         ;;
-      "-js" | "--javascript")
+      "-j" | "--javascript")
         jsServer="true"
         ;;
       "-R" | "--autorun")
@@ -29,17 +29,19 @@ while [ "$1" != "" ]; do
     shift
 done
 if [ -z "$jsServer" ]; then
-	if [ -z "$pyServer" ]; then
-		jsServer="true"
-		pyServer="false"
-	else
-		jsServer="false"
-	fi
+    if [ -z "$pyServer" ]; then
+        jsServer="true"
+        pyServer="false"
+    else
+        jsServer="false"
+    fi
 fi
 
 # Create build directory
 if [ ! -d "build" ]; then
     mkdir build
+    mkdir build/js
+    mkdir build/css
 fi
 
 # Migrate raw files
@@ -47,36 +49,33 @@ cp src/client-core/core.html build/client.html
 cp -r src/client-core/vendor build/vendor
 cp -r src/client-core/img build/img
 if [ $pyServer == "true" ]; then
-	cp -r src/client-core/socket.io build/socket.io
+    cp -r src/client-core/socket.io build/socket.io
     cp src/server-core/*.py build/
 fi
 
 # Compile CSS and Javascript
 java -jar tools/Closure/stylesheets.jar \
-    --output-file build/core.css \
-    src/client-core/base.css
+    --output-file build/css/core.css \
+    src/client-core/css/*.css
 if [ $debugMode == "true" ]; then
-    cat src/client-core/base.js \
-		src/client-core/rtc.js \
-     >> build/core.js
+    cat src/client-core/js/*.js >> build/js/core.js
 else
-	java -jar tools/Closure/compiler.jar \
-		--js tools/Closure/externs/jquery-1.9.js \
-		--js src/client-core/base.js \
-		--js src/client-core/rtc.js \
-		--js_output_file build/core.js
+    java -jar tools/Closure/compiler.jar \
+    --js tools/Closure/externs/jquery-1.9.js \
+    --js src/client-core/js/base.js \
+    --js src/client-core/js/rtc.js \
+    --js_output_file build/js/core.js
 fi
 if [ $jsServer == "true" ]; then
-    cat src/server-core/base.js \
-        src/server-core/rtc.js \
-     >> build/server.js
+    cat src/server-core/*.js >> build/server.js
 fi
 
 # Run server
 if [ $autorun = "true" ]; then
-	if [ $jsServer == "true" ]; then
-		node build/server.js
-	elif [ $pyServer == "true" ]; then
-		python build/server.py
-	fi
+    cd build
+    if [ $jsServer == "true" ]; then
+        node server.js
+    elif [ $pyServer == "true" ]; then
+        python server.py
+    fi
 fi

@@ -12,12 +12,8 @@ server.listen(6058); //randomly chosen port number not registerd in IANA
 app.get('/', function (req, res) {
     res.sendfile(__dirname + '/client.html');
 });
-app.get('/core.css', function (req, res) {
-    res.sendfile(__dirname + '/core.css');
-});
-app.get('/core.js', function (req, res) {
-    res.sendfile(__dirname + '/core.js');
-});
+app.use('/js', express.static(__dirname + '/js'));
+app.use('/css', express.static(__dirname + '/css'));
 app.use('/vendor', express.static(__dirname + '/vendor'));
 
 console.log('[Argonaut] Server ready.');
