@@ -28,9 +28,13 @@ while [ "$1" != "" ]; do
     esac
     shift
 done
-if [ -z "$pyServer" ] && [ -z "$jsServer" ]; then
-    jsServer="true"
-    pyServer="false"
+if [ -z "$jsServer" ]; then
+	if [ -z "$pyServer" ]; then
+		jsServer="true"
+		pyServer="false"
+	else
+		jsServer="false"
+	fi
 fi
 
 # Create build directory
@@ -43,6 +47,7 @@ cp src/client-core/core.html build/client.html
 cp -r src/client-core/vendor build/vendor
 cp -r src/client-core/img build/img
 if [ $pyServer == "true" ]; then
+	cp -r src/client-core/socket.io build/socket.io
     cp src/server-core/*.py build/
 fi
 
