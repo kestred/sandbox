@@ -23,6 +23,7 @@ while [ "$1" != "" ]; do
       "-y" | "--pypy")
         usePyPy="true"
         pyServer="true"
+        ;;
       "-j" | "--javascript")
         jsServer="true"
         ;;
