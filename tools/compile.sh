@@ -42,15 +42,21 @@ if [ ! -d "build" ]; then
     mkdir build
     mkdir build/js
     mkdir build/css
+    mkdir build/argonaut
 fi
 
 # Migrate raw files
 cp src/client-core/core.html build/client.html
 cp -r src/client-core/vendor build/vendor
 cp -r src/client-core/img build/img
+if [ $jsServer == "true" ]; then
+    cp src/server-core/argonaut/*.js build/argonaut
+    cp src/server-core/server.js build/server.js
+fi
 if [ $pyServer == "true" ]; then
     cp -r src/client-core/socket.io build/socket.io
-    cp src/server-core/*.py build/
+    cp src/server-core/argonaut/*.py build/argonaut
+    cp src/server-core/server.py build/server.py
 fi
 
 # Compile CSS and Javascript
@@ -60,14 +66,11 @@ java -jar tools/Closure/stylesheets.jar \
 if [ $debugMode == "true" ]; then
     cat src/client-core/js/*.js >> build/js/core.js
 else
+    cat src/client-core/js/* >> build/js/core.pretty.js
     java -jar tools/Closure/compiler.jar \
     --js tools/Closure/externs/jquery-1.9.js \
-    --js src/client-core/js/base.js \
-    --js src/client-core/js/rtc.js \
+    --js build/core.pretty.js
     --js_output_file build/js/core.js
-fi
-if [ $jsServer == "true" ]; then
-    cat src/server-core/*.js >> build/server.js
 fi
 
 # Run server

@@ -17,7 +17,7 @@
     /* Define WebRTC Component */
     var webRTC = new Argonaut.Component('webRTC');
     webRTC.run = function() {
-        webRTC.socket = io.connect(document.URL + '/rtc');
+        webRTC.socket = io.connect(document.URL + 'rtc');
 		var socket = webRTC.socket;
 
         /* On recieve rtc-syn */

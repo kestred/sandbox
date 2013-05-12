@@ -18,7 +18,7 @@ Argonaut.Tabletop.prototype.runComponent = function(component) {
 }
 Argonaut.Tabletop.prototype.start = function() {
     this.status = 'loading';
-    this.socket = io.connect(document.URL + '/core');
+    this.socket = io.connect(document.URL + 'core');
     for(var i=0; i < this.components.length; ++i) {
         this.runComponent(this.components[i]);
     }
@@ -30,7 +30,6 @@ Argonaut.Component.prototype.constructor = Argonaut.Component;
 Argonaut.Component.prototype.init = function(type, name) {
     this.type = type;
     this.name = name;
-    this.hookEvents = function() {};
     this.run = function() {};
 }
 
