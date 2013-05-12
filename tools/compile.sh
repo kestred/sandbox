@@ -60,12 +60,13 @@ if [ $pyServer == "true" ]; then
 fi
 
 # Compile CSS and Javascript
-java -jar tools/Closure/stylesheets.jar \
-    --output-file build/css/core.css \
-    src/client-core/css/*.css
 if [ $debugMode == "true" ]; then
+    cat src/client-core/css/*.css >> build/css/core.css
     cat src/client-core/js/*.js >> build/js/core.js
 else
+    java -jar tools/Closure/stylesheets.jar \
+        --output-file build/css/core.css \
+        src/client-core/css/*.css
     cat src/client-core/js/* >> build/js/core.pretty.js
     java -jar tools/Closure/compiler.jar \
     --js tools/Closure/externs/jquery-1.9.js \
