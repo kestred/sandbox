@@ -7,6 +7,7 @@ cd $GIT_DIR
 
 # Parse arguments
 autorun="false"
+usePyPy="false"
 debugMode="false"
 while [ "$1" != "" ]; do
     case $1 in
@@ -19,6 +20,9 @@ while [ "$1" != "" ]; do
       "-p" | "--python")
         pyServer="true"
         ;;
+      "-y" | "--pypy")
+        usePyPy="true"
+        pyServer="true"
       "-j" | "--javascript")
         jsServer="true"
         ;;
@@ -80,6 +84,10 @@ if [ $autorun = "true" ]; then
     if [ $jsServer == "true" ]; then
         node server.js
     elif [ $pyServer == "true" ]; then
-        python server.py
+        if [ $usePyPy == "true" ]; then
+            pypy server.py
+        else
+            python server.py
+        fi
     fi
 fi
