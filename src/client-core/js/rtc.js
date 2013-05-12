@@ -1,22 +1,23 @@
 /*! === WebRTC Component === */
-(function() { // Open anonymous namespace
-    /* Fetch functions from vendor-specific aliases */
-    window.RTCPeerConnection = window.RTCPeerConnection
-                            || window.webkitRTCPeerConnection
-                            || window.mozRTCPeerConnection;
-    window.RTCSessionDescription = window.RTCSessionDescription
-                                || window.webkitRTCSessionDescription
-                                || window.mozRTCSessionDescription;
-    window.RTCIceCandidate = window.RTCIceCandidate
-                          || window.webkitRTCIceCandidate
-                          || window.mozRTCIceCandidate;
-    navigator.getUserMedia = navigator.getUserMedia
-                          || navigator.webkitGetUserMedia
-                          || navigator.mozGetUserMedia;
+/* Fetch functions from vendor-specific aliases */
+window.RTCPeerConnection = window.RTCPeerConnection
+                        || window.webkitRTCPeerConnection
+                        || window.mozRTCPeerConnection;
+window.RTCSessionDescription = window.RTCSessionDescription
+                            || window.webkitRTCSessionDescription
+                            || window.mozRTCSessionDescription;
+window.RTCIceCandidate = window.RTCIceCandidate
+                      || window.webkitRTCIceCandidate
+                      || window.mozRTCIceCandidate;
+navigator.getUserMedia = navigator.getUserMedia
+                      || navigator.webkitGetUserMedia
+                      || navigator.mozGetUserMedia;
 
-    /* Define WebRTC Component */
-    var webRTC = new Argonaut.Component('webRTC');
+mods['webRTC'] = new Argonaut.Module('webRTC');
+(function() { // Begin anonymous namespace
+    var webRTC = mods['webRTC'];
     webRTC.run = function() {
+        argo.loader.update('Connecting to RTC signaler');
         webRTC.socket = io.connect(document.URL + 'rtc');
 		var socket = webRTC.socket;
 
@@ -42,6 +43,8 @@
                 }
             }
         });
+
+        return true;
     };
 
     /* Ask web-browser for Webcam access, load into 'video' element */
@@ -98,7 +101,4 @@
                     {username: peername, callee: desc});
         }
     };
-
-    /* Load WebRTC Component */
-    argo.tabletop.addComponent(webRTC);
 })(); // Close anonymous namespace

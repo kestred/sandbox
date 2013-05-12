@@ -1,37 +1,65 @@
-/*! === Argonaut Base - Core Classes and Variables === */
-var Argonaut = {}; // namespace for class|methods definitions & access
-var argo = Argonaut; // short alias for namespace globals access
+/*! === Argonaut Base Classes === */
+jQuery('#loading-modal').modal('show');
+jQuery('#loading-message').html('Reading core.js ...');
+jQuery('#loading-progress').width('1%');
 
-Argonaut.Tabletop = function() { this.init('tabletop'); };
-Argonaut.Tabletop.prototype.constructor = Argonaut.Tabletop;
-Argonaut.Tabletop.prototype.init = function(type) {
+var Argonaut = function() { this.init('argonaut'); };
+Argonaut.prototype.constructor = Argonaut;
+Argonaut.prototype.init = function(type) {
     this.type = type;
     this.status = 'created';
-    this.components = [];
+    this.modules = {};
+    this.stderr = function(message) {
+        console.log("[stderr] " + message);
+    };
 };
-Argonaut.Tabletop.prototype.addComponent = function(component) {
-    this.components.push(component);
-    if(this.status == 'ready') { this.runComponent(component); }
+Argonaut.prototype.addModule = function(name, module) {
+    if(this.modules[name]) {
+        this.stderr("Module with name '" + name + "' already exists.");
+    } else {
+        this.modules[name] = module;
+    }
 }
-Argonaut.Tabletop.prototype.runComponent = function(component) {
-    component.run();
-}
-Argonaut.Tabletop.prototype.start = function() {
+Argonaut.prototype.start = function() {
     this.status = 'loading';
     this.socket = io.connect(document.URL + 'core');
-    for(var i=0; i < this.components.length; ++i) {
-        this.runComponent(this.components[i]);
+    jQuery.each(this.modules, this.modules);
+    for(var i=0; i < this.modules.length; ++i) {
+        this.modules[i].run();
     }
     this.status = 'ready';
-}
+};
 
-Argonaut.Component = function(name) { this.init('component', name); }
-Argonaut.Component.prototype.constructor = Argonaut.Component;
-Argonaut.Component.prototype.init = function(type, name) {
+/* Module definition, optional variables "core" and "requirements" */
+Argonaut.Module = function(name, core, requiredModules) {
+    this.init('module', name, core, requiredModules);
+}
+Argonaut.Module.prototype.constructor = Argonaut.Module;
+Argonaut.Module.prototype.init = function(type, name, core, reqs) {
     this.type = type;
+    this.core = core;
     this.name = name;
+    this.requiredModules = reqs;
     this.run = function() {};
-}
+};
+Argonaut.Module.prototype.checkRequirements = function() {
+    for(var i=0; i < this.requiredModules.length; ++i) {
+        if(!core.modules[this.requiredModules[i]]) {
+            return this.requiredModules[i];
+        }
+    }
+};
 
-argo.tabletop = new Argonaut.Tabletop();
-jQuery(function() { argo.tabletop.start(); });
+var argo = new Argonaut();
+var mods = argo.modules;
+argo.loader = {};
+argo.loader.progress = 1;
+argo.loader.update = function(message, progress) {
+    /* Currently, counts arbitrarily as an example to see progress */
+    if(!progress) { progress = 10; }
+    this.progress = this.progress + progress;
+    if(this.progress > 85) { this.progress = 85; }
+    jQuery('#loading-message').html(message + '...');
+    jQuery('#loading-progress').width(this.progress + '%');
+};
+
