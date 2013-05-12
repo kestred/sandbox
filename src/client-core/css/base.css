@@ -1,5 +1,15 @@
 /* Scaffolding and Layout */
-body { margin:0; padding:0; border:0; }
+body { margin:0; padding:0; border:0; height:100%; }
+body.dark {
+    background-color:#111111;
+    background-repeat:no-repeat;
+    background-attachment:fixed;
+    background-image:-moz-linear-gradient(top, #333333, #111111);
+    background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#333333), to(#111111));
+    background-image:-webkit-linear-gradient(top, #333333, #111111);
+    background-image:-o-linear-gradient(top, #333333, #111111);
+    background-image:linear-gradient(to bottom, #333333, #111111);
+}
 #flow {
     position:absolute;
     top:0; left:0; right:0;
@@ -31,8 +41,9 @@ body { margin:0; padding:0; border:0; }
    *   >>  Target a 4:3 screen ratio
    */
 }
-@media (min-width: 1200px) {
-  /* HD Screens (720p, 1080p)
-   *   >>  Target a 16:9 screen ratio
-   */
+@media (min-width: 1200px) and (max-width: 1919) { /* 720p */
+
+}
+@media (min-width: 1920px) { /* 1080p */
+
 }
