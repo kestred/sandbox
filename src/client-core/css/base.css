@@ -1,22 +1,38 @@
 /* Scaffolding and Layout */
 body { margin:0; padding:0; border:0; }
-#flow { position:absolute; top:0; left:0; right:0; z-index:5; }
-#fixed { position:fixed; top:0; left:0; right:0; bottom:0; z-index:10; overflow:hidden;}
+#flow {
+    position:absolute;
+    top:0; left:0; right:0;
+    z-index:5;
+}
 #hidden { display:none; }
-.row, .col { position:relative; display:inline-block; padding:0; margin:0; border:0; }
-.row { width:100%; /*border-bottom:1px solid #999;*/ }
-.col { height:100%; /*border-right:1px solid #999;*/ }
+.row, .col {
+    position:relative;
+    display:inline-block;
+    padding:0; margin:0; border:0;
+}
+.row { width:100%; }
+.col { height:100%; }
+
+
+/* Default Elements */
+#loading-modal .progress { margin-bottom:0; }
+
 
 /* Responsive Styling */
-@media (max-width: 480px) {
-  /* Landscape iPhone, portrait phones */
+@media (max-width: 767px) {
+  /* Phones and portrait tablets
+   *   >>  This category might not be fully supported
+   *   >>  Remove video (use audio only), stack elements, etc
+   */
 }
-@media (min-width: 481px) and (max-width: 767px) {
-  /* Landscape phones, portrait tablets */
+@media (min-width: 768px) and (max-width: 1199px) {
+  /* Landscape tablets | Normal screens
+   *   >>  Target a 4:3 screen ratio
+   */
 }
-@media (min-width: 768px) and (max-width: 1023px) {
-  /* Landscape tablets, small screens */
-}
-@media (min-width: 1024px) {
-  /* Large screens */
+@media (min-width: 1200px) {
+  /* HD Screens (720p, 1080p)
+   *   >>  Target a 16:9 screen ratio
+   */
 }
