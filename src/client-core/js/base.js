@@ -23,10 +23,8 @@ Argonaut.prototype.addModule = function(name, module) {
 Argonaut.prototype.start = function() {
     this.status = 'loading';
     this.socket = io.connect(document.URL + 'core');
-    jQuery.each(this.modules, this.modules);
-    for(var i=0; i < this.modules.length; ++i) {
-        this.modules[i].run();
-    }
+    jQuery.each(this.modules,
+        function(index, module) { module.run(); });
     this.status = 'ready';
 };
 
