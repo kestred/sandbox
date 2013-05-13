@@ -17,6 +17,7 @@ app = web.Application(
          (r"/socket.io/socket.io.js", SocketIOHandler),
          (r"/js/(.*)", JavascriptHandler),
          (r"/css/(.*)", StylesheetHandler),
+         (r"/img/(.*)", ImageHandler),
          (r"/vendor/(.*)", VendorHandler)]),
     socket_io_port = 6058)
 

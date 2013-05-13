@@ -31,6 +31,29 @@ class VendorHandler(tornado.web.RequestHandler):
         else:
             self.set_status(404)
 
+class ImageHandler(tornado.web.RequestHandler):
+    def get(self, result):
+        path = "." + self.request.path
+        if os.path.dirname(path) == "./img" and os.path.isfile(path):
+            ext = os.path.splitext(path)[1]
+            if ext == ".bmp":
+                self.set_header("Content-Type", "image/bmp")
+            elif ext == ".png":
+                self.set_header("Content-Type", "image/png")
+            elif ext == ".gif":
+                self.set_header("Content-Type", "image/gif")
+            elif ext == ".tif" or ext == ".tiff":
+                self.set_header("Content-Type", "image/tiff")
+            elif ext == ".jpg" or ext == ".jpeg" or ext == ".jpe":
+                self.set_header("Content-Type", "image/jpeg")
+            try:
+                self.render(os.path.abspath(path))
+            except IOError, ioex:
+                printIOError(ioex)
+                self.set_status(404)
+        else:
+            self.set_status(404)
+
 class JavascriptHandler(tornado.web.RequestHandler):
     def get(self, result):
         path = "." + self.request.path
