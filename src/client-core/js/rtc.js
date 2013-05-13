@@ -48,11 +48,11 @@ mods['webRTC'] = new Argonaut.Module('webRTC');
     };
 
     /* Ask web-browser for Webcam access, load into 'video' element */
-    webRTC.startLocalVideo = function(callback, video) {
+    webRTC.startLocalVideo = function(video, callback) {
         navigator.getUserMedia({'audio': true, 'video': true},
             function(stream) {
                 webRTC.localStream = stream;
-                video.src = URL.createObjectURL(stream);
+                video.attr('src', URL.createObjectURL(stream));
                 callback();
             },
             function() { alert('Video capture failed'); }
