@@ -1,4 +1,4 @@
-/* Scaffolding and Layout */
+/* Body and Layout */
 body { margin:0; padding:0; border:0; height:100%; }
 body.dark {
     background-color:#111111;
@@ -10,22 +10,16 @@ body.dark {
     background-image:-o-linear-gradient(top, #333333, #111111);
     background-image:linear-gradient(to bottom, #333333, #111111);
 }
-#flow {
+#layout {
     position:absolute;
     top:0; left:0; right:0;
     z-index:5;
 }
 #hidden { display:none; }
-.row, .col {
-    position:relative;
-    display:inline-block;
-    padding:0; margin:0; border:0;
-}
-.row { width:100%; }
-.col { height:100%; }
+.collapsed * { display:none; }
+.west, .east, .north, .south, .center { display:inline-block; }
 
-
-/* Default Elements */
+/* Built-in Elements */
 #loading-modal .progress { margin-bottom:0; }
 
 
@@ -35,15 +29,4 @@ body.dark {
    *   >>  This category might not be fully supported
    *   >>  Remove video (use audio only), stack elements, etc
    */
-}
-@media (min-width: 768px) and (max-width: 1199px) {
-  /* Landscape tablets | Normal screens
-   *   >>  Target a 4:3 screen ratio
-   */
-}
-@media (min-width: 1200px) and (max-width: 1919) { /* 720p */
-
-}
-@media (min-width: 1920px) { /* 1080p */
-
 }
