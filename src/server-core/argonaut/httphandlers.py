@@ -47,7 +47,8 @@ class ImageHandler(tornado.web.RequestHandler):
             elif ext == ".jpg" or ext == ".jpeg" or ext == ".jpe":
                 self.set_header("Content-Type", "image/jpeg")
             try:
-                self.render(os.path.abspath(path))
+                img = open(os.path.abspath(path), 'r')
+                self.write(img.read())
             except IOError, ioex:
                 printIOError(ioex)
                 self.set_status(404)
