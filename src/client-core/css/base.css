@@ -21,12 +21,3 @@ body.dark {
 
 /* Built-in Elements */
 #loading-modal .progress { margin-bottom:0; }
-
-
-/* Responsive Styling */
-@media (max-width: 767px) {
-  /* Phones and portrait tablets
-   *   >>  This category might not be fully supported
-   *   >>  Remove video (use audio only), stack elements, etc
-   */
-}
