@@ -1,8 +1,17 @@
-var argo = require('./core.js')
-exports.buildSocket = function(socket) {
-    // argo./* thisUser? */./* rtcSocket? */ = socket;
+function Wrtc (io, core) { this.init('webrtc-server', io, core); }
+Wrtc.prototype.constructor = Wrtc;
+Wrtc.prototype.init = function(type, io, core) {
+    this.type = type;
+    this.core = core;
+    this.io = io;
+    this.sockets = io.of('/rtc').on('connection', this.buildSocket);
+};
+Wrtc.prototype.buildSocket = function(socket) {
     socket.on('syn', function(data) {});
-    socket.on('rtc-ack', function(data) {});
-    socket.on('rtc-ice', function(data) {});
-    socket.on('disconnect', function () {});
+    socket.on('ack', function(data) {});
+    socket.on('ice', function(data) {});
+    socket.on('disconnect', function() {});
 }
+
+/* Export webrtc */
+module.exports = Wrtc;
