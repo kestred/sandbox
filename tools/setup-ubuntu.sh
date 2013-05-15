@@ -38,6 +38,7 @@ while [ "$1" != "" ]; do
         ;;
       "-y" | "--pypy")
         usePyPy="true"
+        ;;
       "-j" | "--javascript")
         jsServer="true"
         ;;
