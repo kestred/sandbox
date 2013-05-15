@@ -1,18 +1,15 @@
 /* Body and Layout */
 body { margin:0; padding:0; border:0; height:100%; }
 body.dark {
-    background-color:#111111;
+    background-color:#333333;
     background-repeat:no-repeat;
     background-attachment:fixed;
-    /* @alternate */
-    background-image:-moz-linear-gradient(top, #333333, #111111);
-    /* @alternate */
-    background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#333333), to(#111111));
-    /* @alternate */
-    background-image:-webkit-linear-gradient(top, #333333, #111111);
-    /* @alternate */
-    background-image:-o-linear-gradient(top, #333333, #111111);
-    background-image:linear-gradient(to bottom, #333333, #111111);
+    /* @alternate */ background-image:-moz-linear-gradient(top, #444444, #222222);
+    /* @alternate */ background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#444444), to(#222222));
+    /* @alternate */ background-image:-webkit-linear-gradient(top, #444444, #222222);
+    /* @alternate */ background-image:-o-linear-gradient(top, #444444, #222222);
+    background-image:linear-gradient(to bottom, #444444, #222222);
+    filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff444444', endColorstr='#ff222222', GradientType=0);
 }
 #layout {
     position:absolute;
