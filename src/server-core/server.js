@@ -18,10 +18,10 @@ server.listen(6058); //randomly chosen port number not registerd in IANA
 app.get('/', function (req, res) {
     res.sendfile(__dirname + '/client.html');
 });
-app.use('/js', express.static(__dirname + '/js'));
-app.use('/css', express.static(__dirname + '/css'));
-app.use('/img', express.static(__dirname + '/img'));
-app.use('/vendor', express.static(__dirname + '/vendor'));
+app.use('/js', Express.static(__dirname + '/js'));
+app.use('/css', Express.static(__dirname + '/css'));
+app.use('/img', Express.static(__dirname + '/img'));
+app.use('/vendor', Express.static(__dirname + '/vendor'));
 
 /* Setup argonaut */
 var core = new Core(io);
@@ -29,8 +29,4 @@ var chat = new Chat(io, core);
 var wrtc = new Wrtc(io, core);
 
 console.log('[Argonaut] Server ready.');
-
-io.of('/core').on('connection', buildSocket)
-io.of('/chat').on('connection', buildSocket)
-io.of('/rtc').on('connection', buildSocket)
 

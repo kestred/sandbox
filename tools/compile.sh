@@ -75,7 +75,7 @@ else
     cat src/client-core/js/* >> build/js/core.pretty.js
     java -jar tools/Closure/compiler.jar \
     --js tools/Closure/externs/jquery-1.9.js \
-    --js build/js/core.pretty.js
+    --js build/js/core.pretty.js \
     --js_output_file build/js/core.js
 fi
 
