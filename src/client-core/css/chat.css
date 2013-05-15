@@ -1,0 +1,30 @@
+/* Chat Menu Styling */
+.chat-menu {
+    color:#999999;
+    padding:12px 24px;
+    border:1px solid #252525;
+    background-color:#1b1b1b;
+    background-repeat:repeat-x;
+    /* @alternate */ background-image:-moz-linear-gradient(top, #222222, #111111);
+    /* @alternate */ background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#222222), to(#111111));
+    /* @alternate */ background-image:-webkit-linear-gradient(top, #222222, #111111);
+    /* @alternate */ background-image:-o-linear-gradient(top, #222222, #111111);
+    background-image:linear-gradient(to bottom, #222222, #111111);
+    filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff222222', endColorstr='#ff111111', GradientType=0);
+    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+}
+
+/* Player Status styling */
+#player-status {
+    display:inline-block;
+    width:100%;
+    margin:0 0 0 -3px;
+    border-left:2px ridge #666;
+    border-right:2px groove #666;
+    background:rgba(255,255,255,0.025);
+}
+#player-status li { cursor:pointer; margin:4px 0; padding:0 6px; }
+#player-status li:hover { background:rgba(255,255,255,0.1); }
+#player-status badge { margin-right:6px; }

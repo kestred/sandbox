@@ -38,10 +38,65 @@ mods['gui'] = new Argonaut.Module('gui');
         };
         return container;
     };
-    gui.create['videoGroup'] = function() {
-        var group = jQuery('<div class="video-group"></div>');
-        // TODO: Figure out best context to add containers to group
-        return group;
+    gui.create['playerStatus'] = function() {
+        var player = jQuery('<li></li>');
+        var title = jQuery('<span class="player-name"></span>');
+        var badge = jQuery('<span class="badge"></span>');
+        var icon = jQuery('<i class="icon-user"></i>');
+        badge.append(icon);
+        player.append(badge);
+        player.append(title);
+        player.setName = function(name) {
+            player.find('.player-name').html(name);
+        };
+        badge.clear = function() {
+            badge.removeClass('badge-success'
+                            , 'badge-info'
+                            , 'badge-warning');
+        };
+        icon.clear = function() {
+            icon.removeClass('icon-user'
+                           , 'icon-asterisk'
+                           , 'icon-volume-up'
+                           , 'icon-remove');
+        };
+        player.setStatus = function(status) {
+            player.status = status;
+            badge.clear(); icon.clear();
+            if(status == 'connected') {
+                icon.addClass('icon-user');
+            } else if(status == 'speaking') {
+                icon.addClass('icon-volume-up');
+                badge.addClass('badge-success');
+            } else if(status == 'disconnected') {
+                icon.addClass('icon-remove');
+                badge.addClass('badge-warning');                
+            }
+        }
+        player.toggleConnected = function() {
+            if(player.status != 'disconnected') {
+                player.setStatus('disconnected');
+            } else { player.setStatus('connected'); }
+        };
+        player.toggleSpeaking = function() {
+            if(player.status != 'speaking') {
+                player.untoggler = player.status;
+                player.setStatus('speaking');
+            } else { player.setStatus(player.untoggler); }
+        };
+        player.toggleInitiative = function() {
+            if(player.untoggler != 'active') {
+                if(player.status == 'connected') {
+                    player.setStatus('active');
+                } else if(player.status == 'speaking') {
+                    player.untoggler = 'active';
+                } else if(player.status == 'active') {
+                    player.setStatus('connected');
+                } // else status == disconnected SO do nothing
+            } else { player.untoggler = 'connected'; }
+        };
+        player.status = 'connected';
+        return player;
     };
     gui.create['privateButton'] = function() {
         var icon = jQuery('<i></i>');
@@ -56,7 +111,7 @@ mods['gui'] = new Argonaut.Module('gui');
     };
 
     /* Dictionary of GUI setup functions (using Module names as keys) */
-    gui.routines = {};
+    gui.routines = {}; // Core routines are built-in
     gui.routines['webRTC'] = function() {
         var div = gui.elements;
         div['rtcFeedback'] = gui.create['videoContainer']();
@@ -69,7 +124,7 @@ mods['gui'] = new Argonaut.Module('gui');
         div['rtcGamemaster'].videoControls.setName('Gamemaster');
         div['rtcGamemaster'].videoControls.appendControl(
                                 gui.create['privateButton']());
-        div['rtcPlayers'] = gui.create['videoGroup']();
+        div['rtcPlayers'] = jQuery('<div class="video-group"></div>');
         gui.getVideoById = function(playerId) {
             var video = jQuery(".video-container[data-playerid='"
                                           + playerId + "'] video");
@@ -83,6 +138,24 @@ mods['gui'] = new Argonaut.Module('gui');
             }
             return video;
         };
+    };
+    gui.routines['chat'] = function() {
+        var div = gui.elements;
+        div['chatPanel'] = jQuery('<div class="chat-panel"></div>');
+        var chatMenu = jQuery('<div class="chat-menu"></div>');
+        var playerStatus = jQuery('<ol id="player-status"></ol>');
+        playerStatus.addClass('unstyled');
+        var chatStatusSelf = gui.create['playerStatus']();
+        chatStatusSelf.attr('data-playerid', argo.publicId);
+        chatStatusSelf.setName('Local user');
+        var chatStatusGm = gui.create['playerStatus']();
+        chatStatusGm.setName('Gamemaster');
+        chatStatusGm.attr('data-playerid', argo.gamemaster);
+        chatStatusGm.toggleConnected(); // for display purposes for now
+        playerStatus.append(chatStatusGm);
+        playerStatus.append(chatStatusSelf);
+        chatMenu.append(playerStatus);
+        div['chatPanel'].append(chatMenu);
     };
 
     /* Layout class definitions */
