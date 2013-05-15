@@ -1,4 +1,10 @@
 /* Basic container styling */
+.video-container.feedback {
+    border:1px solid #252525;
+    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+}
 .video-container video { width:100%; display:block; }
 .video-container .navbar { margin-bottom:0; }
 .video-container .navbar-inner { border-radius:0; padding-right:6px; }
