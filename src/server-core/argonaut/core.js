@@ -15,7 +15,7 @@ Core.prototype.buildSocket = function(socket) {
             util.socketError(socket, 'Missing public key.');
             return;
         }
-        if(!data.publicId.match(/[a-z0-9]{16}/)) {
+        if(!util.validPublicId(data.publicId)) {
             util.socketError(socket, 'Invalid public key.');
             return;
         }
@@ -32,18 +32,35 @@ Core.prototype.buildSocket = function(socket) {
             socket.emit('authenticate', {status: 'success'});
             return;
         }
-        var privId = util.randomKey(32);
-        core.clients[data.publicId] = new Client(data.publicId, privId);
+        var secret = '';
+        if('privateId' in data &&
+           util.validPrivateId(data.privateId)) {
+            secret = data.privateId;
+        } else {
+            secret = util.randomKey(32);
+        }
+        core.clients[data.publicId] = new Core.Client(data.publicId,
+                                                      secret);
         core.clients[data.publicId].sockets.core = socket;
+        socket.client = this;
         socket.emit('authenticate', {status: 'success',
-                                     privateId: privId});
+                                     privateId: secret});
     });
 
-    socket.on('sessionInfo', function(data) {
+    socket.on('sessionInfo', function() {
         var clients = Object.keys(core.clients);
-        clients = clients.splice(clients.indexOf(data.publicId), 1);
+        var selfIndex = clients.indexOf(socket.client.publicId);
+        clients = clients.splice(selfIndex, 1);
         socket.emit('sessionInfo', {players: clients
                                   , gamemaster: 'none'});
+    });
+
+    socket.on('ready', function() {
+       core.sockets.emit('player-joined', {id: socket.client.publicId});
+    });
+
+    socket.on('disconnect', function() {
+        core.sockets.emit('player-left', {id: socket.client.publicId})
     });
 
     socket.emit('ready');
@@ -57,36 +74,49 @@ Core.prototype.stderr = function(message, client) {
     }
     util.socketError(socket, message);
 };
-
+Core.prototype.validLogin = function(data) {
+    if(!('publicId' in data)) { return false; }
+    if(!('privateId' in data)) { return false; }
+    if(!util.validPublicId(data.publicId)) { return false; }
+    if(!util.validPrivateId(data.privateId)) { return false; }
+    return this.clients[data.publicId].privateId == data.privateId;
+};
 
 /* Client class */
-function Client(publicId, privateId) {
+Core.Client = function(publicId, privateId) {
     this.init('client', publicId, privateId);
 }
-Client.prototype.constructor = Client;
-Client.prototype.init = function(type, publicId, privateId) {
+Core.Client.prototype.constructor = Core.Client;
+Core.Client.prototype.init = function(type, publicId, privateId) {
     this.type = type;
     this.publicId = publicId;
     this.privateId = privateId;
     this.sockets = {};
 };
-Client.prototype.authenticate = function(privateId) {
-    if(!privateId.match(/[a-z0-9]{32}/)) { return false; }
-    if(this.privateId !== privateId) { return false; }
-    return true;
+Core.Client.prototype.authenticate = function(privateId) {
+    if(!util.validPrivateId(privateId)) { return false; }
+    return this.privateId == privateId;
 };
 
-
 /* Utility functions */
-var util = {};
-util.socketError = function(socket, message) {};
-util.randomKey = function(length) {
+Core.Util = {};
+Core.Util.socketError = function(socket, message) {};
+Core.Util.randomKey = function(length) {
     var str = '';
     while(str.length < length) {
         str += Math.floor((Math.random()*16)).toString(16);
     }
     return str.substr(0, length);
 };
+Core.Util.validPublicId = function(publicId) {
+    return (typeof publicId == 'string'
+         && publicId.match(/[a-z0-9]{16}/);
+};
+Core.Util.validPrivateId = function(privateId) {
+    return (typeof privateId == 'string'
+         && privateId.match(/[a-z0-9]{32}/);
+};
+var util = Core.Util;
 
 /* Export core */
 module.exports = Core;

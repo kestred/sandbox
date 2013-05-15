@@ -49,8 +49,7 @@ Argonaut.prototype.connect = function() {
             socket.emit('authenticate', {publicId: argo.publicId});
         } else {
             argo.privateId = data.privateId;
-            socket.emit('sessionInfo', {publicId: argo.publicId
-                                      , privateId: argo.privateId});
+            socket.emit('sessionInfo');
         }
     });
     socket.on('sessionInfo', function(data) {
@@ -64,6 +63,7 @@ Argonaut.prototype.connect = function() {
 Argonaut.prototype.loadModules = function() {
     this.status = 'loading';
     jQuery.each(this.modules, function(index, module) { module.run(); });
+    this.sockets.core.emit('ready');
     this.status = 'ready';
 }
 
