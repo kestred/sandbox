@@ -8,8 +8,9 @@ Core.prototype.init = function(type, io) {
     this.sockets = io.of('/core').on('connection', this.buildSocket);
 };
 Core.prototype.buildSocket = function(socket) {
-    /* Socket.io "/core" endpoint definition */
     var core = this;
+
+    /* Socket.io "/core" endpoint definition */
     socket.on('authenticate', function(data) {
         if(!('publicId' in data)) {
             util.socketError(socket, 'Missing public key.');
@@ -20,11 +21,7 @@ Core.prototype.buildSocket = function(socket) {
             return;
         }
         if(data.publicId in clients) {
-            if(!('privateId' in data)) {
-                util.socketError(socket, 'Missing private key.');
-                return;
-            }
-            if(!core.clients[publicId].authenticate(data.privateId)) {
+            if(!core.validIdPair(data)) {
                 socket.emit('authenticate', {status: 'fail'});
                 return;
             }
@@ -74,7 +71,7 @@ Core.prototype.stderr = function(message, client) {
     }
     util.socketError(socket, message);
 };
-Core.prototype.validLogin = function(data) {
+Core.prototype.validIdPair = function(data) {
     if(!('publicId' in data)) { return false; }
     if(!('privateId' in data)) { return false; }
     if(!util.validPublicId(data.publicId)) { return false; }
