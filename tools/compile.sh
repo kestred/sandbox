@@ -5,12 +5,31 @@ cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 GIT_DIR="$(git rev-parse --show-toplevel)"
 cd $GIT_DIR
 
+# Help Dialog
+function printhelp {
+    printf "Usage: compile.sh [OPTION]... \n"
+    printf "Options:\n"
+    printf "\t-h, --help\t\tShow this help dialog.\n"
+    printf "\t-c, --clean\t\tRemoves ./build before compiling\n"
+    printf "\t-d, --debug\t\tDoesn't compress and optimize css and js\n"
+    printf "\t-j, --javascript\tCompile the"
+    printf " javascript server (default, works with --python)\n"
+    printf "\t-p, --python"
+    printf "\t\tCompile the python server (works with --javascript)\n"
+    printf "\t-Y, --pypy"
+    printf "\t\tRun with pypy (implies --python --autorun)\n"
+}
+
 # Parse arguments
 autorun="false"
 usePyPy="false"
 debugMode="false"
 while [ "$1" != "" ]; do
     case $1 in
+      "-h" | "--help")
+        printhelp
+        exit
+        ;;
       "-c" | "--clean")
         rm -rf build
         ;;
@@ -20,9 +39,10 @@ while [ "$1" != "" ]; do
       "-p" | "--python")
         pyServer="true"
         ;;
-      "-y" | "--pypy")
+      "-Y" | "--pypy")
         usePyPy="true"
         pyServer="true"
+        autorun="true"
         ;;
       "-j" | "--javascript")
         jsServer="true"
@@ -30,6 +50,10 @@ while [ "$1" != "" ]; do
       "-R" | "--autorun")
         autorun="true"
         ;;
+      *)
+        printf "argonaut-compile: unknown option (%s)\n\n" "$1"
+        printhelp
+        exit
     esac
     shift
 done
@@ -83,7 +107,11 @@ fi
 if [ $autorun = "true" ]; then
     cd build
     if [ $jsServer == "true" ]; then
-        node server.js
+        if [ $debugMode == "true" ]; then
+            node server.js -d
+        else
+            node server.js
+        fi
     elif [ $pyServer == "true" ]; then
         if [ $usePyPy == "true" ]; then
             pypy server.py

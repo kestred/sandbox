@@ -2,11 +2,28 @@
 var Http = require('http');
 var Express = require('express');
 var SocketIO = require('socket.io');
+var Optimist = require('optimist');
 
 /* Import local modules */
 var Core = require('./argonaut/core.js');
 var Chat = require('./argonaut/chat.js');
 var Wrtc = require('./argonaut/rtc.js');
+
+/* Parse command line arguments */
+var args = Optimist.argv;
+var help = (
+"Usage: node server.js [OPTION]... \n" +
+"Options:\n" +
+"\t-h, --help\tShow this help dialog.\n" +
+"\t-d, --debug\tIncrease the socket.io logging-level\n");
+if((args.h) || (args.help)) {
+    console.log(help);
+    process.exit(0);
+}
+if(!(args.d) && !(args.debug)) {
+    // Disabled debug mode if not set
+    io.set('log level', 1);
+}
 
 /* Startup server */
 var app = new Express();
