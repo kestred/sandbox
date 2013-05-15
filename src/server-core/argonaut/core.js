@@ -2,14 +2,14 @@
 function Core(io) { this.init('core-server', io); }
 Core.prototype.constructor = Core;
 Core.prototype.init = function(type, io) {
+    Core.instance = this;
     this.type = type;
     this.io = io;
     this.clients = {};
     this.sockets = io.of('/core').on('connection', this.buildSocket);
 };
 Core.prototype.buildSocket = function(socket) {
-    var core = this;
-
+    var core = Core.getInstance();
     /* Socket.io "/core" endpoint definition */
     socket.on('authenticate', function(data) {
         if(!('publicId' in data)) {
@@ -20,7 +20,7 @@ Core.prototype.buildSocket = function(socket) {
             util.socketError(socket, 'Invalid public key.');
             return;
         }
-        if(data.publicId in clients) {
+        if(data.publicId in core.clients) {
             if(!core.validIdPair(data)) {
                 socket.emit('authenticate', {status: 'fail'});
                 return;
@@ -39,7 +39,7 @@ Core.prototype.buildSocket = function(socket) {
         core.clients[data.publicId] = new Core.Client(data.publicId,
                                                       secret);
         core.clients[data.publicId].sockets.core = socket;
-        socket.client = this;
+        socket.client = core.clients[data.publicId];
         socket.emit('authenticate', {status: 'success',
                                      privateId: secret});
     });
@@ -47,17 +47,17 @@ Core.prototype.buildSocket = function(socket) {
     socket.on('sessionInfo', function() {
         var clients = Object.keys(core.clients);
         var selfIndex = clients.indexOf(socket.client.publicId);
-        clients = clients.splice(selfIndex, 1);
+        clients.splice(selfIndex, 1);
         socket.emit('sessionInfo', {players: clients
                                   , gamemaster: 'none'});
     });
 
     socket.on('ready', function() {
-       core.sockets.emit('player-joined', {id: socket.client.publicId});
+        core.io.of('/core').emit('player-joined', {id: socket.client.publicId});
     });
 
     socket.on('disconnect', function() {
-        core.sockets.emit('player-left', {id: socket.client.publicId})
+        core.io.of('/core').emit('player-left', {id: socket.client.publicId})
     });
 
     socket.emit('ready');
@@ -76,7 +76,11 @@ Core.prototype.validIdPair = function(data) {
     if(!('privateId' in data)) { return false; }
     if(!util.validPublicId(data.publicId)) { return false; }
     if(!util.validPrivateId(data.privateId)) { return false; }
+    if(!(data.publicId in this.clients)) { return false; }
     return this.clients[data.publicId].privateId == data.privateId;
+};
+Core.getInstance = function() {
+    return Core.instance;
 };
 
 /* Client class */
@@ -107,11 +111,11 @@ Core.Util.randomKey = function(length) {
 };
 Core.Util.validPublicId = function(publicId) {
     return (typeof publicId == 'string'
-         && publicId.match(/[a-z0-9]{16}/);
+         && publicId.match(/[a-z0-9]{16}/));
 };
 Core.Util.validPrivateId = function(privateId) {
     return (typeof privateId == 'string'
-         && privateId.match(/[a-z0-9]{32}/);
+         && privateId.match(/[a-z0-9]{32}/));
 };
 var util = Core.Util;
 

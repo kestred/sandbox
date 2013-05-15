@@ -16,30 +16,34 @@ navigator.getUserMedia = navigator.getUserMedia
 mods['webRTC'] = new Argonaut.Module('webRTC');
 (function() { // Begin anonymous namespace
     var webRTC = mods['webRTC'];
+    webRTC.peers = {};
+
     webRTC.run = function() {
         argo.loader.update('Connecting to RTC signaler');
-        webRTC.socket = io.connect(document.URL + 'rtc');
-		var socket = webRTC.socket;
+        var socket = io.connect(document.URL + 'rtc');
+		argo.sockets.webRTC = webRTC.socket = socket;
+
+        socket.emit('authenticate', {publicId: argo.publicId
+                                   , privateId: argo.privateId});
 
         /* On recieve rtc-syn */
         socket.on('syn', function(data) {
-            webRTC.recieveConnection(data.username, data.caller);
+            webRTC.recieveConnection(data.callerId, data.callerDesc);
         });
 
         /* On recieve rtc-ack */
         socket.on('ack', function(data) {
-            var desc = new RTCSessionDescription(data.callee);
-            webRTC.peers[data.username].setRemoteDescription(desc);
+            var desc = new RTCSessionDescription(data.calleeDesc);
+            webRTC.peers[data.calleeId].setRemoteDescription(desc);
         });
 
         /* On recieve rtc-ice */
         socket.on('ice', function(data) {
-            var peer = webRTC.peers[data.username];
-            if(webRTC.peer && !webRTC.peer.rtcIceSuccess) {
-                webRTC.peer.rtsIceSuccess = true;
-                if(data.candidate) {
+            if(data.candidateId in webRTC.peers) {
+                var peer = webRTC.peers[data.candidateId];
+                if('candidate' in data && data.candidate !== null) {
                     var candidate = new RTCIceCandidate(data.candidate);
-                    webRTC.peer.addIceCandidate(candidate);
+                    peer.addIceCandidate(candidate);
                 }
             }
         });
@@ -48,57 +52,61 @@ mods['webRTC'] = new Argonaut.Module('webRTC');
     };
 
     /* Ask web-browser for Webcam access, load into 'video' element */
-    webRTC.startLocalVideo = function(video, callback) {
+    webRTC.startVideoService = function(videoById, callback) {
+        webRTC.videoById = videoById;
         navigator.getUserMedia({'audio': true, 'video': true},
             function(stream) {
                 webRTC.localStream = stream;
-                video.attr('src', URL.createObjectURL(stream));
+                webRTC.localVideo = webRTC.videoById(argo.publicId);
+                webRTC.localVideo.attr('src', URL.createObjectURL(stream));
                 callback();
             },
             function() { alert('Video capture failed'); }
         );
     };
 
-    /* Negotiate a new WebRTC audio/video connection to 'peername' */
-    webRTC.connectToPeer = function(peername, video) {
+    /* Negotiate a new WebRTC audio/video connection to 'peerId' */
+    webRTC.connectToPeer = function(peerId) {
         var peer = new RTCPeerConnection(null);
         peer.onicecandidate = function(event) {
             webRTC.socket.emit('ice', {candidate: event.candidate});
         };
         peer.onaddstream = function (event) {
-            video.src = URL.createObjectURL(event.stream);
+            var peerVideo = webRTC.videoById(peerId);
+            peerVideo.attr('src', URL.createObjectURL(event.stream));
         };
 
-        if(!webRTC.peers) { webRTC.peers = {}; }
-        webRTC.peers[peername] = peer;
+        webRTC.peers[peerId] = peer;
         peer.addStream(webRTC.localStream);
         peer.createOffer(sendCallerDescription);
         function sendCallerDescription(desc) {
             peer.setLocalDescription(desc);
-            webRTC.socket.emit('syn',
-                    {username: peername, caller: desc});
+            webRTC.socket.emit('syn', {targetId: peerId
+                                     , callerDesc: desc});
         }
     };
 
     /* Recieve a request for WebRTC audio/video connection */
-    webRTC.recieveConnection = function(peername, video, remote) {
+    webRTC.recieveConnection = function(peerId, remote) {
         var peer = new RTCPeerConnection(null);
         peer.onicecandidate = function(event) {
             webRTC.socket.emit('ice', {candidate: event.candidate});
         };
         peer.onaddstream = function (event) {
-            video.src = URL.createObjectURL(event.stream);
+            var peerVideo = webRTC.videoById(peerId);
+            peerVideo.attr('src', URL.createObjectURL(event.stream));
         };
 
-        if(!webRTC.peers) { webRTC.peers = {}; }
-        webRTC.peers[peername] = peer;
+        webRTC.peers[peerId] = peer;
         peer.addStream(webRTC.localStream);
         peer.setRemoteDescription(new RTCSessionDescription(remote));
         peer.createAnswer(sendCallerDescription);
         function sendCallerDescription(desc) {
             peer.setLocalDescription(desc);
-            webRTC.socket.emit('ack',
-                    {username: peername, callee: desc});
+            webRTC.socket.emit('ack', {publicId: argo.publicId
+                                     , privateId: argo.privateId
+                                     , targetId: peerId
+                                     , calleeDesc: desc});
         }
     };
 })(); // Close anonymous namespace

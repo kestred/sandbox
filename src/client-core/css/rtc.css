@@ -1,18 +1,35 @@
+/* Basic container styling */
 .video-container video { width:100%; display:block; }
 .video-container .navbar { margin-bottom:0; }
 .video-container .navbar-inner { border-radius:0; padding-right:6px; }
 .video-group { width:100%; overflow:auto; }
-.video-group .video-container { display:inline-block; }
 
+/* Video-group styling */
+.video-group .video-container { display:inline-block; }
+.video-group .video-container .navbar-inner {
+    min-height:24px;
+    padding-left:6px;
+}
+.video-group .video-container .brand {
+    font-size:18px;
+    margin-left:-6px;
+    padding:2px 6px;
+}
+.video-group .video-container .divider-vertical { height:24px; }
+.video-group .video-container .btn { padding:0 6px; margin-top:0; }
+.video-group .video-container li > a { padding:2px 6px; }
+
+/* Region-specific styling */
 .west  > .video-conatiner.big,
 .east  > .video-container.big { width:100%; }
 .north > .video-group { overflow-y:hidden; height:100%; }
 .west  > .video-group { overflow-x:hidden; }
-.north > .video-group .video-container { width:16.5%; }
+.north > .video-group .video-container { width:14.2%; }
 .west  > .video-group .video-container { width:50%; }
 
-#inner-east   .video-container.big { max-height:50%; }
-#inner-east   .video-container.big video { max-height:100%; }
+#inner-east .video-container.big { max-height:50%; position:relative; }
+#inner-east .video-container.big:not(.feedback) { z-index:200; }
+#inner-east .video-container.big video { max-height:100%; }
 #inner-center .video-container.big {
     position:absolute; z-index:300;
     right:0; bottom:0; width:25%;

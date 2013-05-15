@@ -17,7 +17,7 @@ Argonaut.prototype.constructor = Argonaut;
 Argonaut.prototype.init = function(type) {
     this.type = type;
     this.status = 'created';
-    this.loader = new Argnaut.Loader();
+    this.loader = new Argonaut.Loader();
     this.publicId = util.randomKey(16);
     this.modules = {};
     this.sockets = {};
@@ -45,7 +45,6 @@ Argonaut.prototype.connect = function() {
     socket.on('authenticate', function(data) {
         if(data.status == 'fail') {
             argo.stderr('Server connection failed. Retrying ...');
-            argo.publicId = util.randomKey(16);
             socket.emit('authenticate', {publicId: argo.publicId});
         } else {
             argo.privateId = data.privateId;

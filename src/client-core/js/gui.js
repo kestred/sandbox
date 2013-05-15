@@ -49,7 +49,7 @@ mods['gui'] = new Argonaut.Module('gui');
         icon.addClass('icon-comment').addClass('icon-white');
         button.addClass('btn').addClass('btn-inverse');
         button.attr('data-toggle', 'tooltip');
-        button.attr('data-placement', 'bottom');
+        button.attr('data-placement', 'top');
         button.attr('data-original-title', 'Private Chat');
         button.append(icon).tooltip();
         return button;
@@ -61,13 +61,28 @@ mods['gui'] = new Argonaut.Module('gui');
         var div = gui.elements;
         div['rtcFeedback'] = gui.create['videoContainer']();
         div['rtcFeedback'].addClass('big').addClass('feedback');
+        div['rtcFeedback'].attr('data-playerid', argo.publicId);
         div['rtcFeedback'].videoControls.hide();
         div['rtcGamemaster'] = gui.create['videoContainer']();
         div['rtcGamemaster'].addClass('big');
+        div['rtcGamemaster'].attr('data-playerid', argo.gamemaster);
         div['rtcGamemaster'].videoControls.setName('Gamemaster');
         div['rtcGamemaster'].videoControls.appendControl(
                                 gui.create['privateButton']());
         div['rtcPlayers'] = gui.create['videoGroup']();
+        gui.getVideoById = function(playerId) {
+            var video = jQuery(".video-container[data-playerid='"
+                                          + playerId + "'] video");
+            if(!video.length) {
+                var container = gui.create['videoContainer']();
+                container.attr('data-playerid', playerId);
+                container.videoControls.appendControl(
+                                gui.create['privateButton']());
+                div['rtcPlayers'].append(container);
+                video = container.videoElement;
+            }
+            return video;
+        };
     };
 
     /* Layout class definitions */
@@ -323,8 +338,8 @@ mods['gui'] = new Argonaut.Module('gui');
                           , height: jQuery(window).height()
                           , west: {size: '20%'}
                           , east: {size: '20%'}};
-        var innerOptions = {north: {size: '16%'}
-                          , west: {size: '20%'}
+        var innerOptions = {north: {size: '20%'}
+                          , west: {size: '16%'}
                           , east: {size: '40%'}};
         gui.layout['page'].applyTo(gui.outer, outerOptions);
         gui.layout['page'].applyTo(gui.inner, innerOptions);
