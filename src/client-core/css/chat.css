@@ -27,4 +27,4 @@
 }
 #player-status li { cursor:pointer; margin:4px 0; padding:0 6px; }
 #player-status li:hover { background:rgba(255,255,255,0.1); }
-#player-status badge { margin-right:6px; }
+#player-status .badge { margin-right:6px; }
