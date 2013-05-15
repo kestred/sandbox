@@ -1,5 +1,6 @@
 /* Basic container styling */
 .video-container.feedback {
+    background:#000000;
     border:1px solid #252525;
     -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
        -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
