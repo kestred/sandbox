@@ -10,8 +10,8 @@ jQuery(function() {
             mods['gui'].getVideoById,
             function() {
                 jQuery('#loading-modal').modal('hide');
-                jQuery.each(argo.players, function(index, player) {
-                    mods['webRTC'].connectToPeer(player);
+                jQuery.each(argo.players, function(id, player) {
+                    mods['webRTC'].connectToPeer(id);
                 });
             }
         );

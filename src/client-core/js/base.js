@@ -19,15 +19,14 @@ Argonaut.prototype.init = function(type) {
     this.status = 'created';
     this.loader = new Argonaut.Loader();
     this.publicId = util.randomKey(16);
+    this.localPlayer = new Argonaut.Player(this.publicId);
+    this.players = {};
     this.modules = {};
     this.sockets = {};
-    this.players = {};
+    this.gamemaster = new Argonaut.Player(null);
     this.onconnect = function() {};
     this.onplayerleft = function(id) {};
     this.onplayerjoined = function(id) {};
-    this.stderr = function(message) {
-        console.log("[stderr] " + message);
-    };
 };
 Argonaut.prototype.addModule = function(name, module) {
     if(this.modules[name]) {
@@ -54,22 +53,34 @@ Argonaut.prototype.connect = function() {
         }
     });
     socket.on('sessionInfo', function(data) {
-        argo.gamemaster = data.gamemaster;
-        argo.players = data.players;
+        if(data.gamemaster == argo.localPlayerId
+           && data.gamemaster != null) {
+            argo.gamemaster = argo.localPlayer;
+        } else {
+            argo.gamemaster = new Argonaut.Player(data.gamemaster);
+        }
+        for(var i=0; i < data.players.length; ++i) {
+            var player = new Argonaut.Player(data.players[i]);
+            argo.players[data.players[i]] = player;
+        }
         argo.status = 'connected';
         argo.onconnect();
     });
     socket.on('player-joined', function(data) {
-        if(argo.players.indexOf(data.id) < 0
+        if(!(data.id in argo.players)
            && data.id != argo.publicId) {
-            argo.players.push(data.id);
+            argo.players[data.id] = new Argonaut.Player(data.id);
             argo.onplayerjoined(data.id);
+        }
+    });
+    socket.on('player-status', function(data) {
+        if(data.id in argo.players) {
+            argo.players[data.id].setStatus(data.status);
         }
     });
     socket.on('player-left', function(data) {
         argo.onplayerleft(data.id);
-        var index = argo.players.indexOf(data.id);
-        if(index >= 0) { argo.players.splice(index, 1); }
+        delete players[data.id];
     });
     this.sockets.core = socket;
 };
@@ -79,6 +90,29 @@ Argonaut.prototype.loadModules = function() {
     this.sockets.core.emit('ready');
     this.status = 'ready';
 }
+Argonaut.prototype.stderr = function(message) {
+    console.log("[stderr] " + message);
+};
+
+/* Player class definition */
+Argonaut.Player = function(id) { this.init('player', id); };
+Argonaut.Player.prototype.constructor = Argonaut.Player;
+Argonaut.Player.prototype.init = function(type, id) {
+    this.type = type;
+    this.status = 'connected';
+    if(id == null) {
+        id = "null";
+        this.status = 'disconnected';
+    }
+    this.id = id;
+    this.name = 'Player' + id.substr(0, 4).toUpperCase();
+};
+Argonaut.Player.prototype.setName = function(name) {
+    this.name = name;
+};
+Argonaut.Player.prototype.setStatus = function(status) {
+    this.status = status;
+};
 
 /* Module definition, optional variables "core" and "requiredMods" */
 Argonaut.Module = function(name, core, requiredModules) {

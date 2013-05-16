@@ -49,7 +49,7 @@ Core.prototype.buildSocket = function(socket) {
         var selfIndex = clients.indexOf(socket.client.publicId);
         clients.splice(selfIndex, 1);
         socket.emit('sessionInfo', {players: clients
-                                  , gamemaster: 'none'});
+                                  , gamemaster: null});
     });
 
     socket.on('ready', function() {
