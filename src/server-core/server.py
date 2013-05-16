@@ -1,16 +1,16 @@
-from tornadio2 import SocketConnection, TornadioRouter, SocketServer
+# Import library modules
+from tornadio2 import SocketServer
 from tornado import web
-from argonaut.httphandlers import *
 
-from argonaut.core import CoreConnection
-from argonaut.rtc import RTCConnection
-class SocketRouter(SocketConnection):
-    __endpoints__ = {'/core': CoreConnection, '/rtc': RTCConnection}
-    def addEndpoint(route, handler):
-        __endpoints__[route] = handler
+# Import local modules
+from argonaut.router import ArgonautRouter
+from argonaut.httphandlers import *
+from argonaut.core import Core
+from argonaut.chat import Chat
+from argonaut.rtc import WRTC
 
 # Serve static files
-router = TornadioRouter(SocketRouter)
+router = ArgonautRouter()
 app = web.Application(
     router.apply_routes(
         [(r"/", IndexHandler),
@@ -20,6 +20,11 @@ app = web.Application(
          (r"/img/(.*)", ImageHandler),
          (r"/vendor/(.*)", VendorHandler)]),
     socket_io_port = 6058)
+
+# Setup Argonaut
+core = Core(router)
+chat = Chat(router, core)
+wrtc = WRTC(router, core)
 
 # Start server
 if __name__ == "__main__":
