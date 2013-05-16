@@ -10,7 +10,6 @@
     /* @alternate */ background-image:-webkit-linear-gradient(top, #222222, #111111);
     /* @alternate */ background-image:-o-linear-gradient(top, #222222, #111111);
     background-image:linear-gradient(to bottom, #222222, #111111);
-    filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff222222', endColorstr='#ff111111', GradientType=0);
     -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
        -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
             box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);

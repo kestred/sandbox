@@ -9,7 +9,6 @@ body.dark {
     /* @alternate */ background-image:-webkit-linear-gradient(top, #444444, #222222);
     /* @alternate */ background-image:-o-linear-gradient(top, #444444, #222222);
     background-image:linear-gradient(to bottom, #444444, #222222);
-    filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff444444', endColorstr='#ff222222', GradientType=0);
 }
 #layout {
     position:absolute;
