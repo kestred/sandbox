@@ -21,17 +21,22 @@ body.dark {
 
 /* Built-in Elements */
 #loading-modal .progress { margin-bottom:0; }
+#mobile-warning {
+    position:absolute;
+    top:10%; left:10%;
+    width:70%; margin:0;
+    z-index:5;
+}
+#mobile-warning {
+    -webkit-transition:opacity 0.5s ease-out;
+       -moz-transition:opacity 0.5s ease-out;
+         -o-transition:opacity 0.5s ease-out;
+            transition:opacity 0.5s ease-out;
+}
 @media (max-width: 767px) {
-    #layout { display:none; }
+    #layout { opacity:0; z-index:-100; }
     #loading-model { display:none; }
-    #mobile-warning {
-        position:absolute;
-        top:10%;
-        left:10%;
-        width:70%;
-        margin:0;
-    }
 }
 @media (min-width: 768px) {
-    #mobile-warning { display:none; }
+    #mobile-warning { opacity:0; z-index:-100; }
 }
