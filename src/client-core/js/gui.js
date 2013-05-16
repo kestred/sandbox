@@ -189,6 +189,8 @@ mods['gui'] = new Argonaut.Module('gui');
                         var opt = options[dir];
                         if(opt.size) { pane.paneSize = opt.size; }
                         else { pane.paneSize = '20%'; }
+                        if(opt.minPx) { pane.minSize = opt.minPx; }
+                        else { pane.minSize = 0; }
                     }
                     pane.container = container;
                     pane.collapse = function() {
@@ -232,6 +234,10 @@ mods['gui'] = new Argonaut.Module('gui');
                         if(size.indexOf('%') > 0) {
                             size = size.substring(0, size.indexOf('%'));
                             size = dim * size / 100.0;
+                            if(pane.minSize != 0) { console.log('Size: '+size + ', Min-Pixels:'+pane.minSize); }
+                            if(size < pane.minSize) {
+                                size = pane.minSize;
+                            }
                         }
                     }
                     if(pane.isCollapsed) { size = 0; }
@@ -413,7 +419,7 @@ mods['gui'] = new Argonaut.Module('gui');
         gui.inner = jQuery('#outer-center');
         var outerOptions = {width: jQuery(window).width()
                           , height: jQuery(window).height()
-                          , west: {size: '20%'}
+                          , west: {size: '20%', minPx: 200}
                           , east: {size: '20%'}};
         var innerOptions = {north: {size: '20%'}
                           , west: {size: '16%'}
