@@ -1,4 +1,5 @@
 /* Basic container styling */
+.video-container { min-width:182px; }
 .video-container.feedback {
     background:#000000;
     border:1px solid #252525;
@@ -9,7 +10,7 @@
 .video-container video { width:100%; display:block; }
 .video-container .navbar { margin-bottom:0; }
 .video-container .navbar-inner { border-radius:0; padding-right:6px; }
-.video-group { width:100%; overflow:auto; }
+.video-group { width:100%; overflow:auto; white-space:nowrap; }
 
 /* Video-group styling */
 .video-group .video-container { display:inline-block; }
@@ -49,7 +50,6 @@
 /* Responsive Styling */
 @media (max-width: 1199px) {
     /* Normal screens */
-    .video-container { min-width:182px; }
     .video-container .navbar-inner {
         min-height:24px;
         padding-left:6px;

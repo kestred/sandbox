@@ -72,10 +72,13 @@ mods['webRTC'] = new Argonaut.Module('webRTC');
             webRTC.socket.emit('ice', {candidate: event.candidate});
         };
         peer.onaddstream = function (event) {
-            var peerVideo = webRTC.videoById(peerId);
-            peerVideo.attr('src', URL.createObjectURL(event.stream));
+            var video = webRTC.videoById(peerId);
+            video.attr('src', URL.createObjectURL(event.stream));
         };
 
+        if(peerId in argo.players) {
+            argo.players[peerId].rtcPeer = peer;
+        }
         webRTC.peers[peerId] = peer;
         peer.addStream(webRTC.localStream);
         peer.createOffer(sendCallerDescription);
@@ -93,10 +96,13 @@ mods['webRTC'] = new Argonaut.Module('webRTC');
             webRTC.socket.emit('ice', {candidate: event.candidate});
         };
         peer.onaddstream = function (event) {
-            var peerVideo = webRTC.videoById(peerId);
-            peerVideo.attr('src', URL.createObjectURL(event.stream));
+            var video = webRTC.videoById(peerId);
+            video.attr('src', URL.createObjectURL(event.stream));
         };
 
+        if(peerId in argo.players) {
+            argo.players[peerId].rtcPeer = peer;
+        }
         webRTC.peers[peerId] = peer;
         peer.addStream(webRTC.localStream);
         peer.setRemoteDescription(new RTCSessionDescription(remote));

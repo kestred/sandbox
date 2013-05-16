@@ -18,6 +18,11 @@ body.dark {
 #hidden { display:none; }
 .collapsed * { display:none; }
 .west, .east, .north, .south, .center { display:inline-block; }
+.stderr-queue {
+    position:fixed; top:5%;
+    left:0; width:100%;
+    text-align:center;
+}
 
 /* Built-in Elements */
 #loading-modal .progress { margin-bottom:0; }

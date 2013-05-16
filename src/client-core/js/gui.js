@@ -8,6 +8,51 @@ mods['gui'] = new Argonaut.Module('gui');
 
     /* Dictionary of functions that build HTML structures */
     gui.create = {};
+    gui.create['alertQueue'] = function() {
+        var queue = jQuery('<ol class="alert-queue unstyled"></ol>');
+        queue.enqueueAlert = function(alert) {
+            var listAlert = jQuery('<li></li>');
+            listAlert.attr('id', alert.attr('id'));
+            listAlert.attr('class', alert.attr('class'));
+            listAlert.html(alert.html());
+            listAlert.prependTo(queue);
+            alert.remove();
+            return listAlert;
+        };
+        queue.dequeueAlert = function() {
+            queue.foals().last().remove();
+        };
+        queue.clearAlerts = function() {
+            queue.html('');
+        };
+        return queue;
+    };
+    gui.create['errorAlert'] = function(message) {
+        var alert = jQuery('<div class="alert alert-error"></div>');
+        var close = jQuery('<button type="button" class="close" '
+                         + 'data-dismiss="alert">&times;</button>');
+        alert.append(close);
+        alert.append(message);
+        return alert;
+    };
+
+    /* More HTML builders */
+    gui.create['warningAlert'] = function() {
+        var alert = jQuery('<div class="alert"></div>');
+        var close = jQuery('<button type="button" class="close" '
+                         + 'data-dismiss="alert">&times;</button>');
+        alert.append(close);
+        alert.append(message);
+        return alert;
+    };
+    gui.create['successAlert'] = function() {
+        var alert = jQuery('<div class="alert alert-success"></div>');
+        var close = jQuery('<button type="button" class="close" '
+                         + 'data-dismiss="alert">&times;</button>');
+        alert.append(close);
+        alert.append(message);
+        return alert;
+    };
     gui.create['videoContainer'] = function() {
         var container = jQuery('<div class="video-container"></div>');
         container.append(
@@ -38,65 +83,26 @@ mods['gui'] = new Argonaut.Module('gui');
         };
         return container;
     };
-    gui.create['playerStatus'] = function() {
-        var player = jQuery('<li></li>');
-        var title = jQuery('<span class="player-name"></span>');
-        var badge = jQuery('<span class="badge"></span>');
-        var icon = jQuery('<i class="icon-user"></i>');
-        badge.append(icon);
-        player.append(badge);
-        player.append(title);
-        player.setName = function(name) {
-            player.find('.player-name').html(name);
+    gui.create['playerStatusBar'] = function() {
+        var bar = jQuery('<li></li>');
+        bar.name = jQuery('<span class="player-name"></span>');
+        bar.badge = jQuery('<span class="badge"></span>');
+        bar.icon = jQuery('<i class="icon-white icon-user"></i>');
+        bar.icon.clear = function() {
+            bar.icon.removeClass('icon-user'
+                           + ' icon-asterisk'
+                           + ' icon-volume-up'
+                           + ' icon-remove');
         };
-        badge.clear = function() {
-            badge.removeClass('badge-success'
-                            , 'badge-info'
-                            , 'badge-warning');
+        bar.badge.clear = function() {
+            bar.badge.removeClass('badge-success'
+                            + ' badge-info'
+                            + ' badge-warning');
         };
-        icon.clear = function() {
-            icon.removeClass('icon-user'
-                           , 'icon-asterisk'
-                           , 'icon-volume-up'
-                           , 'icon-remove');
-        };
-        player.setStatus = function(status) {
-            player.status = status;
-            badge.clear(); icon.clear();
-            if(status == 'connected') {
-                icon.addClass('icon-user');
-            } else if(status == 'speaking') {
-                icon.addClass('icon-volume-up');
-                badge.addClass('badge-success');
-            } else if(status == 'disconnected') {
-                icon.addClass('icon-remove');
-                badge.addClass('badge-warning');                
-            }
-        }
-        player.toggleConnected = function() {
-            if(player.status != 'disconnected') {
-                player.setStatus('disconnected');
-            } else { player.setStatus('connected'); }
-        };
-        player.toggleSpeaking = function() {
-            if(player.status != 'speaking') {
-                player.untoggler = player.status;
-                player.setStatus('speaking');
-            } else { player.setStatus(player.untoggler); }
-        };
-        player.toggleInitiative = function() {
-            if(player.untoggler != 'active') {
-                if(player.status == 'connected') {
-                    player.setStatus('active');
-                } else if(player.status == 'speaking') {
-                    player.untoggler = 'active';
-                } else if(player.status == 'active') {
-                    player.setStatus('connected');
-                } // else status == disconnected SO do nothing
-            } else { player.untoggler = 'connected'; }
-        };
-        player.status = 'connected';
-        return player;
+        bar.badge.append(bar.icon);
+        bar.append(bar.badge);
+        bar.append(bar.name);
+        return bar;
     };
     gui.create['privateButton'] = function() {
         var icon = jQuery('<i></i>');
@@ -112,53 +118,147 @@ mods['gui'] = new Argonaut.Module('gui');
 
     /* Dictionary of GUI setup functions (using Module names as keys) */
     gui.routines = {}; // Core routines are built-in
+    gui.routines['base'] = function() {
+        var div = gui.elements;
+
+        /* Change argonaut.stderr to display errors on the gui */
+        div['stderr'] = gui.create['alertQueue']();
+        div['stderr'].addClass('stderr-queue');
+        argo.stderr = function(message) {
+            var html = '<strong>[stderr]</strong> ' + message;
+            var alert = gui.create['errorAlert'](html);
+            div['stderr'].enqueueAlert(alert);
+            console.log('[stderr] ' + message);
+        };
+
+        /* Called on a player object, shows gui player functions */
+        gui.addStatusUtilities = function(player) {
+            player.statusBar = gui.create['playerStatusBar']();
+            player.statusBar.name.html(player.name);
+            player.setName = function(name) {
+                this.name = name;
+                this.statusBar.name.html(name);
+            };
+            player.setStatus = function(status) {
+                this.status = status;
+                this.statusBar.badge.clear();
+                this.statusBar.icon.clear();
+                if(status == 'connected') {
+                    this.statusBar.icon.addClass('icon-user');
+                } else if(status == 'speaking') {
+                    this.statusBar.icon.addClass('icon-volume-up');
+                    this.statusBar.badge.addClass('badge-success');
+                } else if(status == 'disconnected') {
+                    this.statusBar.icon.addClass('icon-remove');
+                    this.statusBar.badge.addClass('badge-warning');
+                }
+            }
+            player.toggleConnected = function() {
+                if(player.status != 'disconnected') {
+                    this.setStatus('disconnected');
+                } else { this.setStatus('connected'); }
+            };
+            player.toggleSpeaking = function() {
+                if(this.status != 'speaking') {
+                    this.previousStatus = this.status;
+                    this.setStatus('speaking');
+                } else {
+                    this.setStatus(this.previousStatus);
+                }
+            };
+            player.toggleInitiative = function() {
+                if(this.previousStatus != 'active') {
+                    if(this.status == 'connected') {
+                        this.setStatus('active');
+                    } else if(this.status == 'speaking') {
+                        this.previousStatus = 'active';
+                    } else if(this.status == 'active') {
+                        this.setStatus('connected');
+                    } // else status == disconnected SO do nothing
+                } else { this.previousStatus = 'connected'; }
+            };
+        }
+
+        /* Add status utilities to default players */
+        var self = argo.localPlayer, gm = argo.gamemaster;
+        gui.addStatusUtilities(self);
+        self.setStatus(self.status);
+        self.statusBar.name.html('<em>' + self.name + '</em> (You)');
+        if(self.id != gm.id) {
+            gui.addStatusUtilities(gm);
+            gm.statusBar.name.html(gm.name + ' (GM)');
+            gm.setStatus(gm.status);
+        }
+    };
     gui.routines['webRTC'] = function() {
         var div = gui.elements;
+
+        /* Local feedback, gamemaster video, and players video-group */
         div['rtcFeedback'] = gui.create['videoContainer']();
         div['rtcFeedback'].addClass('big').addClass('feedback');
-        div['rtcFeedback'].attr('data-playerid', argo.publicId);
         div['rtcFeedback'].videoControls.hide();
-        div['rtcGamemaster'] = gui.create['videoContainer']();
-        div['rtcGamemaster'].addClass('big');
-        div['rtcGamemaster'].attr('data-playerid', argo.gamemaster);
-        div['rtcGamemaster'].videoControls.setName('Gamemaster');
-        div['rtcGamemaster'].videoControls.appendControl(
-                                gui.create['privateButton']());
+        argo.localPlayer.videoContainer = div['rtcFeedback'];
+        if(argo.localPlayer.id != argo.gamemaster.id) {
+            div['rtcGamemaster'] = gui.create['videoContainer']();
+            div['rtcGamemaster'].addClass('big');
+            div['rtcGamemaster'].videoControls.setName('Gamemaster');
+            div['rtcGamemaster'].videoControls.appendControl(
+                                    gui.create['privateButton']());
+            argo.gamemaster.videoContainer = div['rtcGamemaster'];
+        }
         div['rtcPlayers'] = jQuery('<div class="video-group"></div>');
+
+        /* GUI manipulation functions required by the VideoService */
         gui.getVideoById = function(playerId) {
-            var video = jQuery(".video-container[data-playerid='"
-                                          + playerId + "'] video");
-            if(!video.length) {
-                var container = gui.create['videoContainer']();
-                container.attr('data-playerid', playerId);
-                container.videoControls.appendControl(
-                                gui.create['privateButton']());
-                div['rtcPlayers'].append(container);
-                video = container.videoElement;
+            if(playerId == argo.localPlayer.id) {
+                return div['rtcFeedback'].videoElement;
             }
-            return video;
+            if(playerId == argo.gamemaster.id) {
+                return div['rtcGamemaster'].videoElement;
+            }
+            if(playerId in argo.players) {
+                var player = argo.players[playerId];
+                if('videoContainer' in player) {
+                    return player.videoContainer.videoElment;
+                } else {
+                    var container = gui.create['videoContainer']();
+                    container.videoControls.appendControl(
+                                    gui.create['privateButton']());
+                    div['rtcPlayers'].append(container);
+                    player.videoContainer = container;
+                    return container.videoElement;
+                }
+            }
+            argo.stderr('(getVideoById) No player with given id.');
+            return jQuery('<video>');
         };
         gui.detachVideoById = function(playerId) {
-            jQuery(".video-container[data-playerid='"
-                            + playerId + "']").remove();
+            if(playerId == argo.gamemaster.id) {
+                div['rtcGamemaster'].videoElement.attr('src', '');
+            } else if(playerId in argo.players) {
+                var player = argo.players[playerId];
+                if('videoContainer' in player) {
+                    player.videoContainer.remove();
+                    delete player['videoContainer'];
+                }
+            } else {
+                argo.stderr('(detachVideoById) No player with given id.');
+            }
         };
     };
     gui.routines['chat'] = function() {
         var div = gui.elements;
+
+        /* The main chat panel */
         div['chatPanel'] = jQuery('<div class="chat-panel"></div>');
         var chatMenu = jQuery('<div class="chat-menu"></div>');
-        var playerStatus = jQuery('<ol id="player-status"></ol>');
-        playerStatus.addClass('unstyled');
-        var chatStatusSelf = gui.create['playerStatus']();
-        chatStatusSelf.attr('data-playerid', argo.publicId);
-        chatStatusSelf.setName('Local user');
-        var chatStatusGm = gui.create['playerStatus']();
-        chatStatusGm.setName('Gamemaster');
-        chatStatusGm.attr('data-playerid', argo.gamemaster);
-        chatStatusGm.toggleConnected(); // for display purposes for now
-        playerStatus.append(chatStatusGm);
-        playerStatus.append(chatStatusSelf);
-        chatMenu.append(playerStatus);
+        var playerStatuses = jQuery('<ol id="player-status"></ol>');
+        playerStatuses.addClass('unstyled');
+        if(argo.localPlayer.id != argo.gamemaster.id) {
+            playerStatuses.append(argo.gamemaster.statusBar);
+        }
+        playerStatuses.append(argo.localPlayer.statusBar);
+        chatMenu.append(playerStatuses);
         div['chatPanel'].append(chatMenu);
     };
 
@@ -234,7 +334,6 @@ mods['gui'] = new Argonaut.Module('gui');
                         if(size.indexOf('%') > 0) {
                             size = size.substring(0, size.indexOf('%'));
                             size = dim * size / 100.0;
-                            if(pane.minSize != 0) { console.log('Size: '+size + ', Min-Pixels:'+pane.minSize); }
                             if(size < pane.minSize) {
                                 size = pane.minSize;
                             }
@@ -301,7 +400,6 @@ mods['gui'] = new Argonaut.Module('gui');
         return layout;
     })();
 
-
     /* Utility functions for arranging GUI elements */
     gui.hide = function(elementName) {
         var e = gui.elements[elementName];
@@ -362,7 +460,7 @@ mods['gui'] = new Argonaut.Module('gui');
         // Hidden Content
         gui.hide('gmControls');
     };
-    gui.arrange['gmContentView'] = function() {
+    gui.arrange['gamemasterContentView'] = function() {
         gui.arrange['hidden']();
 
         gui.outer.west.expand();
@@ -395,16 +493,16 @@ mods['gui'] = new Argonaut.Module('gui');
         // Hidden Content
         gui.hide('gmControls');
     };
-    gui.arrange['gmConferenceView'] = function() {
+    gui.arrange['gamemasterConferenceView'] = function() {
         gui.arrange['hidden']();
 
-    //    gui.outer.open('west');
+        gui.outer.west.expand();
         gui.place('mainMenu', '#outer-west');
         gui.place('chatPanel', '#outer-west');
 
         gui.place('rtcPlayers', '#inner-center');
 
-    //    gui.outer.open('east');
+        gui.outer.east.expand();
         gui.place('gmControls', '#outer-east');
         gui.place('rtcFeedback', '#outer-east');
 
@@ -419,9 +517,9 @@ mods['gui'] = new Argonaut.Module('gui');
         gui.inner = jQuery('#outer-center');
         var outerOptions = {width: jQuery(window).width()
                           , height: jQuery(window).height()
-                          , west: {size: '20%', minPx: 200}
+                          , west: {size: '20%', minPx: 220}
                           , east: {size: '20%'}};
-        var innerOptions = {north: {size: '20%'}
+        var innerOptions = {north: {size: '20%', minPx: 182}
                           , west: {size: '16%'}
                           , east: {size: '40%'}};
         gui.layout['page'].applyTo(gui.outer, outerOptions);
@@ -434,12 +532,15 @@ mods['gui'] = new Argonaut.Module('gui');
             gui.inner.relayout();
         });
 
+        gui.routines['base']();
         jQuery.each(gui.routines, function(key, module) {
             if(argo.modules[key]) { module(); }
         });
-        
-        // TODO: Check user status and arrange elements appropriately
-        //         DEFAULT to 'gmConferenceView'
-        gui.arrange['playerContentView']();
+
+        if(argo.localPlayer.id == argo.gamemaster.id) {
+            gui.arrange['gamemasterContentView']();
+        } else {
+            gui.arrange['playerContentView']();
+        }
     };
 })(); // Close anonymous namespace
