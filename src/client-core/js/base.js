@@ -42,11 +42,10 @@ Argonaut.prototype.connect = function() {
     socket.authenticate = function() {
         socket.emit('authenticate', {publicId: argo.publicId});
     };
-    socket.on('ready', function() { socket.authenticate(); });
     socket.on('authenticate', function(data) {
         if(data.status == 'fail') {
             argo.stderr('Server connection failed. Retrying ...');
-            socket.emit('authenticate', {publicId: argo.publicId});
+            socket.authenticate();
         } else {
             argo.privateId = data.privateId;
             socket.emit('sessionInfo');
@@ -82,6 +81,7 @@ Argonaut.prototype.connect = function() {
         argo.onplayerleft(data.id);
         delete players[data.id];
     });
+    socket.on('ready', function() { socket.authenticate(); });
     this.sockets.core = socket;
 };
 Argonaut.prototype.loadModules = function() {

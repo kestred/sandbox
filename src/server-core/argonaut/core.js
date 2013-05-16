@@ -103,7 +103,9 @@ Core.Client.prototype.authenticate = function(privateId) {
 
 /* Utility functions */
 Core.Util = {};
-Core.Util.socketError = function(socket, message) {};
+Core.Util.socketError = function(socket, message) {
+    socket.emit('error', {message: '[serverError]' + message});
+};
 Core.Util.randomKey = function(length) {
     var str = '';
     while(str.length < length) {
@@ -113,11 +115,11 @@ Core.Util.randomKey = function(length) {
 };
 Core.Util.validPublicId = function(publicId) {
     return (typeof publicId == 'string'
-         && publicId.match(/[a-z0-9]{16}/));
+         && publicId.match(/^[a-f0-9]{16}$/));
 };
 Core.Util.validPrivateId = function(privateId) {
     return (typeof privateId == 'string'
-         && privateId.match(/[a-z0-9]{32}/));
+         && privateId.match(/^[a-f0-9]{32}$/));
 };
 var util = Core.Util;
 

@@ -15,7 +15,7 @@ Wrtc.prototype.buildSocket = function(socket) {
         if(core.validIdPair(data)) {
             core.clients[data.publicId].sockets.rtc = socket;
             socket.client = core.clients[data.publicId];
-        };
+        }
     });
 
     /* on-rtc-syn event */
