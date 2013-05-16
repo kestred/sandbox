@@ -12,7 +12,7 @@ The core architecture is intended to be Game-System and Setting neutral, and ins
 
 Argonaut primarily uses the nodejs environment, and has a number of required packages.
 * Required Packages: Express, Socket.io, & Optimist
-* Support for a Python/Tornado environment is an option, but it needs more contributors!
+* If you would prefer to use Python Tornado, use the `--python` option while running setup or compile.
 
 #### Setup on Ubuntu
 
