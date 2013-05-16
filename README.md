@@ -14,7 +14,7 @@ Argonaut primarily uses the nodejs environment, and has a number of required pac
 * Required Packages: Express, Socket.io, & Optimist
 * Support for a Python/Tornado environment is an option, but it needs more contributors!
 
-On Ubuntu machines, just clone the repo and run the setup script:
+#### Setup on Ubuntu
 
 **For normal use**
 ```
@@ -26,6 +26,21 @@ argonaut/tools/setup-ubuntu.sh --production
 git clone git://github.com/kestred/argonaut-tabletop.git argonaut
 argonaut/tools/setup-ubuntu.sh --development
 ```
+
+#### Setup on Windows
+
+* Download and install [nodejs](http://nodejs.org/)
+* Install required node packages from Command Prompt
+
+```
+npm install express
+npm install socket.io
+npm install optimist
+```
+* Download and extract the repository:
+[argonaut/master.zip](https://github.com/kestred/argonaut-tabletop/archive/master.zip)  
+**OR** clone the repository `git clone git://github.com/kestred/argonaut-tabletop.git`
+
 
 ## Compiling & Running Argonaut
 
