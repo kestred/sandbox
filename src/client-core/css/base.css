@@ -21,3 +21,17 @@ body.dark {
 
 /* Built-in Elements */
 #loading-modal .progress { margin-bottom:0; }
+@media (max-width: 767px) {
+    #layout { display:none; }
+    #loading-model { display:none; }
+    #mobile-warning {
+        position:absolute;
+        top:10%;
+        left:10%;
+        width:70%;
+        margin:0;
+    }
+}
+@media (min-width: 768px) {
+    #mobile-warning { display:none; }
+}
