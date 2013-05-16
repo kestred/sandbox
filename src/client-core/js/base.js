@@ -23,6 +23,8 @@ Argonaut.prototype.init = function(type) {
     this.sockets = {};
     this.players = {};
     this.onconnect = function() {};
+    this.onplayerleft = function(id) {};
+    this.onplayerjoined = function(id) {};
     this.stderr = function(message) {
         console.log("[stderr] " + message);
     };
@@ -56,6 +58,18 @@ Argonaut.prototype.connect = function() {
         argo.players = data.players;
         argo.status = 'connected';
         argo.onconnect();
+    });
+    socket.on('player-joined', function(data) {
+        if(argo.players.indexOf(data.id) < 0
+           && data.id != argo.publicId) {
+            argo.players.push(data.id);
+            argo.onplayerjoined(data.id);
+        }
+    });
+    socket.on('player-left', function(data) {
+        argo.onplayerleft(data.id);
+        var index = argo.players.indexOf(data.id);
+        if(index >= 0) { argo.players.splice(index, 1); }
     });
     this.sockets.core = socket;
 };

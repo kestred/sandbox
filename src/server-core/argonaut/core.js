@@ -57,7 +57,9 @@ Core.prototype.buildSocket = function(socket) {
     });
 
     socket.on('disconnect', function() {
-        core.io.of('/core').emit('player-left', {id: socket.client.publicId})
+        var publicId = socket.client.publicId;
+        delete core.clients[publicId];
+        core.io.of('/core').emit('player-left', {id: publicId});
     });
 
     socket.emit('ready');
