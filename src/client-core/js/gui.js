@@ -251,15 +251,15 @@ mods['gui'] = new Argonaut.Module('gui');
 
         /* The main chat panel */
         div['chatPanel'] = jQuery('<div class="chat-panel"></div>');
-        var chatMenu = jQuery('<div class="chat-menu"></div>');
-        var playerStatuses = jQuery('<ol id="player-status"></ol>');
-        playerStatuses.addClass('unstyled');
+        div['chatMenu'] = jQuery('<div class="chat-menu"></div>');
+        div['statusList'] = jQuery('<ol class="status-list"></ol>');
+        div['statusList'].addClass('unstyled');
         if(argo.localPlayer.id != argo.gamemaster.id) {
-            playerStatuses.append(argo.gamemaster.statusBar);
+            div['statusList'].append(argo.gamemaster.statusBar);
         }
-        playerStatuses.append(argo.localPlayer.statusBar);
-        chatMenu.append(playerStatuses);
-        div['chatPanel'].append(chatMenu);
+        div['statusList'].append(argo.localPlayer.statusBar);
+        div['chatMenu'].append(div['statusList']);
+        div['chatPanel'].append(div['chatMenu']);
     };
 
     /* Layout class definitions */
