@@ -138,6 +138,10 @@ mods['gui'] = new Argonaut.Module('gui');
             }
             return video;
         };
+        gui.detachVideoById = function(playerId) {
+            jQuery(".video-container[data-playerid='"
+                            + playerId + "']").remove();
+        };
     };
     gui.routines['chat'] = function() {
         var div = gui.elements;

@@ -17,5 +17,9 @@ jQuery(function() {
         );
         argo.onconnect = function() {};
     };
+    argo.onplayerleft = function(playerId) {
+        mods['gui'].detachVideoById(playerId);
+        delete mods['webRTC'].peers[playerId];
+    };
     argo.connect();
 });
