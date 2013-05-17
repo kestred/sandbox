@@ -11,7 +11,22 @@ class Chat:
     @staticmethod
     def getInstance():
         return Chat.instance
-        
+
 class ChatConnection(SocketConnection):
+    def on_event(self, event, args = None, kwargs = {}):
+        # Handle authenticate event
+        if event == 'authenticate':
+            core = Chat.getInstance().core
+            if(core.validIdPair(kwargs)):
+                core.clients[kwargs['publicId']].sockets['chat'] = self
+                self.client = core.clients[kwargs['publicId']]
+
     def on_message(self, message):
-        pass
+        if hasattr(self, 'client'):
+            core = Chat.getInstance().core
+            for clientId in core.clients:
+                client = core.clients[clientId]
+                if 'chat' in client.sockets:
+                    client.sockets['chat'].emit('chat'
+                                   , {'playerId': self.client.publicId
+                                    , 'message': message})

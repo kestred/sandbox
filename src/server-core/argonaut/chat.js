@@ -7,7 +7,23 @@ Chat.prototype.init = function(type, io, core) {
     this.sockets = io.of('/rtc').on('connection', this.buildSocket);
 };
 Chat.prototype.buildSocket = function(socket) {
-    socket.on('message', function(msg) {});
+    var chat = Chat.getInstance();
+    var core = chat.core;
+
+    socket.on('authenticate', function(data) {
+        if(core.validIdPair(data)) {
+            core.clients[data.publicId].sockets['chat'] = socket;
+            socket.client = core.clients[data.publicId];
+        }
+    });
+
+    socket.on('message', function(message) {
+        if('client' in socket) {
+            chat.sockets.emit('chat',
+                              {'playerId': socket.client.publicId
+                             , 'message': message});
+        }
+    });
 }
 
 /* Export chat */
