@@ -16,20 +16,20 @@ var help = (
 "Options:\n" +
 "\t-h, --help\tShow this help dialog.\n" +
 "\t-d, --debug\tIncrease the socket.io logging-level\n");
+
+var debug = false;
 if((args.h) || (args.help)) {
     console.log(help);
     process.exit(0);
 }
-if(!(args.d) && !(args.debug)) {
-    // Disabled debug mode if not set
-    io.set('log level', 1);
-}
+if(!(args.d) && !(args.debug)) { debug = true; }
 
 /* Startup server */
 var app = new Express();
 var server = Http.createServer(app);
 var io = SocketIO.listen(server);
 server.listen(6058); //randomly chosen port number not registerd in IANA
+if(!debug) { io.set('log level', 1); }
 
 /* Serve static files */
 app.get('/', function (req, res) {
