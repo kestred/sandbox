@@ -70,6 +70,9 @@ fi
 sudo apt-get update
 # Install server libraries (python | nodejs) w/ webserver & socket.io
 if [ $jsServer == "true" ]; then
+    sudo apt-get -y install python-software-properties python g++ make
+    sudo add-apt-repository ppa:chris-lea/node.js
+    sudo apt-get update
     sudo apt-get -y install nodejs
     npm install express
     npm install optimist
@@ -79,11 +82,9 @@ if [ $pyServer == "true" ]; then
     if [ $usePyPy == "true" ]; then
         sudo apt-get -y install pypy
     fi
-    sudo apt-get -y install python git
-    pip install tornado
-    git clone git://github.com/mrjoes/tornadio2.git tmp/tornadio2
-    cd $GIT_DIR/tmp/tornadio2
-    python setup.py install
+    sudo apt-get -y install python
+    sudo pip install tornado
+    sudo pip install tornadio2
 fi
 
 # Handle Production Environment

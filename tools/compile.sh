@@ -38,6 +38,7 @@ while [ "$1" != "" ]; do
         ;;
       "-p" | "--python")
         pyServer="true"
+        debugMode="true" # Temporary fix
         ;;
       "-Y" | "--pypy")
         usePyPy="true"

@@ -78,5 +78,8 @@ class StylesheetHandler(tornado.web.RequestHandler):
             except IOError, ioex:
                 printIOError(ioex)
                 self.set_status(404)
+           # except Exception, gex:
+           #     sys.stderr.write('WAT??? \n');
+           #     self.set_status(500)
         else:
             self.set_status(404)

@@ -1,6 +1,7 @@
 function Chat (io, core) { this.init('chat-server', io, core); }
 Chat.prototype.constructor = Chat;
 Chat.prototype.init = function(type, io, core) {
+    Chat.instance = this;
     this.type = type;
     this.core = core;
     this.io = io;
@@ -25,6 +26,9 @@ Chat.prototype.buildSocket = function(socket) {
         }
     });
 }
+Chat.getInstance = function() {
+    return Chat.instance;
+};
 
 /* Export chat */
 module.exports = Chat;
