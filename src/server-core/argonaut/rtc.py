@@ -1,50 +1,46 @@
-from tornadio2 import SocketConnection, event
+from socketio.namespace import BaseNamespace
+from socketio.mixins import BroadcastMixin
 
 class WRTC:
     instance = None
-    def __init__(self, router, core):
+    def __init__(self, app, core):
         WRTC.instance = self
-        self.router = router
+        self.app = app
         self.core = core
-        router.addEndpoint('/rtc', RTCConnection)
+        app.hookNamespace('/rtc', RTCNamespace)
 
     @staticmethod
     def getInstance():
         return WRTC.instance
 
-class RTCConnection(SocketConnection):
-    def on_event(self, event, args = None, kwargs = {}):
-        # Handle authenticate event
-        if event == 'authenticate':
-            core = WRTC.getInstance().core
-            if(core.validIdPair(kwargs)):
-                core.clients[kwargs['publicId']].sockets['rtc'] = self
-                self.client = core.clients[kwargs['publicId']]
+class RTCNamespace(BaseNamespace, BroadcastMixin):
+    def on_authenticate(self, data):
+        core = WRTC.getInstance().core
+        if(core.validIdPair(data)):
+            client = core.clients[data['publicId']]
+            client.sockets['rtc'] = self
+            self.socket.session['client'] = client
 
-        # Handle RTC syn event
-        elif event == 'syn':
-            core = WRTC.getInstance().core
-            if('targetId' in kwargs
-               and kwargs['targetId'] in core.clients):
-                target = core.clients[kwargs['targetId']].sockets['rtc']
-                target.emit('syn', {'callerId': self.client.publicId
-                                  , 'callerDesc': kwargs['callerDesc']})
+    def on_syn(self, data):
+        core = WRTC.getInstance().core
+        if('targetId' in data
+           and data['targetId'] in core.clients):
+            callerId = self.socket.session['client'].publicId
+            target = core.clients[data['targetId']].sockets['rtc']
+            target.emit('syn', {'callerId': callerId
+                              , 'callerDesc': data['callerDesc']})
 
-        #Handle RTC ack event
-        elif event == 'ack':
-            core = WRTC.getInstance().core
-            if('targetId' in kwargs
-               and kwargs['targetId'] in core.clients):
-                target = core.clients[kwargs['targetId']].sockets['rtc']
-                target.emit('ack', {'calleeId': self.client.publicId
-                                  , 'calleeDesc': kwargs['calleeDesc']})
+    def on_ack(self, data):
+        core = WRTC.getInstance().core
+        if('targetId' in data
+           and data['targetId'] in core.clients):
+            calleeId = self.socket.session['client'].publicId
+            target = core.clients[data['targetId']].sockets['rtc']
+            target.emit('ack', {'calleeId': calleeId
+                              , 'calleeDesc': data['calleeDesc']})
 
-        #Handle RTC ice event
-        elif event == 'ice':
-            core = WRTC.getInstance().core
-            for clientId in core.clients:
-                client = core.clients[clientId]
-                if 'rtc' in client.sockets:
-                    client.sockets['rtc'].emit('ice'
-                                   , {'candidateId': client.publicId
-                                    , 'candidate': kwargs['candidate']})
+    def on_ice(self, data):
+        core = WRTC.getInstance().core
+        candidateId = self.socket.session['client'].publicId
+        self.broadcast_event('ice', {'candidateId': candidateId
+                                   , 'candidate': data['candidate']})

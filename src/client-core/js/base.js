@@ -1,4 +1,5 @@
 /*! === Argonaut Base Classes === */
+WEB_SOCKET_SWF_LOCATION = "/socket.io/websocket.swf";
 jQuery('#loading-modal').modal('show');
 jQuery('#loading-message').html('Reading core.js ...');
 jQuery('#loading-progress').width('1%');

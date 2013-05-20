@@ -1,33 +1,54 @@
 # Import library modules
-from tornadio2 import SocketServer
-from tornado import web
+from gevent import monkey; monkey.patch_all()
+from socketio import socketio_manage
+from socketio.server import SocketIOServer
 
 # Import local modules
-from argonaut.router import ArgonautRouter
 from argonaut.httphandlers import *
 from argonaut.core import Core
 from argonaut.chat import Chat
 from argonaut.rtc import WRTC
 
-# Serve static files
-router = ArgonautRouter()
-app = web.Application(
-    router.apply_routes(
-        [(r"/", IndexHandler),
-         (r"/socket.io/socket.io.js", SocketIOHandler),
-         (r"/js/(.*)", JavascriptHandler),
-         (r"/css/(.*)", StylesheetHandler),
-         (r"/img/(.*)", ImageHandler),
-         (r"/vendor/(.*)", VendorHandler)]),
-    socket_io_port = 6058)
+class Application(object):
+    def __init__(self):
+        self.buffer = []
+        self.request = { 'nicknames': [], }
+        self.namespaces = {}
+
+    # Serve static files
+    def __call__(self, environ, start_response):
+        path = environ['PATH_INFO'].strip('/')
+
+        if not path: # Serve index
+            return getIndex(start_response)
+
+        if path.startswith("socket.io"):
+            if(path == 'socket.io/socket.io.js'
+               or path == 'socket.io/websocket.swf'):
+                return getFile(start_response, path)
+            socketio_manage(environ, self.namespaces, self.request)
+
+        pathExp = r"^(js|vendor|css|img)/[A-Za-z0-9-_]+\.[a-z]{2,4}$"
+        if re.match(pathExp, path):
+            return getFile(start_response, path)
+        else:
+            return error404(start_response)
+
+    # Socket.IO attachment
+    def hookNamespace(self, namespace, handler):
+        self.namespaces[namespace] = handler;
 
 # Setup Argonaut
-core = Core(router)
-chat = Chat(router, core)
-wrtc = WRTC(router, core)
+app = Application()
+core = Core(app)
+chat = Chat(app, core)
+wrtc = WRTC(app, core)
 
 # Start server
 if __name__ == "__main__":
-    sys.stdout.write("[Argonaut] Starting server...\n")
+    sys.stdout.write("[Argonaut] Starting server... ")
+    sys.stdout.write("Ports: App - 6058, Flash - 843\n")
     sys.stdout.flush()
-    SocketServer(app)
+    SocketIOServer(('0.0.0.0', 6058), app,
+            resource = "socket.io", policy_server = True,
+            policy_listener = ('0.0.0.0', 10843)).serve_forever()
