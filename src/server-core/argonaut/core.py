@@ -34,14 +34,14 @@ class Core:
             socket = client.sockets['core']
         else:
             socket = self.clients[client].sockets['core']
-        Util.socketError(socket, message)
+        util.socketError(socket, message)
 
     @staticmethod
     def getInstance():
         return Core.instance
 
 class CoreNamespace(BaseNamespace, BroadcastMixin):
-    def recv_connect():
+    def recv_connect(self):
         self.emit('ready')
 
     def on_authenticate(self, data):
@@ -73,7 +73,7 @@ class CoreNamespace(BaseNamespace, BroadcastMixin):
            and util.validPrivateId(kwargs['privateId'])):
             secret = data['privateId']
         else:
-            secret = Util.randomKey(32)
+            secret = util.randomKey(32)
         self.client = Client(publicId, secret)
         self.client.sockets['core'] = self
         core.clients[publicId] = self.client
@@ -93,13 +93,13 @@ class CoreNamespace(BaseNamespace, BroadcastMixin):
         playerId = self.socket.session['client'].publicId
         self.broadcast_event('player-joined', {'id': playerId})
 
-   # def on_close(self):
-   #     core = Core.getInstance()
-   #     if 'client' in self.socket.session:
-   #         playerId = self.socket.session['client'].publicId
-   #         if publicId in core.clients:
-   #             del core.clients[publicId]
-   #         for clientId in core.clients:
-   #             client = core.clients[clientId]
-   #             client.sockets['core'].emit('player-left'
-   #                                     , {'id': publicId})
+    def recv_disconnect(self):
+        core = Core.getInstance()
+        if 'client' in self.socket.session:
+            playerId = self.socket.session['client'].publicId
+            if playerId in core.clients:
+                del core.clients[playerId]
+            for clientId in core.clients:
+                client = core.clients[clientId]
+                client.sockets['core'].emit('player-left'
+                                          , {'id': playerId})

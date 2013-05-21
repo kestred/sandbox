@@ -15,23 +15,25 @@ MIME = {
   , '.jpe' : 'image/jpe'
 }
 
-def logIOError(ioex):
+def logIOError(ioex, filepath):
     sys.stderr.write('[IOError - ' + str(ioex.errno) + '] ')
     sys.stderr.write(os.strerror(ioex.errno) + ":\n")
-    sys.stderr.write("\t(" + os.path.abspath(path) + ")\n")
+    sys.stderr.write("\t(" + os.path.abspath(filepath) + ")\n")
 
 def error404(response):
-    start_response('404 Not Found', [])
+    response('404 Not Found', [])
+    return ""
 
 def error500(response):
-    start_response('500 Internal Server Error', [])
-    
+    response('500 Internal Server Error', [])
+    return ""
+
 def getFile(response, path):
     try:
         ext = os.path.splitext(path)[1]
         data = open(path).read()
     except IOError, ioex:
-        logIOError(ioex)
+        logIOError(ioex, path)
         return error404(response)
     except Exception:
         return error500(response)
@@ -39,4 +41,4 @@ def getFile(response, path):
     return [data]
 
 def getIndex(response):
-    return getFile(response, '../client.html')
+    return getFile(response, './client.html')

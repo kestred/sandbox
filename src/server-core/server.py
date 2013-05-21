@@ -2,12 +2,19 @@
 from gevent import monkey; monkey.patch_all()
 from socketio import socketio_manage
 from socketio.server import SocketIOServer
+import os, re
 
 # Import local modules
 from argonaut.httphandlers import *
 from argonaut.core import Core
 from argonaut.chat import Chat
 from argonaut.rtc import WRTC
+
+# Switch to working directory
+SCRIPT = os.path.realpath(__file__)
+ROOT = os.path.dirname(SCRIPT)
+os.chdir(ROOT)
+print ROOT
 
 class Application(object):
     def __init__(self):
@@ -28,7 +35,8 @@ class Application(object):
                 return getFile(start_response, path)
             socketio_manage(environ, self.namespaces, self.request)
 
-        pathExp = r"^(js|vendor|css|img)/[A-Za-z0-9-_]+\.[a-z]{2,4}$"
+        pathExp = r"^(js|vendor|css|img)/" # Folders
+        pathExp += r"[A-Za-z0-9-_]+(\.[A-Za-z0-9-_]+)*\.[a-z]{2,4}$"
         if re.match(pathExp, path):
             return getFile(start_response, path)
         else:

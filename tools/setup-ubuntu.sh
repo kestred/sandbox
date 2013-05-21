@@ -82,9 +82,8 @@ if [ $pyServer == "true" ]; then
     if [ $usePyPy == "true" ]; then
         sudo apt-get -y install pypy
     fi
-    sudo apt-get -y install python
-    sudo pip install tornado
-    sudo pip install tornadio2
+    sudo apt-get -y install python libevent-dev
+    sudo pip install gevent-socketio
 fi
 
 # Handle Production Environment
