@@ -638,7 +638,9 @@ mods['gui'] = new Argonaut.Module('gui');
                 element.triggerHandler('resize');
             });
             if(gui.elements['outer'].height()
-               != jQuery(window).height()) {
+               != jQuery(window).height()
+               || gui.elements['outer'].width()
+               != jQuery(window).width()) {
                 gui.resizeAfter(125)
             }
         });
