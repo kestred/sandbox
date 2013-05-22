@@ -80,6 +80,14 @@ class CoreNamespace(BaseNamespace, BroadcastMixin):
         self.emit('authenticate', {'status': 'success'
                                  , 'privateId': secret})
 
+    def on_status(self, data):
+        core = Core.getInstance()
+        if 'client' in self.socket.session:
+            playerId = self.socket.session['client'].publicId
+            self.broadcast_event('player-status'
+                               , {'playerId': playerId
+                                , 'status': data['status']});
+
     def on_sessionInfo(self):
         core = Core.getInstance()
         clients = core.clients.keys()

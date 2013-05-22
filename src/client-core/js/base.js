@@ -12,6 +12,12 @@ util.randomKey = function(length) {
     }
     return str.substr(0, length);
 }
+util.extend = function(fn, extension) {
+    return function() {
+        fn.apply(this, arguments);
+        extension.apply(this, arguments);
+    };
+};
 
 var Argonaut = function() { this.init('argonaut'); };
 Argonaut.prototype.constructor = Argonaut;
@@ -21,6 +27,12 @@ Argonaut.prototype.init = function(type) {
     this.loader = new Argonaut.Loader();
     this.publicId = util.randomKey(16);
     this.localPlayer = new Argonaut.Player(this.publicId);
+	this.localPlayer.setStatus = util.extend(
+		this.localPlayer.setStatus,
+		function(status) {
+			argo.sockets.core.emit('status', {status: status});
+		}
+	);
     this.players = {};
     this.modules = {};
     this.sockets = {};
@@ -74,8 +86,8 @@ Argonaut.prototype.connect = function() {
         }
     });
     socket.on('player-status', function(data) {
-        if(data.id in argo.players) {
-            argo.players[data.id].setStatus(data.status);
+        if(data.playerId in argo.players) {
+            argo.players[data.playerId].setStatus(data.status);
         }
     });
     socket.on('player-left', function(data) {

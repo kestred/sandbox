@@ -43,7 +43,11 @@ Core.prototype.buildSocket = function(socket) {
         socket.emit('authenticate', {status: 'success',
                                      privateId: secret});
     });
-
+    socket.on('status', function(data) {
+        var playerId = socket.client.publicId;
+        socket.broadcast.emit('player-status', {playerId: playerId
+                                              , status: data.status});
+    });
     socket.on('sessionInfo', function() {
         var clients = Object.keys(core.clients);
         var selfIndex = clients.indexOf(socket.client.publicId);
@@ -51,11 +55,10 @@ Core.prototype.buildSocket = function(socket) {
         socket.emit('sessionInfo', {players: clients
                                   , gamemaster: null});
     });
-
     socket.on('ready', function() {
-        core.io.of('/core').emit('player-joined', {id: socket.client.publicId});
+        core.io.of('/core').emit('player-joined'
+                                 , {id: socket.client.publicId});
     });
-
     socket.on('disconnect', function() {
         var publicId = socket.client.publicId;
         delete core.clients[publicId];

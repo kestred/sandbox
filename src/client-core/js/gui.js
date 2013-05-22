@@ -136,27 +136,27 @@ mods['gui'] = new Argonaut.Module('gui');
         gui.addStatusUtilities = function(player) {
             player.statusBar = gui.create['playerStatusBar']();
             player.statusBar.name.html(player.name);
-            player.setName = function(name) {
-                this.name = name;
+            player.setName = util.extend(player.setName, function(name) {
                 this.statusBar.name.html(name);
-            };
-            player.setStatus = function(status) {
-                this.status = status;
-                this.statusBar.badge.clear();
-                this.statusBar.icon.clear();
-                if(status == 'connected') {
-                    this.statusBar.icon.addClass('icon-user');
-                } else if(status == 'speaking') {
-                    this.statusBar.icon.addClass('icon-volume-up');
-                    this.statusBar.badge.addClass('badge-success');
-                } else if(status == 'typing') {
-                    this.statusBar.icon.addClass('icon-pencil');
-                    this.statusBar.badge.addClass('badge-success');
-                } else if(status == 'disconnected') {
-                    this.statusBar.icon.addClass('icon-remove');
-                    this.statusBar.badge.addClass('badge-warning');
+            });
+            player.setStatus = util.extend(player.setStatus,
+                function(status) {
+                    this.statusBar.badge.clear();
+                    this.statusBar.icon.clear();
+                    if(status == 'connected') {
+                        this.statusBar.icon.addClass('icon-user');
+                    } else if(status == 'speaking') {
+                        this.statusBar.icon.addClass('icon-volume-up');
+                        this.statusBar.badge.addClass('badge-success');
+                    } else if(status == 'typing') {
+                        this.statusBar.icon.addClass('icon-pencil');
+                        this.statusBar.badge.addClass('badge-success');
+                    } else if(status == 'disconnected') {
+                        this.statusBar.icon.addClass('icon-remove');
+                        this.statusBar.badge.addClass('badge-warning');
+                    }
                 }
-            }
+            );
             player.toggleConnected = function() {
                 if(player.status != 'disconnected') {
                     this.setStatus('disconnected');
@@ -329,6 +329,7 @@ mods['gui'] = new Argonaut.Module('gui');
             var length = input.val().length;
             if(event.keyCode === 13) {
                 sendMessage();
+                return false;
             } else if((event.keyCode === 8 || event.keyCode === 46)
                       && length === 1 && player.status == 'typing') {
                 player.toggleTyping();
