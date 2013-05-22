@@ -22,7 +22,7 @@ if((args.h) || (args.help)) {
     console.log(help);
     process.exit(0);
 }
-if(!(args.d) && !(args.debug)) { debug = true; }
+if((args.d) || (args.debug)) { debug = true; }
 
 /* Startup server */
 var app = new Express();
