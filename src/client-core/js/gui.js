@@ -150,7 +150,7 @@ mods['gui'] = new Argonaut.Module('gui');
                     this.statusBar.icon.addClass('icon-volume-up');
                     this.statusBar.badge.addClass('badge-success');
                 } else if(status == 'typing') {
-					this.statusBar.icon.addClass('icon-pencil');
+                    this.statusBar.icon.addClass('icon-pencil');
                     this.statusBar.badge.addClass('badge-success');
                 } else if(status == 'disconnected') {
                     this.statusBar.icon.addClass('icon-remove');
@@ -164,9 +164,9 @@ mods['gui'] = new Argonaut.Module('gui');
             };
             player.toggleSpeaking = function() {
                 if(this.status != 'speaking') {
-					if(this.status !=  'typing') {
-						this.previousStatus = this.status;
-					}
+                    if(this.status !=  'typing') {
+                        this.previousStatus = this.status;
+                    }
                     this.setStatus('speaking');
                 } else {
                     this.setStatus(this.previousStatus);
@@ -174,9 +174,9 @@ mods['gui'] = new Argonaut.Module('gui');
             };
             player.toggleTyping = function() {
                 if(this.status != 'typing') {
-					if(this.status !=  'speaking') {
-						this.previousStatus = this.status;
-					}
+                    if(this.status !=  'speaking') {
+                        this.previousStatus = this.status;
+                    }
                     this.previousStatus = this.status;
                     this.setStatus('typing');
                 } else {
@@ -207,7 +207,7 @@ mods['gui'] = new Argonaut.Module('gui');
             gm.setStatus(gm.status);
         }
 
-		/* Build Player Status Menu */
+        /* Build Player Status Menu */
         div['statusMenu'] = jQuery('<div class="status-menu"></div>');
         div['statusList'] = jQuery('<div class="status-list"></div>');
         var list = jQuery('<ol class="unstyled"></ol>');
@@ -290,67 +290,67 @@ mods['gui'] = new Argonaut.Module('gui');
             var previous = div['chatHistory'].log.find('dt').last();
             var log = '<dd>' + message + '</dd>';
             if(previous.html() != name) {
-				log = '<dt>' + name + '</dt>' + log;
-			}
+                log = '<dt>' + name + '</dt>' + log;
+            }
             div['chatHistory'].log.append(log);
             var scrollHeight = div['chatHistory'].log.scrollHeight;
             div['chatHistory'].log.scrollTop(scrollHeight);
-		};
+        };
         div['chatPanel'].append(div['chatHistory']);
-		mods['chat'].chatHistory = div['chatHistory'];
+        mods['chat'].chatHistory = div['chatHistory'];
 
-		/* Chat Input */
-		div['chatInput'] = jQuery('<form class="chat-input"></form>');
-		function sendMessage() {
-			var message = input.val();
-			if(message.length > 0) {
-				input.blur();
-				if(argo.localPlayer.status == 'typing') {
-					argo.localPlayer.toggleTyping();
-				}
-				input.val('');
-				mods['chat'].sendMessage(message);
-			}
-		}
-		var input = jQuery('<input type="text" />');
-		input.attr('placeholder', "Type message and hit 'enter'");
-		input.focus(function() {
-			if(argo.localPlayer.status != 'typing') {
-				argo.localPlayer.toggleTyping();
-			}
-		});
-		input.blur(function() {
-			if(argo.localPlayer.status == 'typing') {
-				argo.localPlayer.toggleTyping();
-			}
-		});
-		input.keydown(function(event) {
-			if(event.keyCode == 13) {
-				sendMessage();
-			}
-		});
-		var send = jQuery('<input type="button" class="btn"></input>');
-		send.val('Send');
-		send.click(function() { sendMessage(); });
-		div['chatInput'].append(input);
-		div['chatInput'].append(send);
-		div['chatPanel'].append(div['chatInput']);
+        /* Chat Input */
+        div['chatInput'] = jQuery('<form class="chat-input"></form>');
+        function sendMessage() {
+            var message = input.val();
+            if(message.length > 0) {
+                input.blur();
+                if(argo.localPlayer.status == 'typing') {
+                    argo.localPlayer.toggleTyping();
+                }
+                input.val('');
+                mods['chat'].sendMessage(message);
+            }
+        }
+        var input = jQuery('<input type="text" />');
+        input.attr('placeholder', "Type message and hit 'enter'");
+        input.focus(function() {
+            if(argo.localPlayer.status != 'typing') {
+                argo.localPlayer.toggleTyping();
+            }
+        });
+        input.blur(function() {
+            if(argo.localPlayer.status == 'typing') {
+                argo.localPlayer.toggleTyping();
+            }
+        });
+        input.keydown(function(event) {
+            if(event.keyCode == 13) {
+                sendMessage();
+            }
+        });
+        var send = jQuery('<input type="button" class="btn"></input>');
+        send.val('Send');
+        send.click(function() { sendMessage(); });
+        div['chatInput'].append(input);
+        div['chatInput'].append(send);
+        div['chatPanel'].append(div['chatInput']);
 
-		/* Set ChatPanel on resize */
-		function fillHeight(element, height) {
-			height = element.parent().innerHeight();
-			var sibs = element.siblings();
-			jQuery.each(sibs, function(index, sib) {
-				height -= jQuery(sib).outerHeight(true);
-			});
-			element.height(height);
-			return height;
-		}
-		div['chatPanel'].resize(function() {
-			var height = fillHeight(div['chatPanel']);
-			height -= div['chatInput'].outerHeight(true);
-			div['chatHistory'].css('height', height + 'px');
-		});
+        /* Set ChatPanel on resize */
+        function fillHeight(element, height) {
+            height = element.parent().innerHeight();
+            var sibs = element.siblings();
+            jQuery.each(sibs, function(index, sib) {
+                height -= jQuery(sib).outerHeight(true);
+            });
+            element.height(height);
+            return height;
+        }
+        div['chatPanel'].resize(function() {
+            var height = fillHeight(div['chatPanel']);
+            height -= div['chatInput'].outerHeight(true);
+            div['chatHistory'].css('height', height + 'px');
+        });
     };
 
     /* Layout class definitions */
@@ -606,6 +606,16 @@ mods['gui'] = new Argonaut.Module('gui');
         gui.hide('rtcGamemaster');
     };
 
+    gui.resizeAfter = function(time) {
+        if(typeof time === 'undefined') { time = 250; }
+        if(gui.resizeTimeout !== false) {
+            clearTimeout(gui.resizeTimeout);
+        }
+        gui.resizeTimeout = setTimeout(function() {
+            jQuery(window).triggerHandler('resize');
+        }, time);
+    }
+
     gui.run = function() {
         argo.loader.update('Preparing user interface');
 
@@ -624,15 +634,13 @@ mods['gui'] = new Argonaut.Module('gui');
         jQuery(window).resize(function() {
             gui.elements['outer'].setBounds(jQuery(window).width(),
                                 jQuery(window).height());
-			jQuery.each(gui.elements, function(name, element) {
-				element.triggerHandler('resize');
-			});
-			if(gui.elements['outer'].height()
-			   != jQuery(window).height()) {
-				setTimeout(function() {
-					jQuery(window).triggerHandler('resize');
-				}, 250);
-			}
+            jQuery.each(gui.elements, function(name, element) {
+                element.triggerHandler('resize');
+            });
+            if(gui.elements['outer'].height()
+               != jQuery(window).height()) {
+                gui.resizeAfter(125)
+            }
         });
 
         gui.routines['base']();

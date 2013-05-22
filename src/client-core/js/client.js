@@ -17,9 +17,7 @@ jQuery(function() {
                                               .append(player.statusBar);
                     player.setStatus(player.status);
                 });
-				setTimeout(function() {
-					jQuery(window).triggerHandler('resize');
-				}, 250);
+				mods['gui'].resizeAfter();
             }
         );
         argo.onconnect = function() {};
@@ -31,9 +29,7 @@ jQuery(function() {
             mods['gui'].elements['statusList'].list
 											  .append(player.statusBar);
             player.setStatus(player.status);
-			setTimeout(function() {
-				jQuery(window).triggerHandler('resize');
-			}, 250);
+			mods['gui'].resizeAfter();
         } else {
             argo.stderr('(onplayerjoined) No player with given id.');
         }
@@ -48,9 +44,7 @@ jQuery(function() {
 					argo.players[playerId].statusBar.remove();
 					delete mods['webRTC'].peers[playerId];
 					delete argo.players[playerId];
-					setTimeout(function() {
-						jQuery(window).triggerHandler('resize');
-					}, 250);
+					mods['gui'].resizeAfter();
 				}
 			, 4000);
         } else {
