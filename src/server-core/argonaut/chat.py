@@ -26,5 +26,6 @@ class ChatNamespace(BaseNamespace, BroadcastMixin, RoomsMixin):
         if 'client' in self.socket.session:
             core = Chat.getInstance().core
             playerId = self.socket.session['client'].publicId
-            self.emit_to_room('main', 'chat', {'playerId': playerId
+            self.emit_to_room('main', 'chat', {'room': 'main'
+											 , 'playerId': playerId
                                              , 'message': message})

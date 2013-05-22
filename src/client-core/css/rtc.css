@@ -3,6 +3,7 @@
 .video-container.feedback {
     background:#000000;
     border:1px solid #252525;
+    box-sizing:border-box;
     -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
        -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
             box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
@@ -28,7 +29,7 @@
 .video-group .video-container li > a { padding:2px 6px; }
 
 /* Region-specific styling */
-.west  > .video-conatiner.big,
+.west  > .video-container.big,
 .east  > .video-container.big { width:100%; }
 .north > .video-group { overflow-y:hidden; height:100%; }
 .west  > .video-group { overflow-x:hidden; }

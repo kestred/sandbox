@@ -1,5 +1,10 @@
 /* Body and Layout */
-body { margin:0; padding:0; border:0; height:100%; }
+body {
+	margin:0; padding:0;
+	border:0; height:100%;
+	overflow-x:hidden;
+	overflow-y:auto;
+}
 body.dark {
     background-color:#333333;
     background-repeat:no-repeat;
@@ -45,3 +50,31 @@ body.dark {
 @media (min-width: 768px) {
     #mobile-warning { opacity:0; z-index:-100; }
 }
+
+/* Base Elements Styling */
+.status-list {
+    color:#999999;
+    padding:12px 24px;
+    border:1px solid #252525;
+    background-color:#1b1b1b;
+    background-repeat:repeat-x;
+    /* @alternate */ background-image:-moz-linear-gradient(top, #222222, #111111);
+    /* @alternate */ background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#222222), to(#111111));
+    /* @alternate */ background-image:-webkit-linear-gradient(top, #222222, #111111);
+    /* @alternate */ background-image:-o-linear-gradient(top, #222222, #111111);
+    background-image:linear-gradient(to bottom, #222222, #111111);
+    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+}
+.status-list ol {
+    display:inline-block;
+    width:100%; margin:0;
+    border-left:2px ridge #666;
+    border-right:2px groove #666;
+    background:rgba(255,255,255,0.025);
+}
+.status-list li { cursor:pointer; margin:4px 0; padding:0 6px; }
+.status-list li:hover { background:rgba(255,255,255,0.1); }
+.status-list .badge { margin-right:6px; }
+

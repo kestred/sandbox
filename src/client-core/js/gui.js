@@ -92,7 +92,8 @@ mods['gui'] = new Argonaut.Module('gui');
             bar.icon.removeClass('icon-user'
                            + ' icon-asterisk'
                            + ' icon-volume-up'
-                           + ' icon-remove');
+                           + ' icon-remove'
+                           + ' icon-pencil');
         };
         bar.badge.clear = function() {
             bar.badge.removeClass('badge-success'
@@ -148,6 +149,9 @@ mods['gui'] = new Argonaut.Module('gui');
                 } else if(status == 'speaking') {
                     this.statusBar.icon.addClass('icon-volume-up');
                     this.statusBar.badge.addClass('badge-success');
+                } else if(status == 'typing') {
+					this.statusBar.icon.addClass('icon-pencil');
+                    this.statusBar.badge.addClass('badge-success');
                 } else if(status == 'disconnected') {
                     this.statusBar.icon.addClass('icon-remove');
                     this.statusBar.badge.addClass('badge-warning');
@@ -160,8 +164,21 @@ mods['gui'] = new Argonaut.Module('gui');
             };
             player.toggleSpeaking = function() {
                 if(this.status != 'speaking') {
-                    this.previousStatus = this.status;
+					if(this.status !=  'typing') {
+						this.previousStatus = this.status;
+					}
                     this.setStatus('speaking');
+                } else {
+                    this.setStatus(this.previousStatus);
+                }
+            };
+            player.toggleTyping = function() {
+                if(this.status != 'typing') {
+					if(this.status !=  'speaking') {
+						this.previousStatus = this.status;
+					}
+                    this.previousStatus = this.status;
+                    this.setStatus('typing');
                 } else {
                     this.setStatus(this.previousStatus);
                 }
@@ -189,6 +206,18 @@ mods['gui'] = new Argonaut.Module('gui');
             gm.statusBar.name.html(gm.name + ' (GM)');
             gm.setStatus(gm.status);
         }
+
+		/* Build Player Status Menu */
+        div['statusMenu'] = jQuery('<div class="status-menu"></div>');
+        div['statusList'] = jQuery('<div class="status-list"></div>');
+        var list = jQuery('<ol class="unstyled"></ol>');
+        if(argo.localPlayer.id != argo.gamemaster.id) {
+            list.append(argo.gamemaster.statusBar);
+        }
+        list.append(argo.localPlayer.statusBar);
+        div['statusList'].list = list;
+        div['statusList'].append(list);
+        div['statusMenu'].append(div['statusList']);
     };
     gui.routines['webRTC'] = function() {
         var div = gui.elements;
@@ -251,15 +280,77 @@ mods['gui'] = new Argonaut.Module('gui');
 
         /* The main chat panel */
         div['chatPanel'] = jQuery('<div class="chat-panel"></div>');
-        div['chatMenu'] = jQuery('<div class="chat-menu"></div>');
-        div['statusList'] = jQuery('<ol class="status-list"></ol>');
-        div['statusList'].addClass('unstyled');
-        if(argo.localPlayer.id != argo.gamemaster.id) {
-            div['statusList'].append(argo.gamemaster.statusBar);
-        }
-        div['statusList'].append(argo.localPlayer.statusBar);
-        div['chatMenu'].append(div['statusList']);
-        div['chatPanel'].append(div['chatMenu']);
+
+        /* Chat History */
+        div['chatHistory'] = jQuery('<div class="chat-history"></div>');
+        var chatLog = jQuery('<dl class="dl-horizontal"></div');
+        div['chatHistory'].log = chatLog;
+        div['chatHistory'].append(chatLog);
+        div['chatHistory'].logMessage = function(message, name) {
+            var previous = div['chatHistory'].log.find('dt').last();
+            var log = '<dd>' + message + '</dd>';
+            if(previous.html() != name) {
+				log = '<dt>' + name + '</dt>' + log;
+			}
+            div['chatHistory'].log.append(log);
+            var scrollHeight = div['chatHistory'].log.scrollHeight;
+            div['chatHistory'].log.scrollTop(scrollHeight);
+		};
+        div['chatPanel'].append(div['chatHistory']);
+		mods['chat'].chatHistory = div['chatHistory'];
+
+		/* Chat Input */
+		div['chatInput'] = jQuery('<form class="chat-input"></form>');
+		function sendMessage() {
+			var message = input.val();
+			if(message.length > 0) {
+				input.blur();
+				if(argo.localPlayer.status == 'typing') {
+					argo.localPlayer.toggleTyping();
+				}
+				input.val('');
+				mods['chat'].sendMessage(message);
+			}
+		}
+		var input = jQuery('<input type="text" />');
+		input.attr('placeholder', "Type message and hit 'enter'");
+		input.focus(function() {
+			if(argo.localPlayer.status != 'typing') {
+				argo.localPlayer.toggleTyping();
+			}
+		});
+		input.blur(function() {
+			if(argo.localPlayer.status == 'typing') {
+				argo.localPlayer.toggleTyping();
+			}
+		});
+		input.keydown(function(event) {
+			if(event.keyCode == 13) {
+				sendMessage();
+			}
+		});
+		var send = jQuery('<input type="button" class="btn"></input>');
+		send.val('Send');
+		send.click(function() { sendMessage(); });
+		div['chatInput'].append(input);
+		div['chatInput'].append(send);
+		div['chatPanel'].append(div['chatInput']);
+
+		/* Set ChatPanel on resize */
+		function fillHeight(element, height) {
+			height = element.parent().innerHeight();
+			var sibs = element.siblings();
+			jQuery.each(sibs, function(index, sib) {
+				height -= jQuery(sib).outerHeight(true);
+			});
+			element.height(height);
+			return height;
+		}
+		div['chatPanel'].resize(function() {
+			var height = fillHeight(div['chatPanel']);
+			height -= div['chatInput'].outerHeight(true);
+			div['chatHistory'].css('height', height + 'px');
+		});
     };
 
     /* Layout class definitions */
@@ -320,6 +411,7 @@ mods['gui'] = new Argonaut.Module('gui');
             container.setBounds = function(width, height) {
                 this.width(width).height(height);
             };
+            container.resize(function() { container.relayout(); })
             container.relayout = function() {
                 var width = this.width();
                 var height = this.height();
@@ -437,21 +529,22 @@ mods['gui'] = new Argonaut.Module('gui');
     /* Dictionary of screen arrangements */
     gui.arrange = {};
     gui.arrange['hidden'] = function() {
-        gui.outer.west.collapse();
-        gui.outer.east.collapse();
-        gui.inner.west.collapse();
-        gui.inner.east.collapse();
-        gui.inner.north.collapse();
+        gui.elements['outer'].west.collapse();
+        gui.elements['outer'].east.collapse();
+        gui.elements['inner'].west.collapse();
+        gui.elements['inner'].east.collapse();
+        gui.elements['inner'].north.collapse();
     };
     gui.arrange['playerContentView'] = function() {
         gui.arrange['hidden']();
 
-        gui.outer.west.expand();
+        gui.elements['outer'].west.expand();
         gui.place('rtcFeedback', '#outer-west');
         gui.place('mainMenu', '#outer-west');
+        gui.place('statusMenu', '#outer-west');
         gui.place('chatPanel', '#outer-west');
 
-        gui.inner.north.expand();
+        gui.elements['inner'].north.expand();
         gui.place('rtcPlayers', '#inner-north');
 
         gui.place('rtcGamemaster', '#inner-center');
@@ -463,12 +556,13 @@ mods['gui'] = new Argonaut.Module('gui');
     gui.arrange['gamemasterContentView'] = function() {
         gui.arrange['hidden']();
 
-        gui.outer.west.expand();
+        gui.elements['outer'].west.expand();
         gui.place('mainMenu', '#outer-west');
         gui.place('gmControls', '#outer-west');
+        gui.place('statusMenu', '#outer-west');
         gui.place('chatPanel', '#outer-west');
 
-        gui.inner.north.expand();
+        gui.elements['inner'].north.expand();
         gui.place('rtcPlayers', '#inner-north');
 
         gui.place('rtcFeedback', '#inner-center');
@@ -480,13 +574,14 @@ mods['gui'] = new Argonaut.Module('gui');
     gui.arrange['playerConferenceView'] = function() {
         gui.arrange['hidden']();
 
-        gui.outer.west.expand();
+        gui.elements['outer'].west.expand();
         gui.place('mainMenu', '#outer-west');
+        gui.place('statusMenu', '#outer-west');
         gui.place('chatPanel', '#outer-west');
 
         gui.place('rtcPlayers', '#inner-center');
 
-        gui.inner.east.expand();
+        gui.elements['inner'].east.expand();
         gui.place('rtcGamemaster', '#inner-east');
         gui.place('rtcFeedback', '#inner-east');
 
@@ -496,13 +591,14 @@ mods['gui'] = new Argonaut.Module('gui');
     gui.arrange['gamemasterConferenceView'] = function() {
         gui.arrange['hidden']();
 
-        gui.outer.west.expand();
+        gui.elements['outer'].west.expand();
         gui.place('mainMenu', '#outer-west');
+        gui.place('statusMenu', '#outer-west');
         gui.place('chatPanel', '#outer-west');
 
         gui.place('rtcPlayers', '#inner-center');
 
-        gui.outer.east.expand();
+        gui.elements['outer'].east.expand();
         gui.place('gmControls', '#outer-east');
         gui.place('rtcFeedback', '#outer-east');
 
@@ -513,8 +609,8 @@ mods['gui'] = new Argonaut.Module('gui');
     gui.run = function() {
         argo.loader.update('Preparing user interface');
 
-        gui.outer = jQuery('#layout');
-        gui.inner = jQuery('#outer-center');
+        gui.elements['outer'] = jQuery('#layout');
+        gui.elements['inner'] = jQuery('#outer-center');
         var outerOptions = {width: jQuery(window).width()
                           , height: jQuery(window).height()
                           , west: {size: '20%', minPx: 220}
@@ -522,14 +618,21 @@ mods['gui'] = new Argonaut.Module('gui');
         var innerOptions = {north: {size: '20%', minPx: 182}
                           , west: {size: '16%'}
                           , east: {size: '40%'}};
-        gui.layout['page'].applyTo(gui.outer, outerOptions);
-        gui.layout['page'].applyTo(gui.inner, innerOptions);
+        gui.layout['page'].applyTo(gui.elements['outer'], outerOptions);
+        gui.layout['page'].applyTo(gui.elements['inner'], innerOptions);
 
         jQuery(window).resize(function() {
-            gui.outer.setBounds(jQuery(window).width(),
+            gui.elements['outer'].setBounds(jQuery(window).width(),
                                 jQuery(window).height());
-            gui.outer.relayout();
-            gui.inner.relayout();
+			jQuery.each(gui.elements, function(name, element) {
+				element.triggerHandler('resize');
+			});
+			if(gui.elements['outer'].height()
+			   != jQuery(window).height()) {
+				setTimeout(function() {
+					jQuery(window).triggerHandler('resize');
+				}, 250);
+			}
         });
 
         gui.routines['base']();

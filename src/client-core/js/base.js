@@ -80,7 +80,6 @@ Argonaut.prototype.connect = function() {
     });
     socket.on('player-left', function(data) {
         argo.onplayerleft(data.id);
-        delete players[data.id];
     });
     socket.on('ready', function() { socket.authenticate(); });
     this.sockets.core = socket;

@@ -15,14 +15,16 @@ Chat.prototype.buildSocket = function(socket) {
         if(core.validIdPair(data)) {
             core.clients[data.publicId].sockets['chat'] = socket;
             socket.client = core.clients[data.publicId];
+            socket.join('main')
         }
     });
 
     socket.on('message', function(message) {
         if('client' in socket) {
-            chat.sockets.emit('chat',
-                              {'playerId': socket.client.publicId
-                             , 'message': message});
+            chat.sockets.in('room').emit('chat',
+                              {room: main
+							 , playerId: socket.client.publicId
+                             , message: message});
         }
     });
 }

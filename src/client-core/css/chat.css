@@ -1,29 +1,69 @@
-/* Chat Menu Styling */
-.chat-menu {
+/* Chat Styling */
+.chat-input, .chat-history {
     color:#999999;
     padding:12px 24px;
     border:1px solid #252525;
+	border-top:0;
     background-color:#1b1b1b;
     background-repeat:repeat-x;
+    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+}
+.chat-input {
+	width:100%; height:54px;
+	position:relative;
+	margin:0;
+	box-sizing:border-box;
     /* @alternate */ background-image:-moz-linear-gradient(top, #222222, #111111);
     /* @alternate */ background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#222222), to(#111111));
     /* @alternate */ background-image:-webkit-linear-gradient(top, #222222, #111111);
     /* @alternate */ background-image:-o-linear-gradient(top, #222222, #111111);
     background-image:linear-gradient(to bottom, #222222, #111111);
-    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
-       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
-            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+}
+.chat-history {
+	position:relative;
+	box-sizing:border-box;
+    /* @alternate */ background-image:-moz-linear-gradient(top, #111111, #222222);
+    /* @alternate */ background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#111111), to(#222222));
+    /* @alternate */ background-image:-webkit-linear-gradient(top, #111111, #222222);
+    /* @alternate */ background-image:-o-linear-gradient(top, #111111, #222222);
+    background-image:linear-gradient(to bottom, #111111, #222222);
 }
 
-/* Player Status styling */
-.status-list {
-    display:inline-block;
-    width:100%;
-    margin:0 0 0 -3px;
-    border-left:2px ridge #666;
-    border-right:2px groove #666;
-    background:rgba(255,255,255,0.025);
+.chat-history dl {
+	position:absolute;
+	top:12px; bottom:12px;
+	left:24px; right:20px; 
+	width:auto; height:auto;
+	margin:0; padding:12px 0;
+	border-left:2px ridge #666;
+	border-right:2px groove #666;
+	box-sizing:border-box;
+	background:rgba(255,255,255,0.025);
+	overflow:hidden;
 }
-.status-list li { cursor:pointer; margin:4px 0; padding:0 6px; }
-.status-list li:hover { background:rgba(255,255,255,0.1); }
-.status-list .badge { margin-right:6px; }
+.chat-history dt { width:100px; }
+.chat-history dd { margin-left:112px; padding-right:4px; }
+
+.chat-input input[type="text"] {
+	position:absolute;
+	top:12px; left:24px; bottom:12px;
+	width:220px; max-width:55%;
+	height:auto; margin:0;
+	box-sizing:border-box;
+}
+.chat-input .btn {
+	position:absolute;
+	top:12px; bottom:12px; right:20px;
+	width:25%; min-width:50px; height:auto;
+	margin:0; padding:4px;
+	text-align:center;
+	box-sizing:border-box;
+}
+
+@media (max-width: 1199px) {
+	.chat-input { height:50px; }
+	.chat-input input[type="text"] { max-width:50%; }
+	.chat-input .btn { min-width:45px; padding:0; }
+}
