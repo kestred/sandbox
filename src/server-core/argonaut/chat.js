@@ -5,7 +5,7 @@ Chat.prototype.init = function(type, io, core) {
     this.type = type;
     this.core = core;
     this.io = io;
-    this.sockets = io.of('/rtc').on('connection', this.buildSocket);
+    this.sockets = io.of('/chat').on('connection', this.buildSocket);
 };
 Chat.prototype.buildSocket = function(socket) {
     var chat = Chat.getInstance();
@@ -21,8 +21,8 @@ Chat.prototype.buildSocket = function(socket) {
 
     socket.on('message', function(message) {
         if('client' in socket) {
-            chat.sockets.in('room').emit('chat',
-                              {room: main
+            chat.sockets.in('main').emit('chat',
+                              {room: 'main'
 							 , playerId: socket.client.publicId
                              , message: message});
         }

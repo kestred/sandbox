@@ -1,5 +1,6 @@
 from socketio.namespace import BaseNamespace
 from socketio.mixins import BroadcastMixin, RoomsMixin
+import sys
 
 class Chat:
     instance = None
@@ -26,6 +27,9 @@ class ChatNamespace(BaseNamespace, BroadcastMixin, RoomsMixin):
         if 'client' in self.socket.session:
             core = Chat.getInstance().core
             playerId = self.socket.session['client'].publicId
+            self.emit('chat', {'room': 'main'
+                             , 'playerId': playerId
+                             , 'message': message})
             self.emit_to_room('main', 'chat', {'room': 'main'
-											 , 'playerId': playerId
+                                             , 'playerId': playerId
                                              , 'message': message})
