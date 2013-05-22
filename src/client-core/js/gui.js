@@ -304,18 +304,18 @@ mods['gui'] = new Argonaut.Module('gui');
         function sendMessage() {
             var message = input.val();
             if(message.length > 0) {
-                input.blur();
+                input.val('');
                 if(argo.localPlayer.status == 'typing') {
                     argo.localPlayer.toggleTyping();
                 }
-                input.val('');
                 mods['chat'].sendMessage(message);
             }
         }
         var input = jQuery('<input type="text" />');
         input.attr('placeholder', "Type message and hit 'enter'");
         input.focus(function() {
-            if(argo.localPlayer.status != 'typing') {
+            if(argo.localPlayer.status != 'typing'
+               && input.val().length > 0) {
                 argo.localPlayer.toggleTyping();
             }
         });
@@ -325,8 +325,18 @@ mods['gui'] = new Argonaut.Module('gui');
             }
         });
         input.keydown(function(event) {
-            if(event.keyCode == 13) {
+            var player = argo.localPlayer;
+            var length = input.val().length;
+            if(event.keyCode === 13) {
                 sendMessage();
+            } else if((event.keyCode === 8 || event.keyCode === 46)
+                      && length === 1 && player.status == 'typing') {
+                player.toggleTyping();
+            } else if(((event.keyCode >= 48 && event.keyCode <= 90)
+                       || length > 0) && player.status != 'typing') {
+                player.toggleTyping();
+            } else if(length == 0 && player.status == 'typing') {
+                player.toggleTyping();
             }
         });
         var send = jQuery('<input type="button" class="btn"></input>');
