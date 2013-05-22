@@ -10,9 +10,10 @@ The core architecture is intended to be Game-System and Setting neutral, and ins
 
 ## Installing the Environment
 
-Argonaut primarily uses the nodejs environment, and has a number of required packages.
-* Required Packages: Express, Socket.io, & Optimist
-* If you would prefer to use Python Tornado, use the `--python` option while running setup or compile.
+Argonaut uses a WSGI (python) or Nodejs (javascript) environment, and has a number of required packages.
+* Packages for Nodejs: Express, Socket.io, & Optimist
+* Packages for Python: GEvent, GEvent-Websocket, GEvent-Socketio
+* If you are using Python, use the `-p` | `--python` option with any of the scripts.
 
 #### Setup on Ubuntu
 
