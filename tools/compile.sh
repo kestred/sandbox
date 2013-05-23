@@ -79,18 +79,18 @@ fi
 cp src/client-core/core.html build/client.html
 cp -r src/client-core/vendor build/vendor
 cp -r src/client-core/img build/img
-if [ $jsServer == "true" ]; then
+if [ "$jsServer" == "true" ]; then
     cp src/server-core/argonaut/*.js build/argonaut
     cp src/server-core/server.js build/server.js
 fi
-if [ $pyServer == "true" ]; then
+if [ "$pyServer" == "true" ]; then
     cp -r src/client-core/socket.io build/socket.io
     cp src/server-core/argonaut/*.py build/argonaut
     cp src/server-core/server.py build/server.py
 fi
 
 # Compile CSS and Javascript
-if [ $debugMode == "true" ]; then
+if [ "$debugMode" == "true" ]; then
     cat src/client-core/css/*.css >> build/css/core.css
     cat src/client-core/js/*.js >> build/js/core.js
 else
