@@ -1,3 +1,7 @@
+/* Imports */
+var util = require('./util.js');
+
+/* Define Chat service */
 function Chat (io, core) { this.init('chat-server', io, core); }
 Chat.prototype.constructor = Chat;
 Chat.prototype.init = function(type, io, core) {
@@ -21,6 +25,7 @@ Chat.prototype.buildSocket = function(socket) {
 
     socket.on('message', function(message) {
         if('client' in socket) {
+            var cleanMessage = util.htmlspecialchars(message);
             chat.sockets.in('main').emit('chat',
                               {room: 'main'
 							 , playerId: socket.client.publicId

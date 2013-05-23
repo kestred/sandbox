@@ -1,3 +1,7 @@
+/* Imports */
+var Client = require('./client.js');
+var util = require('./util.js');
+
 /* Primary Core definition */
 function Core(io) { this.init('core-server', io); }
 Core.prototype.constructor = Core;
@@ -36,7 +40,7 @@ Core.prototype.buildSocket = function(socket) {
         } else {
             secret = util.randomKey(32);
         }
-        core.clients[data.publicId] = new Core.Client(data.publicId,
+        core.clients[data.publicId] = new Client(data.publicId,
                                                       secret);
         core.clients[data.publicId].sockets.core = socket;
         socket.client = core.clients[data.publicId];
@@ -87,44 +91,6 @@ Core.prototype.validIdPair = function(data) {
 Core.getInstance = function() {
     return Core.instance;
 };
-
-/* Client class */
-Core.Client = function(publicId, privateId) {
-    this.init('client', publicId, privateId);
-}
-Core.Client.prototype.constructor = Core.Client;
-Core.Client.prototype.init = function(type, publicId, privateId) {
-    this.type = type;
-    this.publicId = publicId;
-    this.privateId = privateId;
-    this.sockets = {};
-};
-Core.Client.prototype.authenticate = function(privateId) {
-    if(!util.validPrivateId(privateId)) { return false; }
-    return this.privateId == privateId;
-};
-
-/* Utility functions */
-Core.Util = {};
-Core.Util.socketError = function(socket, message) {
-    socket.emit('error', {message: '[serverError]' + message});
-};
-Core.Util.randomKey = function(length) {
-    var str = '';
-    while(str.length < length) {
-        str += Math.floor((Math.random()*16)).toString(16);
-    }
-    return str.substr(0, length);
-};
-Core.Util.validPublicId = function(publicId) {
-    return (typeof publicId == 'string'
-         && publicId.match(/^[a-f0-9]{16}$/));
-};
-Core.Util.validPrivateId = function(privateId) {
-    return (typeof privateId == 'string'
-         && privateId.match(/^[a-f0-9]{32}$/));
-};
-var util = Core.Util;
 
 /* Export core */
 module.exports = Core;
