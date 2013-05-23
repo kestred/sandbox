@@ -59,6 +59,7 @@ mods['webRTC'] = new Argonaut.Module('webRTC');
                 webRTC.localStream = stream;
                 webRTC.localVideo = webRTC.videoById(argo.publicId);
                 webRTC.localVideo.attr('src', URL.createObjectURL(stream));
+                webRTC.localVideo[0].muted = true;
                 callback();
             },
             function() { alert('Video capture failed'); }
