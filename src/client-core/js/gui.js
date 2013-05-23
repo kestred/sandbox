@@ -105,6 +105,98 @@ mods['gui'] = new Argonaut.Module('gui');
         bar.append(bar.name);
         return bar;
     };
+    gui.create['subwindow'] = function(options) {
+        var modal = jQuery('<div class="modal hide fade"></div>');
+        var header = jQuery('<div class="modal-header"></div>');
+        var content = jQuery('<div class="modal-body"></div');
+        modal.addClass('subwindow snap-target');
+        modal.body = content;
+        modal.header = header;
+        modal.append(header);
+        modal.append(content);
+        if('title' in options) {
+            header.html('<h3>' + options.title + '</h3>');
+        }
+        if('width' in options) { modal.width(options.width); }
+        if('height' in options) { content.height(options.height); }
+        if('top' in options) { modal.css('top', options.top + 'px'); }
+        if('left' in options) { modal.css('left', options.top + 'px'); }
+        if(options.draggable !== false) {
+            modal.draggable({handle: '.modal-header'
+                           , stack: '.subwindow'
+                           , snap: '.snap-target'
+                           , snapMode: 'outer'
+                           , containment: '#layout'});
+            modal.on('shown', function(event) {
+                if(event.target == this) {
+                    modal.css('-webkit-transition', 'all 0 ease 0');
+                    modal.css('-moz-transition', 'all 0 ease 0');
+                    modal.css('-o-transition', 'all 0 ease 0');
+                    modal.css('transition', 'all 0 ease 0');
+                }
+            });
+            modal.on('hide', function() {
+                if(event.target == this) {
+                    modal.css('-webkit-transition', '');
+                    modal.css('-moz-transition', '');
+                    modal.css('-o-transition', '');
+                    modal.css('transition', '');
+                    if(modal.attr('style') === '') {
+                        modal.removeAttr('style');
+                    }
+                }
+            });
+        }
+        if(options.controls !== false) {
+            var controlGroup = jQuery('<div class="btn-group"></div>');
+            var minimize = jQuery('<button class="btn btn-inverse">');
+            var miniIcon = jQuery('<i class="icon-chevron-up">');
+            var closeBtn = jQuery('<button class="btn btn-danger">');
+            var closeIcon = jQuery('<i class="icon-remove">');
+            miniIcon.addClass('icon-white');
+            minimize.append(miniIcon);
+            closeIcon.addClass('icon-white');
+            closeBtn.append(closeIcon);
+            controlGroup.append(minimize);
+            controlGroup.append(closeBtn);
+            header.append(controlGroup);
+            if(options.onMinimize == 'hide') {
+                minimize.click(function() {
+                    modal.hide();
+                });
+            } else {
+                content.addClass('collapse in');
+                content.collapse({'toggle': false});
+                content.on('shown', function() {
+                    if(event.target == this) {
+                        content.height(options.height);
+                    }
+                });
+                minimize.click(function() {
+                    if(content.hasClass('in')) {
+                        content.collapse('hide');
+                        miniIcon.removeClass('icon-chevron-up');
+                        miniIcon.addClass('icon-chevron-down');
+                    } else {
+                        content.collapse('show');
+                        miniIcon.removeClass('icon-chevron-down');
+                        miniIcon.addClass('icon-chevron-up');
+                    }
+                });
+            }
+            if(options.onClose == 'hide') {
+                closeBtn.click(function() { modal.hide(); });
+            } else {
+                closeBtn.click(function() { modal.detach(); });
+            }
+        }
+        modal.modal({backdrop: false
+                   , keyboard: false
+                   , show: false});
+        modal.show = function() { modal.modal('show'); };
+        modal.hide = function() { modal.modal('hide'); };
+        return modal;
+   }
     gui.create['privateButton'] = function() {
         var icon = jQuery('<i></i>');
         var button = jQuery('<button></button)');
