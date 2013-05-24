@@ -98,9 +98,9 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         bar.icon = jQuery('<i class="icon-white icon-user"></i>');
         bar.icon.clear = function() {
             bar.icon.removeClass('icon-user'
-                           + ' icon-asterisk'
-                           + ' icon-volume-up'
-                           + ' icon-remove'
+                           + ' icon-bullhorn'
+                           + ' icon-flag'
+                           + ' icon-warning-sign'
                            + ' icon-pencil');
         };
         bar.badge.clear = function() {
@@ -249,8 +249,20 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         /* Player function to add player-based GUI elements */
         var proto = Argonaut.Player.prototype;
         proto.setupGUI = function() {
+            var player = this;
             this.controls = gui.create['playerInteractionControls']();
             this.statusBar = gui.create['playerStatusBar']();
+            this.statusBar.icon.tooltip({
+                placement: function() {
+                    var top = player.statusBar.icon.offset().top;
+                    var bottom = (jQuery(window).height() - 40);
+                    if(top < bottom) { return 'bottom'; }
+                    else { return 'right'; }
+                }
+              , title: function() {
+                    return util.ucwords(player.status);
+                }
+            });
             div['statusList'].list.append(this.statusBar);
             mods['gui'].resizeAfter();
             this.setName = util.extend(this.setName, function(name) {
@@ -264,20 +276,23 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                     if(status == 'connected') {
                         this.statusBar.icon.addClass('icon-user');
                     } else if(status == 'speaking') {
-                        this.statusBar.icon.addClass('icon-volume-up');
+                        this.statusBar.icon.addClass('icon-bullhorn');
                         this.statusBar.badge.addClass('badge-success');
                     } else if(status == 'typing') {
                         this.statusBar.icon.addClass('icon-pencil');
                         this.statusBar.badge.addClass('badge-success');
                     } else if(status == 'disconnected') {
-                        this.statusBar.icon.addClass('icon-remove');
+                        this.statusBar.icon.addClass('icon-warning-sign');
                         this.statusBar.badge.addClass('badge-warning');
+                    } else if(status == 'active') {
+                        this.statusBar.icon.addClass('icon-flag');
+                        this.statusBar.badge.addClass('badge-info');
                     }
                 }
             );
             this.setStatus(this.status);
             this.toggleConnected = function() {
-                if(player.status != 'disconnected') {
+                if(this.status != 'disconnected') {
                     this.setStatus('disconnected');
                 } else { this.setStatus('connected'); }
             };

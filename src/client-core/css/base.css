@@ -77,6 +77,14 @@ body.dark {
 .status-list li { cursor:pointer; margin:4px 0; padding:0 6px; }
 .status-list li:hover { background:rgba(255,255,255,0.1); }
 .status-list .badge { margin-right:6px; }
+.status-list .badge .tooltip-arrow { border-bottom-color:#999999; }
+.status-list .badge .tooltip-inner { background-color:#999999; }
+.status-list .badge-info .tooltip-arrow { border-bottom-color:#3a87ad; }
+.status-list .badge-info .tooltip-inner { background-color:#3a87ad; }
+.status-list .badge-warning .tooltip-arrow { border-bottom-color:#f89406; }
+.status-list .badge-warning .tooltip-inner { background-color:#f89406; }
+.status-list .badge-success .tooltip-arrow { border-bottom-color:#468847; }
+.status-list .badge-success .tooltip-inner { background-color:#468847; }
 
 .subwindow {
     position:fixed !important;
