@@ -2,7 +2,7 @@
 from gevent import monkey; monkey.patch_all()
 from socketio import socketio_manage
 from socketio.server import SocketIOServer
-import os, re
+import sys, os, re, argparse
 
 # Import local modules
 from argonaut.httphandlers import *
@@ -14,7 +14,6 @@ from argonaut.rtc import WRTC
 SCRIPT = os.path.realpath(__file__)
 ROOT = os.path.dirname(SCRIPT)
 os.chdir(ROOT)
-print ROOT
 
 class Application(object):
     def __init__(self):
@@ -52,11 +51,28 @@ core = Core(app)
 chat = Chat(app, core)
 wrtc = WRTC(app, core)
 
-# Start server
 if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description = 'Starts an Argonaut tabletop gaming server.')
+    parser.add_argument('--debug', '-d', action = 'store_true'
+      , help = 'Sends logging information to stderr')
+    parser.add_argument('--log-file', '-L', dest = 'log', metavar="path"
+      , help = 'Sets log file location. (Default: /dev/null)'
+      , nargs = '?', default = '/dev/null', const = ROOT + '/log')
+    args = parser.parse_args()
+    if args.debug is False:
+        if args.log == '/dev/null':
+            sys.stderr = open(os.devnull, 'w')
+        else:
+            sys.stderr = open(args.log, 'w')
+
+    options = {'resource': 'socket.io'
+             , 'policy_server': True
+             , 'policy_listener': ('0.0.0.0', 10843)}
+
+    # Start server
     sys.stdout.write("[Argonaut] Starting server... ")
     sys.stdout.write("Ports: App - 6058, Flash - 843\n")
     sys.stdout.flush()
-    SocketIOServer(('0.0.0.0', 6058), app,
-            resource = "socket.io", policy_server = True,
-            policy_listener = ('0.0.0.0', 10843)).serve_forever()
+    SocketIOServer(('0.0.0.0', 6058), app, **options).serve_forever()
