@@ -1,5 +1,5 @@
 /*! === Tabletop GUI === */
-mods['gui'] = new Argonaut.Module('gui');
+mods['gui'] = new Argonaut.Module('gui', priority.CORE);
 (function() { // Begin anonymous namespace
     var gui = mods['gui'];
 

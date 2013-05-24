@@ -54,7 +54,7 @@ Argonaut.prototype.addModule = function(name, module) {
         this.modules[name] = module;
     }
 }
-Argonaut.prototype.connect = function(connectedCallback) {
+Argonaut.prototype.start = function() {
     this.status = 'connecting';
     this.loader.update('Connecting to server', 4);
     var argo = this, socket = io.connect(document.URL + 'core');
@@ -83,8 +83,7 @@ Argonaut.prototype.connect = function(connectedCallback) {
         }
         argo.status = 'connected';
         argo.loadModules();
-        argo.loader.finish();
-        connectedCallback();
+        argo.loader.finish()
     });
     socket.on('player-joined', function(data) {
         if(!(data.id in argo.players)
@@ -107,8 +106,38 @@ Argonaut.prototype.connect = function(connectedCallback) {
     this.sockets.core = socket;
 };
 Argonaut.prototype.loadModules = function() {
+    if(status == 'loading' || status == 'ready') { return; }
     this.status = 'loading';
-    jQuery.each(this.modules, function(index, module) { module.run(); });
+    var modsListed = [];
+    for(var name in this.modules) { modsListed.push(this.modules[name]); }
+    var modsSorted = modsListed.sort(function(a,b) {
+        return a.priority - b.priority;
+    });
+    function loadModule(module) {
+        if(module.status != 'active') {
+            if(module.status == 'waiting') {
+                this.stderr('(argo.loadModules)'
+                          + 'Circular dependency detected:\n'
+                          + '\t Argonaut may have unexpected behavior.');
+            } else {
+                for(var i=0; i < module.requiredModules.length; ++i) {
+                    if(module.requiredModules[i].status == 'active') {
+                        module.status = 'waiting';
+                        module.loadModule(module.requiredModules[i]);
+                        if(module.status == 'active') { return; }
+                        module.status = 'inactive';
+                    }
+                }
+            }
+            module.run();
+            if(module.status != 'active') {
+                argo.stderr('(argo.loadModules) Module \'' + module.name
+                          + '\' may not have started properly.');
+                module.status = 'active';
+            }
+        }
+    }
+    for(var i=0; i < modsSorted.length; ++i) { loadModule(modsSorted[i]); }
     this.sockets.core.emit('ready');
     this.status = 'ready';
 }
@@ -147,25 +176,40 @@ Argonaut.Player.prototype.getLongName = function(name) {
     return this.name;
 };
 
-/* Module definition, optional variables "core" and "requiredMods" */
-Argonaut.Module = function(name, requiredModules) {
-    this.init('module', name, requiredModules);
+/* Module definition, optional variable "requiredModules" */
+Argonaut.Module = function(name, priority, requiredModules) {
+    this.init('module', name, priority, requiredModules);
 }
 Argonaut.Module.prototype.constructor = Argonaut.Module;
 Argonaut.Module.prototype.destroy = function() {};
-Argonaut.Module.prototype.init = function(type, name, reqs) {
+Argonaut.Module.prototype.init = function(type, name, priority, reqs) {
+    if(typeof reqs === 'undefined') { reqs = []; }
+    if(typeof priority === "undefined") {
+        priority = Argonaut.Module.Types.RULESYSTEM;
+    }
     this.type = type;
     this.name = name;
     this.requiredModules = reqs;
-    this.status = 'unready';
+    this.priority = priority;
+    this.status = 'inactive';
 };
-Argonaut.Module.prototype.run = function() { this.status = "ready"; };
+Argonaut.Module.prototype.run = function() { this.status = 'active'; };
 Argonaut.Module.prototype.checkRequirements = function() {
     for(var i=0; i < this.requiredModules.length; ++i) {
         if(!core.modules[this.requiredModules[i]]) {
             return this.requiredModules[i];
         }
     }
+};
+
+/* Argonaut Priority Dictionary */
+Argonaut.Module.Types = {
+            CORE: 0
+  ,   CORE_ADDON: 10
+  ,   RULESYSTEM: 20
+  , SETTING_PACK: 40
+  ,   RULE_ADDON: 80
+  ,   THEME_PACK: 100
 };
 
 /* Loader definition */
@@ -179,9 +223,14 @@ Argonaut.Loader.prototype.init = function(type) {
     this.finish = function() {};
 }
 
-
 var argo = new Argonaut();
 var mods = argo.modules;
+var priority = Argonaut.Module.Types;
+
+/* Start Argonaut after scripts are finished loading */
+jQuery(function() { argo.start(); });
+
+/* Setup loader modal */
 argo.loader.progress = 1;
 argo.loader.update = function(message, progress) {
     /* Currently, counts arbitrarily as an example to see progress */

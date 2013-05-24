@@ -1,6 +1,6 @@
 /*! === Chat Component === */
 
-mods['chat'] = new Argonaut.Module('chat');
+mods['chat'] = new Argonaut.Module('chat', priority.CORE, 'gui');
 (function() { // Begin anonymous namespace
     var chat = mods['chat'];
     chat.run = util.extend(chat.run, function() {
