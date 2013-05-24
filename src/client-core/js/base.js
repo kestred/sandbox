@@ -26,6 +26,10 @@ util.extend = function(fn, extension, options) {
         };
     }
 };
+util.ucwords = function(str) {
+    /* http://kevin.vanzonneveld.net */
+    return (str + '').replace(/^([a-z\u00E0-\u00FC])|\s+([a-z\u00E0-\u00FC])/g, function ($1) { return $1.toUpperCase(); });
+}
 
 var Argonaut = function() { this.init('argonaut'); };
 Argonaut.prototype.constructor = Argonaut;
@@ -184,14 +188,14 @@ Argonaut.Player.prototype.setName = function(name) {
 Argonaut.Player.prototype.setStatus = function(status) {
     this.status = status;
 };
-Argonaut.Player.prototype.getShortName = function(name) {
+Argonaut.Player.prototype.getShortName = function() {
     if(this.name.substr(0, 6) == 'Player') {
         return 'P-' + this.id.substr(0, 4).toUpperCase();
     } else {
         return this.name.susbtr(0, 6);
     }
 };
-Argonaut.Player.prototype.getLongName = function(name) {
+Argonaut.Player.prototype.getLongName = function() {
     return this.name;
 };
 
