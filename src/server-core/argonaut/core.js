@@ -10,6 +10,7 @@ Core.prototype.init = function(type, io) {
     this.type = type;
     this.io = io;
     this.clients = {};
+    this.instanceId = util.randomKey(32);
     this.sockets = io.of('/core').on('connection', this.buildSocket);
 };
 Core.prototype.buildSocket = function(socket) {
@@ -69,7 +70,7 @@ Core.prototype.buildSocket = function(socket) {
         core.io.of('/core').emit('player-left', {id: publicId});
     });
 
-    socket.emit('ready');
+    socket.emit('ready', {instanceId: core.instanceId});
 };
 Core.prototype.stderr = function(message, client) {
     var socket = null;  // TODO: Default to gamemaster

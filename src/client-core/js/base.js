@@ -102,9 +102,25 @@ Argonaut.prototype.start = function() {
             delete argo.players[data.id];
         }
     });
-    socket.on('ready', function() { socket.authenticate(); });
+    socket.on('ready', function(data) {
+        if('sessionId' in argo) {
+            if(data.sessionId != argo.sessionId) {
+                argo.stderr('(start) Session has been disconnected\n'
+                          + '\t Please reload the page.');
+                argo.stop();
+                return;
+            }
+        } else {
+            argo.sessionId = data.sessionId;
+        }
+        socket.authenticate();
+    });
     this.sockets.core = socket;
 };
+Argonaut.prototype.stop = function() {
+    this.sockets.core.disconnect();
+    delete argo['sockets'];
+}
 Argonaut.prototype.loadModules = function() {
     if(status == 'loading' || status == 'ready') { return; }
     this.status = 'loading';

@@ -12,6 +12,7 @@ class Core:
         Core.instance = self
         self.app = app
         self.clients = {}
+        self.instanceId = util.randomKey(32);
         app.hookNamespace('/core', CoreNamespace)
 
     def validIdPair(self, data):
@@ -42,7 +43,8 @@ class Core:
 
 class CoreNamespace(BaseNamespace, BroadcastMixin):
     def recv_connect(self):
-        self.emit('ready')
+        core = Core.getInstance()
+        self.emit('ready', {'instanceId': core.instanceId})
 
     def on_authenticate(self, data):
         core = Core.getInstance()
@@ -70,7 +72,7 @@ class CoreNamespace(BaseNamespace, BroadcastMixin):
         # Distribute privateId
         secret = None
         if('privateId' in data
-           and util.validPrivateId(kwargs['privateId'])):
+           and util.validPrivateId(data['privateId'])):
             secret = data['privateId']
         else:
             secret = util.randomKey(32)

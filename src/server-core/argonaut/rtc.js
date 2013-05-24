@@ -8,8 +8,8 @@ Wrtc.prototype.init = function(type, io, core) {
     this.sockets = io.of('/rtc').on('connection', this.buildSocket);
 };
 Wrtc.prototype.buildSocket = function(socket) {
-    var webRTC = Wrtc.getInstance();
-    var core = webRTC.core;
+    var rtc = Wrtc.getInstance();
+    var core = rtc.core;
 
     socket.on('authenticate', function(data) {
         if(core.validIdPair(data)) {
@@ -20,7 +20,8 @@ Wrtc.prototype.buildSocket = function(socket) {
 
     /* on-rtc-syn event */
     socket.on('syn', function(data) {
-        if('targetId' in data && data.targetId in core.clients) {
+        if('client' in socket && 'targetId' in data
+           && data.targetId in core.clients) {
             var target = core.clients[data.targetId].sockets.rtc;
             target.emit('syn', {callerId: socket.client.publicId
                               , callerDesc: data.callerDesc});
@@ -29,7 +30,8 @@ Wrtc.prototype.buildSocket = function(socket) {
 
     /* on-rtc-ack event */
     socket.on('ack', function(data) {
-        if('targetId' in data && data.targetId in core.clients) {
+        if('client' in socket && 'targetId' in data
+           && data.targetId in core.clients) {
             var target = core.clients[data.targetId].sockets.rtc;
             target.emit('ack', {calleeId: socket.client.publicId
                               , calleeDesc: data.calleeDesc});
@@ -38,8 +40,10 @@ Wrtc.prototype.buildSocket = function(socket) {
 
     /* on-rtc-ice event */
     socket.on('ice', function(data) {
-        webRTC.sockets.emit('ice', {candidateId: socket.client.publicId
-                                  , candidate: data.candidate});
+        if('client' in socket) {
+            rtc.sockets.emit('ice', {candidateId: socket.client.publicId
+                                   , candidate: data.candidate});
+        }
     });
 }
 Wrtc.getInstance = function() {
