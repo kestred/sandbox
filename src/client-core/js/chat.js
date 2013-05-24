@@ -3,7 +3,7 @@
 mods['chat'] = new Argonaut.Module('chat');
 (function() { // Begin anonymous namespace
     var chat = mods['chat'];
-    chat.run = function() {
+    chat.run = util.extend(chat.run, function() {
         argo.loader.update('Connecting to Chat');
         var socket = io.connect(document.URL + 'chat');
         argo.sockets.chat = chat.socket = socket;
@@ -22,7 +22,7 @@ mods['chat'] = new Argonaut.Module('chat');
         socket.emit('authenticate', {publicId: argo.publicId
                                    , privateId: argo.privateId});
         return true;
-    };
+    }, {order: 'prepend'});
 
     chat.sendMessage = function(message) {
         chat.socket.send(message);

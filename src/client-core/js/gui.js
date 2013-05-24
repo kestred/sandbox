@@ -53,17 +53,21 @@ mods['gui'] = new Argonaut.Module('gui');
         alert.append(message);
         return alert;
     };
-    gui.create['videoContainer'] = function() {
+    gui.create['videoContainer'] = function(controls) {
         var container = jQuery('<div class="video-container"></div>');
-        container.append(
-            '<video autoplay></video>' +
-            '<div class="navbar navbar-inverse">' +
-            '<div class="navbar-inner">' +
-            '<ul class="nav pull-right"></ul>' +
-            '</div></div>');
-        container.videoElement = container.find('video');
-        container.videoControls = container.find('.navbar');
-        container.videoControls.setName = function(name) {
+        var video = jQuery('<video autoplay></video>');
+        container.append(video);
+        container.append(controls);
+        container.video = video;
+        container.videoControls = controls;
+        return container;
+    };
+    gui.create['playerInteractionControls'] = function() {
+        var controls = jQuery('<div class="navbar navbar-inverse">'
+                            + '<div class="navbar-inner">'
+                            + '<ul class="nav pull-right"></ul>'
+                            + '</div></div>');
+        controls.setName = function(name) {
             var brand = this.find('.brand');
             if(!!brand.length) { brand.html(name); }
             else {
@@ -73,7 +77,7 @@ mods['gui'] = new Argonaut.Module('gui');
             }
             return this; // function chaining
         };
-        container.videoControls.appendControl = function(element) {
+        controls.appendControl = function(element) {
             var ctrlList = this.find('ul');
             var ctrlItem = jQuery('<li></li>');
             ctrlItem.append(element);
@@ -81,7 +85,7 @@ mods['gui'] = new Argonaut.Module('gui');
             ctrlList.append(ctrlItem);
             return this; // function chaining
         };
-        return container;
+        return controls;
     };
     gui.create['playerStatusBar'] = function() {
         var bar = jQuery('<li></li>');
@@ -197,7 +201,7 @@ mods['gui'] = new Argonaut.Module('gui');
         modal.hide = function() { modal.modal('hide'); };
         return modal;
    }
-    gui.create['privateButton'] = function() {
+    gui.create['privateChatButton'] = function() {
         var icon = jQuery('<i></i>');
         var button = jQuery('<button></button)');
         icon.addClass('icon-comment').addClass('icon-white');
@@ -217,21 +221,31 @@ mods['gui'] = new Argonaut.Module('gui');
         /* Change argonaut.stderr to display errors on the gui */
         div['stderr'] = gui.create['alertQueue']();
         div['stderr'].addClass('stderr-queue');
-        argo.stderr = function(message) {
+        argo.stderr = util.extend(argo.stderr, function(message) {
             var html = '<strong>[stderr]</strong> ' + message;
             var alert = gui.create['errorAlert'](html);
             div['stderr'].enqueueAlert(alert);
-            console.log('[stderr] ' + message);
-        };
+        });
 
-        /* Called on a player object, shows gui player functions */
-        gui.addStatusUtilities = function(player) {
-            player.statusBar = gui.create['playerStatusBar']();
-            player.statusBar.name.html(player.name);
-            player.setName = util.extend(player.setName, function(name) {
+        /* Build Player Status Menu */
+        div['statusMenu'] = jQuery('<div class="status-menu"></div>');
+        div['statusList'] = jQuery('<div class="status-list"></div>');
+        div['statusList'].list = jQuery('<ol class="unstyled"></ol>');
+        div['statusList'].append(div['statusList'].list);
+        div['statusMenu'].append(div['statusList']);
+
+        /* Player function to add player-based GUI elements */
+        var proto = Argonaut.Player.prototype;
+        proto.setupGUI = function() {
+            this.controls = gui.create['playerInteractionControls']();
+            this.statusBar = gui.create['playerStatusBar']();
+            div['statusList'].list.append(this.statusBar);
+            mods['gui'].resizeAfter();
+            this.setName = util.extend(this.setName, function(name) {
                 this.statusBar.name.html(name);
             });
-            player.setStatus = util.extend(player.setStatus,
+            this.setName(this.getLongName());
+            this.setStatus = util.extend(this.setStatus,
                 function(status) {
                     this.statusBar.badge.clear();
                     this.statusBar.icon.clear();
@@ -249,12 +263,13 @@ mods['gui'] = new Argonaut.Module('gui');
                     }
                 }
             );
-            player.toggleConnected = function() {
+            this.setStatus(this.status);
+            this.toggleConnected = function() {
                 if(player.status != 'disconnected') {
                     this.setStatus('disconnected');
                 } else { this.setStatus('connected'); }
             };
-            player.toggleSpeaking = function() {
+            this.toggleSpeaking = function() {
                 if(this.status != 'speaking') {
                     if(this.status !=  'typing') {
                         this.previousStatus = this.status;
@@ -264,7 +279,7 @@ mods['gui'] = new Argonaut.Module('gui');
                     this.setStatus(this.previousStatus);
                 }
             };
-            player.toggleTyping = function() {
+            this.toggleTyping = function() {
                 if(this.status != 'typing') {
                     if(this.status !=  'speaking') {
                         this.previousStatus = this.status;
@@ -275,7 +290,7 @@ mods['gui'] = new Argonaut.Module('gui');
                     this.setStatus(this.previousStatus);
                 }
             };
-            player.toggleInitiative = function() {
+            this.toggleInitiative = function() {
                 if(this.previousStatus != 'active') {
                     if(this.status == 'connected') {
                         this.setStatus('active');
@@ -288,84 +303,79 @@ mods['gui'] = new Argonaut.Module('gui');
             };
         }
 
-        /* Add status utilities to default players */
-        var self = argo.localPlayer, gm = argo.gamemaster;
-        gui.addStatusUtilities(self);
-        self.setStatus(self.status);
-        self.statusBar.name.html('<em>' + self.name + '</em> (You)');
-        if(self.id != gm.id) {
-            gui.addStatusUtilities(gm);
-            gm.statusBar.name.html(gm.name + ' (GM)');
-            gm.setStatus(gm.status);
-        }
+        /* Expand Player constructor/destroy
+         *   - Intentionally doesn't effect Gamemaster & LocalPlayer
+         */
+        proto.init = util.extend(proto.init, proto.setupGUI);
+        proto.destroy = util.extend(proto.destroy, function() {
+            this.controls.remove();
+            this.statusBar.remove();
+            delete this['controls'];
+            delete this['statusBar'];
+        });
 
-        /* Build Player Status Menu */
-        div['statusMenu'] = jQuery('<div class="status-menu"></div>');
-        div['statusList'] = jQuery('<div class="status-list"></div>');
-        var list = jQuery('<ol class="unstyled"></ol>');
-        if(argo.localPlayer.id != argo.gamemaster.id) {
-            list.append(argo.gamemaster.statusBar);
+        /* Apply GUI to default players */
+        var self = argo.localPlayer, gm = argo.gamemaster;
+        if(self.id != gm.id) {
+            gm.getLongName = function() { return this.name + ' (GM)'; };
+            proto.setupGUI.apply(gm);
         }
-        list.append(argo.localPlayer.statusBar);
-        div['statusList'].list = list;
-        div['statusList'].append(list);
-        div['statusMenu'].append(div['statusList']);
+        self.getLongName = function() {
+            return '<em>' + this.name + '</em> (You)';
+        };
+        proto.setupGUI.apply(self);
+        jQuery.each(argo.players, function(id, player) {
+            proto.setupGUI.apply(player);
+        });
     };
-    gui.routines['webRTC'] = function() {
+    gui.routines['rtc'] = function() {
         var div = gui.elements;
 
         /* Local feedback, gamemaster video, and players video-group */
-        div['rtcFeedback'] = gui.create['videoContainer']();
+        var self = argo.localPlayer, gm = argo.gamemaster;
+        div['rtcFeedback'] = gui.create['videoContainer'](self.controls);
         div['rtcFeedback'].addClass('big').addClass('feedback');
-        div['rtcFeedback'].videoControls.hide();
-        argo.localPlayer.videoContainer = div['rtcFeedback'];
-        if(argo.localPlayer.id != argo.gamemaster.id) {
-            div['rtcGamemaster'] = gui.create['videoContainer']();
+        self.videoContainer = div['rtcFeedback'];
+        self.controls.hide();
+        if(self.id != gm.id) {
+            var gmCtrl = gm.controls;
+            div['rtcGamemaster'] = gui.create['videoContainer'](gmCtrl);
             div['rtcGamemaster'].addClass('big');
-            div['rtcGamemaster'].videoControls.setName('Gamemaster');
-            div['rtcGamemaster'].videoControls.appendControl(
-                                    gui.create['privateButton']());
-            argo.gamemaster.videoContainer = div['rtcGamemaster'];
+            gm.controls.setName('Gamemaster');
+            gm.videoContainer = div['rtcGamemaster'];
         }
         div['rtcPlayers'] = jQuery('<div class="video-group"></div>');
 
-        /* GUI manipulation functions required by the VideoService */
-        gui.getVideoById = function(playerId) {
-            if(playerId == argo.localPlayer.id) {
-                return div['rtcFeedback'].videoElement;
+        /* Update (Non-GM/LP) player init/destroy for video elements */
+        var proto = Argonaut.Player.prototype;
+        proto.setupVideo = function() {
+            var ctrls = this.controls;
+            this.videoContainer = gui.create['videoContainer'](ctrls);
+            div['rtcPlayers'].append(this.videoContainer);
+        }
+        proto.init = util.extend(proto.init, proto.setupVideo);
+        proto.destroy = util.extend(proto.destroy, function() {
+            if('videoContainer' in this) {
+                this.videoContainer.detach();
+                delete this['videoContainer'];
             }
-            if(playerId == argo.gamemaster.id) {
-                return div['rtcGamemaster'].videoElement;
-            }
-            if(playerId in argo.players) {
-                var player = argo.players[playerId];
-                if('videoContainer' in player) {
-                    return player.videoContainer.videoElment;
-                } else {
-                    var container = gui.create['videoContainer']();
-                    container.videoControls.appendControl(
-                                    gui.create['privateButton']());
-                    div['rtcPlayers'].append(container);
-                    player.videoContainer = container;
-                    return container.videoElement;
-                }
-            }
-            argo.stderr('(getVideoById) No player with given id.');
-            return jQuery('<video>');
-        };
-        gui.detachVideoById = function(playerId) {
-            if(playerId == argo.gamemaster.id) {
-                div['rtcGamemaster'].videoElement.attr('src', '');
-            } else if(playerId in argo.players) {
-                var player = argo.players[playerId];
-                if('videoContainer' in player) {
-                    player.videoContainer.remove();
-                    delete player['videoContainer'];
-                }
-            } else {
-                argo.stderr('(detachVideoById) No player with given id.');
-            }
-        };
+        });
+
+        /* Update video elements | destroy for existing players */
+        var self = argo.localPlayer, gm = argo.gamemaster;
+        self.videoContainer = div['rtcFeedback'];
+        self.destroy = util.extend(self.destroy, function() {
+            div['rtcFeedback'].video.attr('src', '');
+        });
+        if(self.id != gm.id) {
+            gm.videoContainer = div['rtcGamemaster'];
+            gm.destroy = util.extend(gm.destroy, function() {
+                div['rtcGamemaster'].video.attr('src', '');
+            });
+        }
+        jQuery.each(argo.players, function(id, player) {
+            proto.setupVideo.apply(player);
+        });
     };
     gui.routines['chat'] = function() {
         var div = gui.elements;
@@ -719,7 +729,7 @@ mods['gui'] = new Argonaut.Module('gui');
         }, time);
     }
 
-    gui.run = function() {
+    gui.run = util.extend(gui.run, function() {
         argo.loader.update('Preparing user interface');
 
         gui.elements['outer'] = jQuery('#layout');
@@ -744,7 +754,7 @@ mods['gui'] = new Argonaut.Module('gui');
                != jQuery(window).height()
                || gui.elements['outer'].width()
                != jQuery(window).width()) {
-                gui.resizeAfter(125)
+                gui.resizeAfter(500);
             }
         });
 
@@ -758,5 +768,5 @@ mods['gui'] = new Argonaut.Module('gui');
         } else {
             gui.arrange['playerContentView']();
         }
-    };
+    }, {order: 'prepend'});
 })(); // Close anonymous namespace

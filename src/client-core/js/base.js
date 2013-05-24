@@ -12,15 +12,24 @@ util.randomKey = function(length) {
     }
     return str.substr(0, length);
 }
-util.extend = function(fn, extension) {
-    return function() {
-        fn.apply(this, arguments);
-        extension.apply(this, arguments);
-    };
+util.extend = function(fn, extension, options) {
+    if(typeof options === 'undefined') { options = {}; }
+    if('order' in options && options.order == 'prepend') {
+        return function() {
+            extension.apply(this, arguments);
+            fn.apply(this, arguments);
+        };
+    } else {
+        return function() {
+            fn.apply(this, arguments);
+            extension.apply(this, arguments);
+        };
+    }
 };
 
 var Argonaut = function() { this.init('argonaut'); };
 Argonaut.prototype.constructor = Argonaut;
+Argonaut.prototype.destroy = function() {};
 Argonaut.prototype.init = function(type) {
     this.type = type;
     this.status = 'created';
@@ -37,9 +46,6 @@ Argonaut.prototype.init = function(type) {
     this.modules = {};
     this.sockets = {};
     this.gamemaster = new Argonaut.Player(null);
-    this.onconnect = function() {};
-    this.onplayerleft = function(id) {};
-    this.onplayerjoined = function(id) {};
 };
 Argonaut.prototype.addModule = function(name, module) {
     if(this.modules[name]) {
@@ -48,7 +54,7 @@ Argonaut.prototype.addModule = function(name, module) {
         this.modules[name] = module;
     }
 }
-Argonaut.prototype.connect = function() {
+Argonaut.prototype.connect = function(connectedCallback) {
     this.status = 'connecting';
     this.loader.update('Connecting to server', 4);
     var argo = this, socket = io.connect(document.URL + 'core');
@@ -76,13 +82,14 @@ Argonaut.prototype.connect = function() {
             argo.players[data.players[i]] = player;
         }
         argo.status = 'connected';
-        argo.onconnect();
+        argo.loadModules();
+        argo.loader.finish();
+        connectedCallback();
     });
     socket.on('player-joined', function(data) {
         if(!(data.id in argo.players)
            && data.id != argo.publicId) {
             argo.players[data.id] = new Argonaut.Player(data.id);
-            argo.onplayerjoined(data.id);
         }
     });
     socket.on('player-status', function(data) {
@@ -91,7 +98,10 @@ Argonaut.prototype.connect = function() {
         }
     });
     socket.on('player-left', function(data) {
-        argo.onplayerleft(data.id);
+        if(data.id in argo.players) {
+            argo.players[data.id].destroy();
+            delete argo.players[data.id];
+        }
     });
     socket.on('ready', function() { socket.authenticate(); });
     this.sockets.core = socket;
@@ -109,11 +119,12 @@ Argonaut.prototype.stderr = function(message) {
 /* Player class definition */
 Argonaut.Player = function(id) { this.init('player', id); };
 Argonaut.Player.prototype.constructor = Argonaut.Player;
+Argonaut.Player.prototype.destroy = function() {};
 Argonaut.Player.prototype.init = function(type, id) {
     this.type = type;
     this.status = 'connected';
     if(id == null) {
-        id = "null";
+        id = 'null';
         this.status = 'disconnected';
     }
     this.id = id;
@@ -125,19 +136,30 @@ Argonaut.Player.prototype.setName = function(name) {
 Argonaut.Player.prototype.setStatus = function(status) {
     this.status = status;
 };
+Argonaut.Player.prototype.getShortName = function(name) {
+    if(this.name.substr(0, 6) == 'Player') {
+        return 'P-' + id.substr(0, 4).toUpperCase();
+    } else {
+        return this.name.susbtr(0, 6);
+    }
+};
+Argonaut.Player.prototype.getLongName = function(name) {
+    return this.name;
+};
 
 /* Module definition, optional variables "core" and "requiredMods" */
-Argonaut.Module = function(name, core, requiredModules) {
-    this.init('module', name, core, requiredModules);
+Argonaut.Module = function(name, requiredModules) {
+    this.init('module', name, requiredModules);
 }
 Argonaut.Module.prototype.constructor = Argonaut.Module;
-Argonaut.Module.prototype.init = function(type, name, core, reqs) {
+Argonaut.Module.prototype.destroy = function() {};
+Argonaut.Module.prototype.init = function(type, name, reqs) {
     this.type = type;
-    this.core = core;
     this.name = name;
     this.requiredModules = reqs;
-    this.run = function() {};
+    this.status = 'unready';
 };
+Argonaut.Module.prototype.run = function() { this.status = "ready"; };
 Argonaut.Module.prototype.checkRequirements = function() {
     for(var i=0; i < this.requiredModules.length; ++i) {
         if(!core.modules[this.requiredModules[i]]) {
@@ -149,10 +171,12 @@ Argonaut.Module.prototype.checkRequirements = function() {
 /* Loader definition */
 Argonaut.Loader = function() { this.init('loader'); };
 Argonaut.Loader.prototype.constructor = Argonaut.Loader;
+Argonaut.Loader.prototype.destroy = function() {};
 Argonaut.Loader.prototype.init = function(type) {
     this.type = type;
     this.progress = 0;
     this.update = function(message, progress) {};
+    this.finish = function() {};
 }
 
 
@@ -167,4 +191,8 @@ argo.loader.update = function(message, progress) {
     jQuery('#loading-message').html(message + '...');
     jQuery('#loading-progress').width(this.progress + '%');
 };
-
+argo.loader.finish = function() {
+    jQuery('#loading-message').html('Loaded!');
+    jQuery('#loading-progress').width('100%');
+    jQuery('#loading-modal').modal('hide');
+};
