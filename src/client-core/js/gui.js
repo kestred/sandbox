@@ -124,7 +124,15 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         if('width' in options) { modal.width(options.width); }
         if('height' in options) { content.height(options.height); }
         if('top' in options) { modal.css('top', options.top + 'px'); }
-        if('left' in options) { modal.css('left', options.top + 'px'); }
+        else if('right' in options) {
+            var left = jQuery(window).width() - options.right;
+            modal.css('left', left + 'px');
+        }
+        if('left' in options) { modal.css('left', options.left + 'px'); }
+        else if('bottom' in options) {
+            var top = jQuery(window).height() - options.bottom;
+            modal.css('top', top + 'px');
+        }
         if(options.draggable !== false) {
             modal.draggable({handle: '.modal-header'
                            , stack: '.subwindow'
@@ -318,6 +326,12 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         var self = argo.localPlayer, gm = argo.gamemaster;
         if(self.id != gm.id) {
             gm.getLongName = function() { return this.name + ' (GM)'; };
+            var fnShortName = gm.getShortName;
+            gm.getShortName = function() {
+                var name = fnShortName.apply(this);
+                name = name.replace('P-', 'GM-');
+                return '<strong>' + name + '</strong>';
+            };
             proto.setupGUI.apply(gm);
         }
         self.getLongName = function() {
@@ -463,6 +477,54 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
             var height = fillHeight(div['chatPanel']);
             height -= div['chatInput'].outerHeight(true);
             div['chatHistory'].css('height', height + 'px');
+        });
+
+        /* Add Private Chat Controls */
+        var proto = Argonaut.Player.prototype;
+        proto.setupPrivateChat = function() {
+            var player = this;
+            var button = gui.create['privateChatButton']();
+            function createChatWindow(name) {
+                var windowLeft = div['chatPanel'].offset().left;
+                if(div['chatPanel'].parents('.east').length) {
+                    windowLeft -= 256; // Move to left of chat panel
+                } else { // Move to right of chat panel
+                    windowLeft += div['chatPanel'].width();
+                }
+                var privateChat = gui.create['subwindow'](
+                    {width: 256, height: 320, bottom: 0
+                   , left: windowLeft, title: name}
+                );
+                return privateChat;
+            };
+            button.click(function() {
+                button.button('toggle');
+                if('privateChat' in player) {
+                    var visible = jQuery.contains(
+                                              document.documentElement
+                                            , player.privateChat[0]);
+                    if(visible) {
+                        player.privateChat.detach();
+                    } else {
+                        player.privateChat.appendTo('body');
+                    }
+                } else {
+                    var name = player.getShortName();
+                    player.privateChat = createChatWindow(name);
+                    player.privateChat.find('.btn-danger').click(
+                        function() { button.button('toggle'); }
+                    );
+                    player.privateChat.show();
+                }
+            });
+            this.controls.appendControl(button);
+        };
+        proto.init = util.extend(proto.init, proto.setupPrivateChat);
+        if(argo.localPlayer.id != argo.gamemaster.id) {
+            proto.setupPrivateChat.apply(argo.gamemaster);
+        }
+        jQuery.each(argo.players, function(id, player) {
+            proto.setupPrivateChat.apply(player);
         });
     };
 
