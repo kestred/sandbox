@@ -1,7 +1,6 @@
 /* Basic container styling */
-.video-container { min-width:182px; }
+.video-container { min-width:182px; background:#000000; }
 .video-container.feedback {
-    background:#000000;
     border:1px solid #252525;
     box-sizing:border-box;
     -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
@@ -31,9 +30,23 @@
 /* Region-specific styling */
 .west  > .video-container.big,
 .east  > .video-container.big { width:100%; }
-.north > .video-group { overflow-y:hidden; height:100%; }
 .west  > .video-group { overflow-x:hidden; }
-.north > .video-group .video-container { width:14.2%; }
+.north > .video-group { overflow-y:hidden; height:100%;
+    border-bottom:1px solid #0a0a0a;
+    background-color:#1b1b1b;
+    background-repeat:repeat-x;
+    /* @alternate */ background-image:-moz-linear-gradient(top, #111111, #222222);
+    /* @alternate */ background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#111111), to(#222222));
+    /* @alternate */ background-image:-webkit-linear-gradient(top, #111111, #222222);
+    /* @alternate */ background-image:-o-linear-gradient(top, #111111, #222222);
+    background-image:linear-gradient(to bottom, #111111, #222222);
+    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+
+}
+.north > .video-group .video-container { height:100%; max-width:20%; }
+.north > .video-group video { height:85%; width:auto; }
 .west  > .video-group .video-container { width:50%; }
 
 #inner-east .video-container.big { max-height:50%; position:relative; }
@@ -69,10 +82,10 @@
     .video-container .navbar-inner {
         padding-left:12px;
         padding-right:6px;
-    }   
+    }
     .video-container .brand {
         margin-left:-12px;
         padding:10px 12px;
     }
-    
+
 }

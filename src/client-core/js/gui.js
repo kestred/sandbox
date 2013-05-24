@@ -60,6 +60,10 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         container.append(controls);
         container.video = video;
         container.videoControls = controls;
+        container.video.attachStream = function(stream) {
+            video.attr('src', URL.createObjectURL(stream));
+            gui.resizeAfter();
+        };
         return container;
     };
     gui.create['playerInteractionControls'] = function() {
@@ -380,11 +384,13 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         self.videoContainer = div['rtcFeedback'];
         self.destroy = util.extend(self.destroy, function() {
             div['rtcFeedback'].video.attr('src', '');
+            gui.resizeAfter();
         });
         if(self.id != gm.id) {
             gm.videoContainer = div['rtcGamemaster'];
             gm.destroy = util.extend(gm.destroy, function() {
                 div['rtcGamemaster'].video.attr('src', '');
+                gui.resizeAfter();
             });
         }
         jQuery.each(argo.players, function(id, player) {

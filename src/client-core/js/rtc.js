@@ -67,7 +67,7 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             function(stream) {
                 rtc.localStream = stream;
                 rtc.localVideo = argo.localPlayer.videoContainer.video;
-                rtc.localVideo.attr('src', URL.createObjectURL(stream));
+                rtc.localVideo.attachStream(stream);
                 rtc.localVideo[0].muted = true;
             },
             // TODO: Generate blank localStream on fail
@@ -103,7 +103,7 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
         };
         peer.onaddstream = function (event) {
             var video = rtc.getVideoById(peerId);
-            video.attr('src', URL.createObjectURL(event.stream));
+            video.attachStream(event.stream);
         };
 
         if(peerId in argo.players) {
@@ -133,7 +133,7 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
         };
         peer.onaddstream = function (event) {
             var video = rtc.getVideoById(peerId);
-            video.attr('src', URL.createObjectURL(event.stream));
+            video.attachStream(event.stream);
         };
 
         if(peerId in argo.players) {
