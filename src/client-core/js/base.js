@@ -167,7 +167,7 @@ Argonaut.Player.prototype.setStatus = function(status) {
 };
 Argonaut.Player.prototype.getShortName = function(name) {
     if(this.name.substr(0, 6) == 'Player') {
-        return 'P-' + id.substr(0, 4).toUpperCase();
+        return 'P-' + this.id.substr(0, 4).toUpperCase();
     } else {
         return this.name.susbtr(0, 6);
     }
