@@ -119,8 +119,10 @@ Argonaut.prototype.start = function() {
     this.sockets.core = socket;
 };
 Argonaut.prototype.stop = function() {
-    this.sockets.core.disconnect();
-    // TODO: Display "Stopped" dialog
+    for(var mod in this.sockets) {
+        try { this.sockets[mod].destroy(); } catch(err) {}
+    }
+    jQuery('#stop-modal').modal({backdrop: 'static', keyboard: 'false'});
 }
 Argonaut.prototype.loadModules = function() {
     if(status == 'loading' || status == 'ready') { return; }
