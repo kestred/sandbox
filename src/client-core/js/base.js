@@ -102,6 +102,7 @@ Argonaut.prototype.start = function() {
             delete argo.players[data.id];
         }
     });
+    socket.on('disconnect', function(data) { argo.stop(); });
     socket.on('ready', function(data) {
         if('sessionId' in argo) {
             if(data.sessionId != argo.sessionId) {
@@ -119,7 +120,7 @@ Argonaut.prototype.start = function() {
 };
 Argonaut.prototype.stop = function() {
     this.sockets.core.disconnect();
-    delete argo['sockets'];
+    // TODO: Display "Stopped" dialog
 }
 Argonaut.prototype.loadModules = function() {
     if(status == 'loading' || status == 'ready') { return; }
