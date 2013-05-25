@@ -23,6 +23,19 @@ class ChatNamespace(BaseNamespace, BroadcastMixin, RoomsMixin):
             self.socket.session['client'] = client
             self.join('main') # Join the main room
 
+    def on_pm(self, data):
+        core = Chat.getInstance().core
+        if('client' in self.socket.session
+           and 'targetId' in data
+           and 'message' in data
+           and data['targetId'] in core.clients
+           and 'chat' in core.clients[data['targetId']].sockets):
+            senderId = self.socket.session['client'].publicId
+            cleanMessage = cgi.escape(data['message'], True)
+            targetSocket = core.clients[data['targetId']].sockets['chat']
+            targetSocket.emit('pm', {'senderId': senderId
+                                   , 'message': cleanMessage})
+
     def recv_message(self, message):
         if 'client' in self.socket.session:
             core = Chat.getInstance().core

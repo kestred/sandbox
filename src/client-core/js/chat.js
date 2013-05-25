@@ -16,7 +16,20 @@ mods['chat'] = new Argonaut.Module('chat', priority.CORE, 'gui');
             } else if(data.playerId in argo.players) {
                 name = argo.players[data.playerId].name;
             }
-            chat.chatHistory.logMessage(data.message, name);
+            chat.mainChat.logMessage(data.message, name);
+        });
+        socket.on('pm', function(data) {
+            var player = argo.players[data.senderId];
+            var visible = jQuery.contains(document.documentElement
+                                        , player.chatWindow[0]);
+            if(!visible) {
+                player.chatWindow.find('.btn-danger').click(
+                    function() { button.button('toggle'); }
+                );
+                player.chatWindow.appendTo('body');
+                player.chatWindow.show();
+            }
+            player.chatWindow.chat.logMessage(data.message, player.name);
         });
 
         socket.emit('authenticate', {publicId: argo.publicId
@@ -26,5 +39,11 @@ mods['chat'] = new Argonaut.Module('chat', priority.CORE, 'gui');
 
     chat.sendMessage = function(message) {
         chat.socket.send(message);
+    };
+
+    chat.privateMessage = function(target, message) {
+        var name = argo.localPlayer.name;
+        target.chatWindow.chat.logMessage(message, name);
+        chat.socket.emit('pm', {targetId: target.id, message: message});
     };
 })(); // Close anonymous namespace

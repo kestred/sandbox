@@ -32,6 +32,18 @@ Chat.prototype.buildSocket = function(socket) {
                              , message: message});
         }
     });
+
+    socket.on('pm', function(data) {
+        if('client' in socket && 'targetId' in data
+           && data.targetId in core.clients
+           && 'chat' in core.clients[data.targetId].sockets) {
+            var senderId = socket.client.publicId;
+            var cleanMessage = util.htmlspecialchars(data.message);
+            core.clients[data.targetId].sockets['chat'].emit('pm',
+                                               {senderId: senderId
+                                              , message: cleanMessage});
+        }
+    });
 }
 Chat.getInstance = function() {
     return Chat.instance;

@@ -35,8 +35,6 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         alert.append(message);
         return alert;
     };
-
-    /* More HTML builders */
     gui.create['warningAlert'] = function() {
         var alert = jQuery('<div class="alert"></div>');
         var close = jQuery('<button type="button" class="close" '
@@ -122,27 +120,58 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         modal.header = header;
         modal.append(header);
         modal.append(content);
+        modal.spawnOffset = {};
+        if('top' in options) {
+            modal.spawnOffset.top = options.top;
+        } else if('bottom' in options) {
+            modal.spawnOffset.bottom = options.bottom;
+        }
+        if('left' in options) {
+            modal.spawnOffset.left = options.left;
+        } else if('right' in options) {
+            modal.spawnOffset.right = option.right;
+        }
         if('title' in options) {
             header.html('<h3>' + options.title + '</h3>');
         }
         if('width' in options) { modal.width(options.width); }
         if('height' in options) { content.height(options.height); }
-        if('top' in options) { modal.css('top', options.top + 'px'); }
-        else if('right' in options) {
-            var left = jQuery(window).width() - options.right;
-            modal.css('left', left + 'px');
-        }
-        if('left' in options) { modal.css('left', options.left + 'px'); }
-        else if('bottom' in options) {
-            var top = jQuery(window).height() - options.bottom;
-            modal.css('top', top + 'px');
-        }
         if(options.draggable !== false) {
             modal.draggable({handle: '.modal-header'
                            , stack: '.subwindow'
                            , snap: '.snap-target'
                            , snapMode: 'outer'
                            , containment: '#layout'});
+            modal.on('show', function(event) {
+                if(event.target == this) {
+                    function resolve(fn) {
+                        if(fn instanceof Function) { return fn(); }
+                        else { return fn; }
+                    }
+                    var pos = modal.spawnOffset;
+                    if('left' in pos) {
+                        modal.css('left', resolve(pos.left) + 'px');
+                    } else if('right' in pos) {
+                        var right = resolve(pos.right);
+                        var left = jQuery(window).width() - right;
+                        modal.css('left', left + 'px');
+                    }
+                    if('top' in pos) {
+                        modal.css('top', resolve(pos.top) + 'px');
+                    } else if('bottom' in pos) {
+                        var bottom = resolve(pos.bottom);
+                        var top = jQuery(window).height() - bottom;
+                        top -= modal.height();
+                        modal.css('top', top + 'px');
+                    }
+                    if('left' in options) {
+                        modal.css('left', options.left + 'px');
+                    } else if('right' in options) {
+                        var left = jQuery(window).width() - options.right;
+                        modal.css('left', left + 'px');
+                    }
+                }
+            });
             modal.on('shown', function(event) {
                 if(event.target == this) {
                     modal.css('-webkit-transition', 'all 0 ease 0');
@@ -183,9 +212,24 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
             } else {
                 content.addClass('collapse in');
                 content.collapse({'toggle': false});
-                content.on('shown', function() {
+                content.on('shown', function(event) {
                     if(event.target == this) {
-                        content.height(options.height);
+                        content.css('-webkit-transition', 'all 0 ease 0');
+                        content.css('-moz-transition', 'all 0 ease 0');
+                        content.css('-o-transition', 'all 0 ease 0');
+                        content.css('transition', 'all 0 ease 0');
+                        content.css('height', options.height);
+                    }
+                });
+                content.on('hide', function(event) {
+                    if(event.target == this) {
+                        content.css('-webkit-transition', '');
+                        content.css('-moz-transition', '');
+                        content.css('-o-transition', '');
+                        content.css('transition', '');
+                        if(content.attr('style') === '') {
+                            content.removeAttr('style');
+                        }
                     }
                 });
                 minimize.click(function() {
@@ -209,10 +253,73 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         modal.modal({backdrop: false
                    , keyboard: false
                    , show: false});
-        modal.show = function() { modal.modal('show'); };
-        modal.hide = function() { modal.modal('hide'); };
+        modal.show = function() { modal.modal('show'); return modal; };
+        modal.hide = function() { modal.modal('hide'); return modal; };
         return modal;
-   }
+    }
+    gui.create['chatSubwindow'] = function(options) {
+        options.width = 256; options.height = 320;
+        if(!('title' in options)) { options.title = 'Chat'; }
+        if(!('top' in options || 'bottom' in options)) {
+            options.bottom = 0;
+        }
+        if(!('left' in options || 'right' in options)) {
+            options.left = function() {
+                if('mainChat' in gui.elements) {
+                    var mainChat = gui.elements['mainChat'];
+                    var windowLeft = mainChat.offset().left;
+                    if(mainChat.parents('.east').length) {
+                        /* Place to left of main chat */
+                        return windowLeft - 256;
+                    } else {
+                        /* Place to right of main chat */
+                        return windowLeft + mainChat.width();
+                    }
+                }
+            }
+        }
+        var chatWindow = gui.create['subwindow'](options);
+        var chatPanel = gui.create['chatPanel']();
+        chatWindow.body.append(chatPanel);
+        chatWindow.chat = chatPanel;
+        chatWindow.addClass('subwindow-chat');
+        return chatWindow;
+    };
+    gui.create['chatPanel'] = function() {
+        var panel = jQuery('<div class="chat-panel"></div>');
+
+        var history = jQuery('<div class="chat-history"></div>');
+        panel.append(history);
+        panel.history = history;
+
+        var log = jQuery('<dl class="dl-horizontal"></div>');
+        history.append(log);
+        history.log = log;
+        panel.logMessage = function(message, name) {
+            var previous = log.find('dt').last();
+            var line = '<dd>' + message + '</dd>';
+            if(previous.html() != name) {
+                line = '<dt>' + name + '</dt>' + line;
+            }
+            log.append(line);
+            log.scrollTop(log.scrollHeight);
+        };
+
+        var form = jQuery('<form class="chat-input"></form>');
+        panel.append(form);
+        panel.form = form;
+
+        var input = jQuery('<input type="text" />');
+        form.append(input);
+        form.input = input;
+
+        var send = jQuery('<input type="button" class="btn"></input>');
+        form.append(send);
+        form.send = send;
+
+        send.val('Send');
+        return panel;
+    };
     gui.create['privateChatButton'] = function() {
         var icon = jQuery('<i></i>');
         var button = jQuery('<button></button)');
@@ -415,58 +522,44 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
     gui.routines['chat'] = function() {
         var div = gui.elements;
 
-        /* The main chat panel */
-        div['chatPanel'] = jQuery('<div class="chat-panel"></div>');
-
-        /* Chat History */
-        div['chatHistory'] = jQuery('<div class="chat-history"></div>');
-        var chatLog = jQuery('<dl class="dl-horizontal"></div');
-        div['chatHistory'].log = chatLog;
-        div['chatHistory'].append(chatLog);
-        div['chatHistory'].logMessage = function(message, name) {
-            var previous = div['chatHistory'].log.find('dt').last();
-            var log = '<dd>' + message + '</dd>';
-            if(previous.html() != name) {
-                log = '<dt>' + name + '</dt>' + log;
+        /* Setup Main Chat panel */
+        div['mainChat'] = gui.create['chatPanel']();
+        div['mainChat'].resize(function() {
+            var height = div['mainChat'].parent().innerHeight();
+            var sibs = div['mainChat'].siblings();
+            for(var i=0; i < sibs.length; ++i) {
+                height -= jQuery(sibs[i]).outerHeight(true);
             }
-            div['chatHistory'].log.append(log);
-            var scrollHeight = div['chatHistory'].log.scrollHeight;
-            div['chatHistory'].log.scrollTop(scrollHeight);
-        };
-        div['chatPanel'].append(div['chatHistory']);
-        mods['chat'].chatHistory = div['chatHistory'];
-
-        /* Chat Input */
-        div['chatInput'] = jQuery('<form class="chat-input"></form>');
-        function sendMessage() {
-            var message = input.val();
-            if(message.length > 0) {
-                input.val('');
-                if(argo.localPlayer.status == 'typing') {
-                    argo.localPlayer.toggleTyping();
-                }
-                mods['chat'].sendMessage(message);
-            }
-        }
-        var input = jQuery('<input type="text" />');
-        input.attr('placeholder', "Type message and hit 'enter'");
-        input.focus(function() {
+            div['mainChat'].height(height);
+            height -= div['mainChat'].form.outerHeight(true);
+            div['mainChat'].history.css('height', height + 'px');
+        });
+        div['mainChat'].form.input.attr('placeholder',
+                                        "Type message and hit 'enter'");
+        div['mainChat'].form.input.focus(function() {
             if(argo.localPlayer.status != 'typing'
-               && input.val().length > 0) {
+               && div['mainChat'].form.input.val().length > 0) {
                 argo.localPlayer.toggleTyping();
             }
         });
-        input.blur(function() {
+        div['mainChat'].form.input.blur(function() {
             if(argo.localPlayer.status == 'typing') {
                 argo.localPlayer.toggleTyping();
             }
         });
-        input.keydown(function(event) {
+        div['mainChat'].form.input.keydown(function(event) {
             var player = argo.localPlayer;
-            var length = input.val().length;
+            var length = div['mainChat'].form.input.val().length;
             if(event.keyCode === 13) {
-                sendMessage();
-                return false;
+                var message = div['mainChat'].form.input.val();
+                if(message.length > 0) {
+                    div['mainChat'].form.input.val('');
+                    if(argo.localPlayer.status == 'typing') {
+                        argo.localPlayer.toggleTyping();
+                    }
+                    mods['chat'].sendMessage(message);
+                }
+                return false; // Stops form submit
             } else if((event.keyCode === 8 || event.keyCode === 46)
                       && length === 1 && player.status == 'typing') {
                 player.toggleTyping();
@@ -477,68 +570,68 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                 player.toggleTyping();
             }
         });
-        var send = jQuery('<input type="button" class="btn"></input>');
-        send.val('Send');
-        send.click(function() { sendMessage(); });
-        div['chatInput'].append(input);
-        div['chatInput'].append(send);
-        div['chatPanel'].append(div['chatInput']);
-
-        /* Set ChatPanel on resize */
-        function fillHeight(element, height) {
-            height = element.parent().innerHeight();
-            var sibs = element.siblings();
-            jQuery.each(sibs, function(index, sib) {
-                height -= jQuery(sib).outerHeight(true);
-            });
-            element.height(height);
-            return height;
-        }
-        div['chatPanel'].resize(function() {
-            var height = fillHeight(div['chatPanel']);
-            height -= div['chatInput'].outerHeight(true);
-            div['chatHistory'].css('height', height + 'px');
+        div['mainChat'].form.send.click(function() {
+            var message = div['mainChat'].form.input.val();
+            if(message.length > 0) {
+                div['mainChat'].form.input.val('');
+                if(argo.localPlayer.status == 'typing') {
+                    argo.localPlayer.toggleTyping();
+                }
+                mods['chat'].sendMessage(message);
+            }
         });
+        mods['chat'].mainChat = div['mainChat'];
 
-        /* Add Private Chat Controls */
+        /* Add Private Chat */
         var proto = Argonaut.Player.prototype;
         proto.setupPrivateChat = function() {
             var player = this;
-            var button = gui.create['privateChatButton']();
-            function createChatWindow(name) {
-                var windowLeft = div['chatPanel'].offset().left;
-                if(div['chatPanel'].parents('.east').length) {
-                    windowLeft -= 256; // Move to left of chat panel
-                } else { // Move to right of chat panel
-                    windowLeft += div['chatPanel'].width();
+            player.chatWindow = gui.create['chatSubwindow'](
+                                        {title: player.getShortName()});
+            player.chatWindow.detach();
+            
+            player.chatWindow.find('.btn-danger').click(
+                function() {
+                    button.button('toggle');
+                    player.chatWindow.hide();
                 }
-                var privateChat = gui.create['subwindow'](
-                    {width: 256, height: 320, bottom: 0
-                   , left: windowLeft, title: name}
-                );
-                return privateChat;
-            };
-            button.click(function() {
+            );
+            player.chatWindow.toggle = function() {
                 button.button('toggle');
-                if('privateChat' in player) {
-                    var visible = jQuery.contains(
-                                              document.documentElement
-                                            , player.privateChat[0]);
-                    if(visible) {
-                        player.privateChat.detach();
-                    } else {
-                        player.privateChat.appendTo('body');
-                    }
+                var visible = jQuery.contains(document.documentElement
+                                            , player.chatWindow[0]);
+                if(visible) {
+                    player.chatWindow.hide();
+                    player.chatWindow.detach();
                 } else {
-                    var name = player.getShortName();
-                    player.privateChat = createChatWindow(name);
-                    player.privateChat.find('.btn-danger').click(
-                        function() { button.button('toggle'); }
-                    );
-                    player.privateChat.show();
+                    player.chatWindow.appendTo('body');
+                    player.chatWindow.show();
+                }
+            }
+            var chat = player.chatWindow.chat;
+            chat.form.input.attr('placeholder',
+                                 '/whisper ' + player.name);
+            chat.form.input.keydown(function(event) {
+                if(event.keyCode === 13) {
+                    var message = chat.form.input.val();
+                    if(message.length > 0) {
+                        chat.form.input.val('');
+                        mods['chat'].privateMessage(player.id, message);
+                    }
+                    return false; // Stops form submit
                 }
             });
-            this.controls.appendControl(button);
+            chat.form.send.click(function() {
+                var message = chat.form.input.val();
+                if(message.length > 0) {
+                    chat.form.input.val('');
+                    mods['chat'].privateMessage(player, message);
+                }
+            });
+
+            var button = gui.create['privateChatButton']();
+            button.click(player.chatWindow.toggle);
+            player.controls.appendControl(button);
         };
         proto.init = util.extend(proto.init, proto.setupPrivateChat);
         if(argo.localPlayer.id != argo.gamemaster.id) {
@@ -738,7 +831,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         gui.place('rtcFeedback', '#outer-west');
         gui.place('mainMenu', '#outer-west');
         gui.place('statusMenu', '#outer-west');
-        gui.place('chatPanel', '#outer-west');
+        gui.place('mainChat', '#outer-west');
 
         gui.elements['inner'].north.expand();
         gui.place('rtcPlayers', '#inner-north');
@@ -756,7 +849,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         gui.place('mainMenu', '#outer-west');
         gui.place('gmControls', '#outer-west');
         gui.place('statusMenu', '#outer-west');
-        gui.place('chatPanel', '#outer-west');
+        gui.place('mainChat', '#outer-west');
 
         gui.elements['inner'].north.expand();
         gui.place('rtcPlayers', '#inner-north');
@@ -773,7 +866,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         gui.elements['outer'].west.expand();
         gui.place('mainMenu', '#outer-west');
         gui.place('statusMenu', '#outer-west');
-        gui.place('chatPanel', '#outer-west');
+        gui.place('mainChat', '#outer-west');
 
         gui.place('rtcPlayers', '#inner-center');
 
@@ -790,7 +883,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         gui.elements['outer'].west.expand();
         gui.place('mainMenu', '#outer-west');
         gui.place('statusMenu', '#outer-west');
-        gui.place('chatPanel', '#outer-west');
+        gui.place('mainChat', '#outer-west');
 
         gui.place('rtcPlayers', '#inner-center');
 
