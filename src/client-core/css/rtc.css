@@ -45,7 +45,7 @@
             box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
 
 }
-.north > .video-group .video-container { height:100%; max-width:20%; }
+.north > .video-group .video-container { height:100%; }
 .north > .video-group video { height:85%; width:auto; }
 .west  > .video-group .video-container { width:50%; }
 
