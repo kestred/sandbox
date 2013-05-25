@@ -101,7 +101,16 @@ body.dark {
 }
 .subwindow .collapse:not(.in) { padding:0; } 
 .subwindow .modal-header { position:relative; padding:3px 10px; }
-.subwindow .modal-header h3 { font-weight:normal; font-size:20px; }
+.subwindow .modal-header h3 {
+    font-weight:normal; font-size:20px;
+    -webkit-touch-callout:none;
+    -webkit-user-select:none;
+    -khtml-user-select:none;
+    -moz-user-select:none;
+    -ms-user-select:none;
+    user-select:none;
+    cursor:default;
+}
 .subwindow .modal-header .btn-group {
     position:absolute; top:-2px; right:-1px; height:38px;
 }
