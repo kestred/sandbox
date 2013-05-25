@@ -266,9 +266,9 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
             div['statusList'].list.append(this.statusBar);
             mods['gui'].resizeAfter();
             this.setName = util.extend(this.setName, function(name) {
-                this.statusBar.name.html(name);
+                this.statusBar.name.html(this.getLongName());
             });
-            this.setName(this.getLongName());
+            this.setName(this.name);
             this.setStatus = util.extend(this.setStatus,
                 function(status) {
                     this.statusBar.badge.clear();
