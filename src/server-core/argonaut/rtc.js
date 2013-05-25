@@ -20,21 +20,37 @@ Wrtc.prototype.buildSocket = function(socket) {
 
     /* on-rtc-syn event */
     socket.on('syn', function(data) {
-        if('client' in socket && 'targetId' in data
-           && data.targetId in core.clients) {
-            var target = core.clients[data.targetId].sockets.rtc;
-            target.emit('syn', {callerId: socket.client.publicId
-                              , callerDesc: data.callerDesc});
+        if('client' in socket
+           && 'targetId' in data
+           && 'callerDesc' in data) {
+            if(data.targetId in core.clients
+               && 'rtc' in core.clients[data.targetId].sockets) {
+                var target = core.clients[data.targetId].sockets.rtc;
+                target.emit('syn', {callerId: socket.client.publicId
+                                  , callerDesc: data.callerDesc});
+            } else {
+                socket.emit('syn-failure', {reason: 'bad-target'});
+            }
+        } else {
+            socket.emit('syn-failure', {reason: 'bad-syn-packet'});
         }
     });
 
     /* on-rtc-ack event */
     socket.on('ack', function(data) {
-        if('client' in socket && 'targetId' in data
-           && data.targetId in core.clients) {
-            var target = core.clients[data.targetId].sockets.rtc;
-            target.emit('ack', {calleeId: socket.client.publicId
-                              , calleeDesc: data.calleeDesc});
+        if('client' in socket
+           && 'targetId' in data
+           && 'calleeDesc' in data) {
+            if(data.targetId in core.clients
+               && 'rtc' in core.clients[data.targetId].sockets) {
+                var target = core.clients[data.targetId].sockets.rtc;
+                target.emit('ack', {calleeId: socket.client.publicId
+                                  , calleeDesc: data.calleeDesc});
+            } else {
+                socket.emit('ack-failure', {reason: 'bad-target'});
+            }
+        } else {
+            socket.emit('ack-failure', {reason: 'bad-ack-packet'});
         }
     });
 
