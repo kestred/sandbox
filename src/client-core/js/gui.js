@@ -826,19 +826,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
     /* Utility functions for arranging GUI elements */
     gui.hide = function(elementName) {
         var e = gui.elements[elementName];
-        if(e) {
-            jQuery('hidden').append(e);
-
-            // Force paused video on hide()
-            if(e.hasClass('video-container')) {
-                e.find('video')[0].hide();
-            } else if(e.hasClass('video-group')) {
-                var videos = e.find('video');
-                for(var i=0; i<videos.length; ++i) {
-                    videos[i].hide();
-                }
-            }
-         }
+        if(e) { jQuery('hidden').append(e); }
     };
     gui.place = function(elementName, query) {
         var e = gui.elements[elementName];
@@ -871,24 +859,25 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
 
         gui.elements['outer'].west.expand();
         gui.place('rtcFeedback', '#outer-west');
-        gui.place('mainMenu', '#outer-west');
         gui.place('statusMenu', '#outer-west');
         gui.place('mainChat', '#outer-west');
 
         gui.elements['inner'].north.expand();
         gui.place('rtcPlayers', '#inner-north');
 
+        gui.elements['inner'].west.expand();
+        gui.place('mainMenu', '#inner-west');
+
         gui.place('rtcGamemaster', '#inner-center');
         gui.place('mainContent', '#inner-center');
 
-        // Hidden Content
         gui.hide('gmControls');
+        gui.resizeAfter();
     };
     gui.arrange['gamemasterContentView'] = function() {
         gui.arrange['hidden']();
 
         gui.elements['outer'].west.expand();
-        gui.place('mainMenu', '#outer-west');
         gui.place('gmControls', '#outer-west');
         gui.place('statusMenu', '#outer-west');
         gui.place('mainChat', '#outer-west');
@@ -896,11 +885,14 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         gui.elements['inner'].north.expand();
         gui.place('rtcPlayers', '#inner-north');
 
+        gui.elements['inner'].west.expand();
+        gui.place('mainMenu', '#inner-west');
+
         gui.place('rtcFeedback', '#inner-center');
         gui.place('mainContent', '#inner-center');
 
-        // Hidden Content
         gui.hide('rtcGamemaster');
+        gui.resizeAfter();
     };
     gui.arrange['playerConferenceView'] = function() {
         gui.arrange['hidden']();
@@ -916,8 +908,8 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         gui.place('rtcGamemaster', '#inner-east');
         gui.place('rtcFeedback', '#inner-east');
 
-        // Hidden Content
         gui.hide('gmControls');
+        gui.resizeAfter();
     };
     gui.arrange['gamemasterConferenceView'] = function() {
         gui.arrange['hidden']();
@@ -933,8 +925,8 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         gui.place('gmControls', '#outer-east');
         gui.place('rtcFeedback', '#outer-east');
 
-        // Hidden Content
         gui.hide('rtcGamemaster');
+        gui.resizeAfter();
     };
 
     gui.resizeAfter = function(time) {

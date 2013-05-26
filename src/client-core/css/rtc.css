@@ -58,7 +58,7 @@
 }
 #inner-center .video-group { height:100%; }
 #inner-center .video-group .video-container {
-    height:33.3%; width:auto; max-width:50%;
+    float:left; width:auto; max-width:50%;
 }
 
 /* Responsive Styling */
