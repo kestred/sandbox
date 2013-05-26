@@ -8,25 +8,6 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
 
     /* Dictionary of functions that build HTML structures */
     gui.create = {};
-    gui.create['alertQueue'] = function() {
-        var queue = jQuery('<ol class="alert-queue unstyled"></ol>');
-        queue.enqueueAlert = function(alert) {
-            var listAlert = jQuery('<li></li>');
-            listAlert.attr('id', alert.attr('id'));
-            listAlert.attr('class', alert.attr('class'));
-            listAlert.html(alert.html());
-            listAlert.prependTo(queue);
-            alert.remove();
-            return listAlert;
-        };
-        queue.dequeueAlert = function() {
-            queue.foals().last().remove();
-        };
-        queue.clearAlerts = function() {
-            queue.html('');
-        };
-        return queue;
-    };
     gui.create['errorAlert'] = function(message) {
         var alert = jQuery('<div class="alert alert-error"></div>');
         var close = jQuery('<button type="button" class="close" '
@@ -35,7 +16,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         alert.append(message);
         return alert;
     };
-    gui.create['warningAlert'] = function() {
+    gui.create['warningAlert'] = function(message) {
         var alert = jQuery('<div class="alert"></div>');
         var close = jQuery('<button type="button" class="close" '
                          + 'data-dismiss="alert">&times;</button>');
@@ -43,7 +24,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         alert.append(message);
         return alert;
     };
-    gui.create['successAlert'] = function() {
+    gui.create['successAlert'] = function(message) {
         var alert = jQuery('<div class="alert alert-success"></div>');
         var close = jQuery('<button type="button" class="close" '
                          + 'data-dismiss="alert">&times;</button>');
@@ -51,67 +32,86 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         alert.append(message);
         return alert;
     };
-    gui.create['videoContainer'] = function(controls) {
+    gui.create['chatButton'] = function(options) {
+        var button = jQuery('<button></button>');
+        var icon = jQuery('<i></i>');
+        icon.addClass('icon-white icon-comment');
+        button.addClass('btn btn-inverse').append(icon);
+        if('tooltip' in options) {
+            if(options.tooltip !== false) {
+                button.tooltip({placement: 'top', html: 'true'
+                              , title: options.tooltip});
+            }
+        } else { button.tooltip({placement: 'top', title: 'Chat'}); }
+        return button;
+    };
+    gui.create['swapButton'] = function(options) {
+        if(typeof options === 'undefined') { options = {}; }
+        var button = jQuery('<button></button>');
+        var icon = jQuery('<i></i>');
+        icon.addClass('icon-white icon-retweet');
+        button.addClass('btn btn-inverse').append(icon);
+        if('tooltip' in options) {
+            if(options.tooltip !== false) {
+                button.tooltip({placement: 'top', html: 'true'
+                              , title: options.tooltip});
+            }
+        } else { button.tooltip({placement: 'top', title: 'Swap'}); }
+        return button;
+    }
+    gui.create['chatWidget'] = function() {
+        var panel = jQuery('<div class="chat-panel"></div>');
+
+        var history = jQuery('<div class="chat-history"></div>');
+        panel.append(history);
+        panel.history = history;
+
+        var log = jQuery('<dl class="dl-horizontal"></div>');
+        history.append(log);
+        history.log = log;
+        panel.logMessage = function(message, name) {
+            var previous = log.find('dt').last();
+            var line = '<dd>' + message + '</dd>';
+            if(previous.html() != name) {
+                line = '<dt>' + name + '</dt>' + line;
+            }
+            log.append(line);
+            log.scrollTop(log.scrollHeight);
+            return panel;
+        };
+
+        var form = jQuery('<form class="chat-input"></form>');
+        panel.append(form);
+        panel.form = form;
+
+        var input = jQuery('<input type="text" />');
+        form.append(input);
+        form.input = input;
+
+        var send = jQuery('<input type="button" class="btn"></input>');
+        form.append(send);
+        form.send = send;
+
+        send.val('Send');
+        return panel;
+    };
+    gui.create['videoWidget'] = function(options) {
         var container = jQuery('<div class="video-container"></div>');
         var video = jQuery('<video autoplay></video>');
         container.append(video);
-        container.append(controls);
         container.video = video;
-        container.videoControls = controls;
         container.video.attachStream = function(stream) {
             video.attr('src', URL.createObjectURL(stream));
             gui.resizeAfter();
+            return video;
         };
+        if('controls' in options) {
+            container.append(options.controls);
+            container.videoControls = options.controls;
+        }
         return container;
     };
-    gui.create['playerInteractionControls'] = function() {
-        var controls = jQuery('<div class="navbar navbar-inverse">'
-                            + '<div class="navbar-inner">'
-                            + '<ul class="nav pull-right"></ul>'
-                            + '</div></div>');
-        controls.setName = function(name) {
-            var brand = this.find('.brand');
-            if(!!brand.length) { brand.html(name); }
-            else {
-                brand = jQuery('<span class="brand">'
-                               + name + '</span>');
-                this.find('.navbar-inner').prepend(brand);
-            }
-            return this; // function chaining
-        };
-        controls.appendControl = function(element) {
-            var ctrlList = this.find('ul');
-            var ctrlItem = jQuery('<li></li>');
-            ctrlItem.append(element);
-            ctrlList.append('<li class="divider-vertical"></li>');
-            ctrlList.append(ctrlItem);
-            return this; // function chaining
-        };
-        return controls;
-    };
-    gui.create['playerStatusBar'] = function() {
-        var bar = jQuery('<li></li>');
-        bar.name = jQuery('<span class="player-name"></span>');
-        bar.badge = jQuery('<span class="badge"></span>');
-        bar.icon = jQuery('<i class="icon-white icon-user"></i>');
-        bar.icon.clear = function() {
-            bar.icon.removeClass('icon-user'
-                           + ' icon-bullhorn'
-                           + ' icon-flag'
-                           + ' icon-warning-sign'
-                           + ' icon-pencil');
-        };
-        bar.badge.clear = function() {
-            bar.badge.removeClass('badge-success'
-                            + ' badge-info'
-                            + ' badge-warning');
-        };
-        bar.badge.append(bar.icon);
-        bar.append(bar.badge);
-        bar.append(bar.name);
-        return bar;
-    };
-    gui.create['subwindow'] = function(options) {
+    gui.create['windowWidget'] = function(options) {
         var modal = jQuery('<div class="modal hide fade"></div>');
         var header = jQuery('<div class="modal-header"></div>');
         var content = jQuery('<div class="modal-body"></div');
@@ -257,7 +257,24 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         modal.hide = function() { modal.modal('hide'); return modal; };
         return modal;
     }
-    gui.create['chatSubwindow'] = function(options) {
+    gui.create['queueWidget'] = function() {
+        var queue = jQuery('<ol class="queue unstyled"></ol>');
+        queue.enqueue = function(element) {
+            var listItem = jQuery('<li></li>');
+            listItem.prependTo(queue).append(element);
+            return queue;
+        };
+        queue.dequeue = function() {
+            queue.foals().last().remove();
+            return queue;
+        };
+        queue.clear = function() {
+            queue.html('');
+            return queue;
+        };
+        return queue;
+    };
+    gui.create['chatWindow'] = function(options) {
         options.width = 256; options.height = 320;
         if(!('title' in options)) { options.title = 'Chat'; }
         if(!('top' in options || 'bottom' in options)) {
@@ -277,59 +294,62 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                     }
                 }
             }
-        }
-        var chatWindow = gui.create['subwindow'](options);
-        var chatPanel = gui.create['chatPanel']();
-        chatWindow.body.append(chatPanel);
-        chatWindow.chat = chatPanel;
-        chatWindow.addClass('subwindow-chat');
-        return chatWindow;
+        } var chatWindow = gui.create['windowWidget'](options); var 
+        chatPanel = gui.create['chatWidget'](); chatWindow.body.append
+        (chatPanel); chatWindow.chat = chatPanel; chatWindow.addClass
+        ('subwindow-chat'); return chatWindow;
     };
-    gui.create['chatPanel'] = function() {
-        var panel = jQuery('<div class="chat-panel"></div>');
-
-        var history = jQuery('<div class="chat-history"></div>');
-        panel.append(history);
-        panel.history = history;
-
-        var log = jQuery('<dl class="dl-horizontal"></div>');
-        history.append(log);
-        history.log = log;
-        panel.logMessage = function(message, name) {
-            var previous = log.find('dt').last();
-            var line = '<dd>' + message + '</dd>';
-            if(previous.html() != name) {
-                line = '<dt>' + name + '</dt>' + line;
+    gui.create['playerActionBar'] = function() {
+        var controls = jQuery('<div class="navbar navbar-inverse">'
+                            + '<div class="navbar-inner">'
+                            + '<ul class="nav pull-right">'
+                            + '<li class="btn-group">'
+                            + '</li></ul></div></div>');
+        controls.setName = function(name) {
+            var brand = this.find('.brand');
+            if(!!brand.length) { brand.html(name); }
+            else {
+                brand = jQuery('<span class="brand">'
+                               + name + '</span>');
+                this.find('.navbar-inner').prepend(brand);
             }
-            log.append(line);
-            log.scrollTop(log.scrollHeight);
+            return controls; // function chaining
         };
-
-        var form = jQuery('<form class="chat-input"></form>');
-        panel.append(form);
-        panel.form = form;
-
-        var input = jQuery('<input type="text" />');
-        form.append(input);
-        form.input = input;
-
-        var send = jQuery('<input type="button" class="btn"></input>');
-        form.append(send);
-        form.send = send;
-
-        send.val('Send');
-        return panel;
+        controls.append = function(element) {
+            var ctrlGroup = this.find('.btn-group');
+            ctrlGroup.append(element);
+            return controls; // function chaining
+        };
+        controls.prepend = function(element) {
+            var ctrlGroup = this.find('.btn-group');
+            ctrlGroup.prepend(element);
+            return controls; // function chaining
+        };
+        return controls;
     };
-    gui.create['privateChatButton'] = function() {
-        var icon = jQuery('<i></i>');
-        var button = jQuery('<button></button)');
-        icon.addClass('icon-comment').addClass('icon-white');
-        button.addClass('btn').addClass('btn-inverse');
-        button.attr('data-toggle', 'tooltip');
-        button.attr('data-placement', 'top');
-        button.attr('data-original-title', 'Private Chat');
-        button.append(icon).tooltip();
-        return button;
+    gui.create['playerStatusBar'] = function() {
+        var bar = jQuery('<li></li>');
+        bar.name = jQuery('<span class="player-name"></span>');
+        bar.badge = jQuery('<span class="badge"></span>');
+        bar.icon = jQuery('<i class="icon-white icon-user"></i>');
+        bar.icon.clear = function() {
+            bar.icon.removeClass('icon-user'
+                           + ' icon-bullhorn'
+                           + ' icon-flag'
+                           + ' icon-warning-sign'
+                           + ' icon-pencil');
+            return bar.icon; // function chaining
+        };
+        bar.badge.clear = function() {
+            bar.badge.removeClass('badge-success'
+                            + ' badge-info'
+                            + ' badge-warning');
+            return bar.badge; // function chaining
+        };
+        bar.badge.append(bar.icon);
+        bar.append(bar.badge);
+        bar.append(bar.name);
+        return bar;
     };
 
     /* Dictionary of GUI setup functions (using Module names as keys) */
@@ -338,12 +358,12 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         var div = gui.elements;
 
         /* Change argonaut.stderr to display errors on the gui */
-        div['stderr'] = gui.create['alertQueue']();
+        div['stderr'] = gui.create['queueWidget']();
         div['stderr'].addClass('stderr-queue');
         argo.stderr = util.extend(argo.stderr, function(message) {
             var html = '<strong>[stderr]</strong> ' + message;
             var alert = gui.create['errorAlert'](html);
-            div['stderr'].enqueueAlert(alert);
+            div['stderr'].enqueue(alert);
         });
 
         /* Build Player Status Menu */
@@ -357,7 +377,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         var proto = Argonaut.Player.prototype;
         proto.setupGUI = function() {
             var player = this;
-            this.controls = gui.create['playerInteractionControls']();
+            this.controls = gui.create['playerActionBar']();
             this.statusBar = gui.create['playerStatusBar']();
             this.statusBar.icon.tooltip({
                 placement: function() {
@@ -473,24 +493,38 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
 
         /* Local feedback, gamemaster video, and players video-group */
         var self = argo.localPlayer, gm = argo.gamemaster;
-        div['rtcFeedback'] = gui.create['videoContainer'](self.controls);
+        div['rtcFeedback'] = gui.create['videoWidget'](
+                                             {controls: self.controls});
         div['rtcFeedback'].addClass('big').addClass('feedback');
         self.videoContainer = div['rtcFeedback'];
         self.controls.hide();
         if(self.id != gm.id) {
-            var gmCtrl = gm.controls;
-            div['rtcGamemaster'] = gui.create['videoContainer'](gmCtrl);
+            div['rtcGamemaster'] = gui.create['videoWidget'](
+                                               {controls: gm.controls});
             div['rtcGamemaster'].addClass('big');
             gm.controls.setName('Gamemaster');
             gm.videoContainer = div['rtcGamemaster'];
+            var gmVideoSwap = gui.create['swapButton'](
+                            {tooltip: 'Swap with<br />Video Feedback'});
+            gmVideoSwap.click(function() {
+                var placeholder = jQuery('<div></div>');
+                placeholder.insertBefore(div['rtcGamemaster']);
+                div['rtcGamemaster'].insertBefore(div['rtcFeedback']);
+                div['rtcFeedback'].insertAfter(placeholder);
+                div['rtcGamemaster'].video[0].play();
+                div['rtcFeedback'].video[0].play();
+                placeholder.remove();
+                gui.resizeAfter();
+            });
+            gm.controls.append(gmVideoSwap);
         }
         div['rtcPlayers'] = jQuery('<div class="video-group"></div>');
 
         /* Update (Non-GM/LP) player init/destroy for video elements */
         var proto = Argonaut.Player.prototype;
         proto.setupVideo = function() {
-            var ctrls = this.controls;
-            this.videoContainer = gui.create['videoContainer'](ctrls);
+            this.videoContainer = gui.create['videoWidget'](
+                                             {controls: this.controls});
             div['rtcPlayers'].append(this.videoContainer);
         }
         proto.init = util.extend(proto.init, proto.setupVideo);
@@ -523,7 +557,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         var div = gui.elements;
 
         /* Setup Main Chat panel */
-        div['mainChat'] = gui.create['chatPanel']();
+        div['mainChat'] = gui.create['chatWidget']();
         div['mainChat'].resize(function() {
             var height = div['mainChat'].parent().innerHeight();
             var sibs = div['mainChat'].siblings();
@@ -586,10 +620,10 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         var proto = Argonaut.Player.prototype;
         proto.setupPrivateChat = function() {
             var player = this;
-            player.chatWindow = gui.create['chatSubwindow'](
+            player.chatWindow = gui.create['chatWindow'](
                                         {title: player.getShortName()});
             player.chatWindow.detach();
-            
+
             player.chatWindow.find('.btn-danger').click(
                 function() {
                     button.button('toggle');
@@ -629,9 +663,10 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                 }
             });
 
-            var button = gui.create['privateChatButton']();
+            var button = gui.create['chatButton'](
+                                             {tooltip: 'Private Chat'});
             button.click(player.chatWindow.toggle);
-            player.controls.appendControl(button);
+            player.controls.append(button);
         };
         proto.init = util.extend(proto.init, proto.setupPrivateChat);
         if(argo.localPlayer.id != argo.gamemaster.id) {
