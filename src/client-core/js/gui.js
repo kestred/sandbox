@@ -37,6 +37,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         var icon = jQuery('<i></i>');
         icon.addClass('icon-white icon-comment');
         button.addClass('btn btn-inverse').append(icon);
+        button.icon = icon;
         if('tooltip' in options) {
             if(options.tooltip !== false) {
                 button.tooltip({placement: 'top', html: 'true'
@@ -51,12 +52,51 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         var icon = jQuery('<i></i>');
         icon.addClass('icon-white icon-retweet');
         button.addClass('btn btn-inverse').append(icon);
+        button.icon = icon;
         if('tooltip' in options) {
             if(options.tooltip !== false) {
                 button.tooltip({placement: 'top', html: 'true'
                               , title: options.tooltip});
             }
         } else { button.tooltip({placement: 'top', title: 'Swap'}); }
+        return button;
+    }
+    gui.create['shrinkButton'] = function(options) {
+        if(typeof options === 'undefined') { options = {}; }
+        var button = jQuery('<button></button>');
+        var icon = jQuery('<i></i>');
+        icon.addClass('icon-white icon-resize-small');
+        button.addClass('btn btn-inverse').append(icon);
+        button.icon = icon;
+        if('tooltip' in options) {
+            if(options.tooltip !== false) {
+                button.tooltip({placement: 'top', html: 'true'
+                              , title: options.tooltip});
+            }
+        } else { button.tooltip({placement: 'top', title: 'Minimize'}); }
+        if('target' in options) {
+            button.click(function() {
+                options.target.toggleClass('minimized');
+                icon.toggleClass('icon-resize-small');
+                icon.toggleClass('icon-resize-full');
+                button.tooltip(
+                    {title: function() {
+                         if(options.target.hasClass('minimized')) {
+                             return 'Maximize';
+                         } else {
+                             return 'Minimize';
+                         }
+                     }
+                   , placement: function() {
+                         if(options.target.offset().top > 40) {
+                             return 'top';
+                         } else { return 'bottom'; } 
+                     }
+                    });
+                gui.resizeAfter();
+            });
+        }
+
         return button;
     }
     gui.create['chatWidget'] = function() {
@@ -503,16 +543,16 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                                              {controls: self.controls});
         div['rtcFeedback'].addClass('big').addClass('feedback');
         self.videoContainer = div['rtcFeedback'];
-        self.controls.hide();
+        var hideFeedback = gui.create['shrinkButton'](
+                                          {target: div['rtcFeedback']});
+        self.controls.append(hideFeedback);
         if(self.id != gm.id) {
             div['rtcGamemaster'] = gui.create['videoWidget'](
                                                {controls: gm.controls});
             div['rtcGamemaster'].addClass('big');
             gm.controls.setName('Gamemaster');
             gm.videoContainer = div['rtcGamemaster'];
-            var gmVideoSwap = gui.create['swapButton'](
-                            {tooltip: 'Swap with<br />Video Feedback'});
-            gmVideoSwap.click(function() {
+            function swap() {
                 var placeholder = jQuery('<div></div>');
                 placeholder.insertBefore(div['rtcGamemaster']);
                 div['rtcGamemaster'].insertBefore(div['rtcFeedback']);
@@ -521,8 +561,15 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                 div['rtcFeedback'].video[0].play();
                 placeholder.remove();
                 gui.resizeAfter();
-            });
-            gm.controls.append(gmVideoSwap);
+            }
+            var gmVideoSwap = gui.create['swapButton'](
+                            {tooltip: 'Swap with<br />Video Feedback'});
+            gmVideoSwap.click(swap);
+            gm.controls.prepend(gmVideoSwap);
+            var selfVideoSwap = gui.create['swapButton'](
+                                   {tooltip: 'Swap with<br />GM Video'});
+            selfVideoSwap.click(swap);
+            self.controls.prepend(selfVideoSwap);
         }
         div['rtcPlayers'] = jQuery('<div class="video-group"></div>');
 
