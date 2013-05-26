@@ -16,10 +16,9 @@ navigator.getUserMedia = navigator.getUserMedia
 mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
 (function() { // Begin anonymous namespace
     var rtc = mods['rtc'];
-    rtc.peers = {};
-
-    rtc.run = util.extend(rtc.run, function() {
+    rtc.start = util.extend(rtc.start, function() {
         argo.loader.update('Starting video conferencing');
+        rtc.peers = {};
         rtc.requestLocalVideo();
         var socket = io.connect(document.URL + 'rtc');
 		argo.sockets.rtc = rtc.socket = socket;
@@ -60,6 +59,19 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
         });
         return true;
     }, {order: 'prepend'});
+    rtc.stop = util.extend(rtc.stop, function() {
+        var p = Argonaut.Player.prototype;
+        p.init = util.baseFn(p.init);
+        p.destroy = util.baseFn(p.init);
+        for(var id in rtc.peers) { rtc.peers[id].close(); }
+        rtc.peers = null;
+        if(rtc.socket.connected) { rtc.socket.disconnect(); }
+        rtc.socket = null;
+        rtc.localVideo.remove();
+        rtc.localVideo = null;
+        rtc.localStream = null;
+    }, {order: 'prepend'});
+
 
     /* Ask web-browser for Webcam access, load into 'video' element */
     rtc.requestLocalVideo = function() {

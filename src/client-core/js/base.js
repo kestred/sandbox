@@ -13,19 +13,30 @@ util.randomKey = function(length) {
     return str.substr(0, length);
 }
 util.extend = function(fn, extension, options) {
+    var extended;
     if(typeof options === 'undefined') { options = {}; }
     if('order' in options && options.order == 'prepend') {
-        return function() {
+        extended = function() {
             extension.apply(this, arguments);
             fn.apply(this, arguments);
         };
     } else {
-        return function() {
+        extended = function() {
             fn.apply(this, arguments);
             extension.apply(this, arguments);
         };
     }
+    if('baseFunction' in fn) {
+        extended.baseFunction = fn.baseFunction;
+    } else {
+        extended.baseFunction = fn;
+    }
+    return extended;
 };
+util.baseFn = function(fn) {
+    if('baseFunction' in fn) { return fn.baseFunction; }
+    else { return fn; }
+}
 util.ucwords = function(str) {
     /* http://kevin.vanzonneveld.net */
     return (str + '').replace(/^([a-z\u00E0-\u00FC])|\s+([a-z\u00E0-\u00FC])/g, function ($1) { return $1.toUpperCase(); });
@@ -33,7 +44,7 @@ util.ucwords = function(str) {
 
 var Argonaut = function() { this.init('argonaut'); };
 Argonaut.prototype.constructor = Argonaut;
-Argonaut.prototype.destroy = function() {};
+Argonaut.prototype.destroy = function() { this.stop(); };
 Argonaut.prototype.init = function(type) {
     this.type = type;
     this.status = 'created';
@@ -46,10 +57,10 @@ Argonaut.prototype.init = function(type) {
 			argo.sockets.core.emit('status', {status: status});
 		}
 	);
+    this.gamemaster = new Argonaut.Player(null);
     this.players = {};
     this.modules = {};
     this.sockets = {};
-    this.gamemaster = new Argonaut.Player(null);
 };
 Argonaut.prototype.addModule = function(name, module) {
     if(this.modules[name]) {
@@ -106,9 +117,11 @@ Argonaut.prototype.start = function() {
             delete argo.players[data.id];
         }
     });
-    socket.on('disconnect', function(data) { argo.stop(); });
+    socket.on('disconnect', function(data) { 
+        if(argo.status != 'stopping') { argo.stop(); }
+    });
     socket.on('ready', function(data) {
-        if('sessionId' in argo) {
+        if(argo.status == 'connecting' && 'sessionId' in argo) {
             if(data.sessionId != argo.sessionId) {
                 argo.stderr('(start) Session has been disconnected\n'
                           + '\t Please reload the page.');
@@ -123,11 +136,41 @@ Argonaut.prototype.start = function() {
     this.sockets.core = socket;
 };
 Argonaut.prototype.stop = function() {
-    for(var mod in this.sockets) {
-        try { this.sockets[mod].destroy(); } catch(err) {}
-    }
+    if(this.status == 'stopped' || this.status == 'stopping') { return; }
+    this.status == 'stopping';
     jQuery('#stop-modal').modal({backdrop: 'static', keyboard: 'false'});
-}
+    for(var name in this.modules) {
+        this.modules[name].destroy();
+    }
+    for(var name in this.sockets) {
+        if(this.sockets[name].connected) {
+            this.sockets[name].disconnect();
+        }
+    }
+    this.sockets = null;
+    for(var id in this.players) {
+        this.players[id].destroy();
+    }
+    this.players = null;
+    this.localPlayer.destroy();
+    this.localPlayer = null;
+    this.gamemaster.destroy();
+    this.gamemaster = null;
+    this.status = 'stopped';
+    /* Keep 'modules' and 'loader' for restart */
+};
+Argonaut.prototype.restart = function() {
+    if(this.status != 'stopped') { return; }
+    jQuery('#stop-modal').modal('hide');
+    var mods = this.modules, load = this.loader;
+    for(var name in mods) { mods[name].reset(); }
+    load.reset();
+    this.init();
+    this.modules = mods;
+    this.loader = load;
+    this.start();
+    this.sockets.core.authenticate();
+};
 Argonaut.prototype.loadModules = function() {
     if(status == 'loading' || status == 'ready') { return; }
     this.status = 'loading';
@@ -152,7 +195,7 @@ Argonaut.prototype.loadModules = function() {
                     }
                 }
             }
-            module.run();
+            module.start();
             if(module.status != 'active') {
                 argo.stderr('(argo.loadModules) Module \'' + module.name
                           + '\' may not have started properly.');
@@ -204,7 +247,7 @@ Argonaut.Module = function(name, priority, requiredModules) {
     this.init('module', name, priority, requiredModules);
 }
 Argonaut.Module.prototype.constructor = Argonaut.Module;
-Argonaut.Module.prototype.destroy = function() {};
+Argonaut.Module.prototype.destroy = function() { this.stop(); };
 Argonaut.Module.prototype.init = function(type, name, priority, reqs) {
     if(typeof reqs === 'undefined') { reqs = []; }
     if(typeof priority === "undefined") {
@@ -216,7 +259,15 @@ Argonaut.Module.prototype.init = function(type, name, priority, reqs) {
     this.priority = priority;
     this.status = 'inactive';
 };
-Argonaut.Module.prototype.run = function() { this.status = 'active'; };
+Argonaut.Module.prototype.start = function() {
+    this.status = 'active';
+};
+Argonaut.Module.prototype.stop = function() {
+    this.status = 'stopped';
+};
+Argonaut.Module.prototype.reset = function() {
+    if(this.status == 'stopped') { this.status = 'inactive'; }
+};
 Argonaut.Module.prototype.checkRequirements = function() {
     for(var i=0; i < this.requiredModules.length; ++i) {
         if(!core.modules[this.requiredModules[i]]) {
@@ -242,6 +293,7 @@ Argonaut.Loader.prototype.destroy = function() {};
 Argonaut.Loader.prototype.init = function(type) {
     this.type = type;
     this.progress = 0;
+    this.reset = function() {};
     this.update = function(message, progress) {};
     this.finish = function() {};
 }
@@ -255,6 +307,12 @@ jQuery(function() { argo.start(); });
 
 /* Setup loader modal */
 argo.loader.progress = 1;
+argo.loader.reset = function() {
+    this.progress = 1;
+    jQuery('#loading-modal').modal({backdrop: 'static', keyboard: 'false'});
+    jQuery('#loading-message').html('Reloading ...');
+    jQuery('#loading-progress').width('1%');
+};
 argo.loader.update = function(message, progress) {
     /* Currently, counts arbitrarily as an example to see progress */
     if(!progress) { progress = 10; }

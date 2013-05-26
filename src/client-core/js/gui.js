@@ -682,6 +682,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         this.init('layout');
     };
     gui.Layout.prototype.constructor = gui.Layout;
+    gui.Layout.prototype.destroy = function() {};
     gui.Layout.prototype.init = function(type) {
         this.type = type;
         this.applyTo = function(element, options) {};
@@ -940,7 +941,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         }, time);
     }
 
-    gui.run = util.extend(gui.run, function() {
+    gui.start = util.extend(gui.start, function() {
         argo.loader.update('Preparing user interface');
 
         gui.elements['outer'] = jQuery('#layout');
@@ -958,9 +959,9 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         jQuery(window).resize(function() {
             gui.elements['outer'].setBounds(jQuery(window).width(),
                                 jQuery(window).height());
-            jQuery.each(gui.elements, function(name, element) {
-                element.triggerHandler('resize');
-            });
+            for(var name in gui.elements) {
+                gui.elements[name].triggerHandler('resize');
+            }
             if(gui.elements['outer'].height()
                != jQuery(window).height()
                || gui.elements['outer'].width()
@@ -979,5 +980,20 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         } else {
             gui.arrange['playerContentView']();
         }
+    }, {order: 'prepend'});
+    gui.stop = util.extend(gui.stop, function() {
+        var p = Argonaut.Player.prototype;
+        p.init = util.baseFn(p.init);
+        p.destroy = util.baseFn(p.init);
+        argo.stderr = util.baseFn(argo.stderr);
+        jQuery(window).unbind('resize');
+        clearTimeout(gui.resizeTimeout);
+        gui.elements['outer'].setBounds(0,0);
+        gui.elements['outer'].triggerHandler('resize');
+        gui.elements['inner'].triggerHandler('resize');
+        delete gui.elements['outer']; delete gui.elements['inner'];
+        delete gui.elements['stderr']; // Keep stderr attached to DOM
+        for(var name in gui.elements) { gui.elements[name].remove(); }
+        gui.elements = {};
     }, {order: 'prepend'});
 })(); // Close anonymous namespace

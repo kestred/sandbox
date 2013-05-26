@@ -3,7 +3,7 @@
 mods['chat'] = new Argonaut.Module('chat', priority.CORE, 'gui');
 (function() { // Begin anonymous namespace
     var chat = mods['chat'];
-    chat.run = util.extend(chat.run, function() {
+    chat.start = util.extend(chat.start, function() {
         argo.loader.update('Connecting to Chat');
         var socket = io.connect(document.URL + 'chat');
         argo.sockets.chat = chat.socket = socket;
@@ -35,6 +35,13 @@ mods['chat'] = new Argonaut.Module('chat', priority.CORE, 'gui');
         socket.emit('authenticate', {publicId: argo.publicId
                                    , privateId: argo.privateId});
         return true;
+    }, {order: 'prepend'});
+    chat.stop = util.extend(chat.stop, function() {
+        var p = Argonaut.Player.prototype;
+        p.init = util.baseFn(p.init);
+        p.destroy = util.baseFn(p.init);
+        if(chat.socket.connected) { chat.socket.disconnect(); }
+        chat.socket = null;
     }, {order: 'prepend'});
 
     chat.sendMessage = function(message) {
