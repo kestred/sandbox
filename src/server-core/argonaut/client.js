@@ -11,6 +11,7 @@ Client.prototype.init = function(type, publicId, privateId) {
     this.publicId = publicId;
     this.privateId = privateId;
     this.sockets = {};
+    this.name = 'Player' + publicId.substr(0, 4).toUpperCase();
 };
 Client.prototype.authenticate = function(privateId) {
     if(!util.validPrivateId(privateId)) { return false; }

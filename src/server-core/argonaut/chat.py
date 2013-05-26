@@ -15,6 +15,10 @@ class Chat:
         return Chat.instance
 
 class ChatNamespace(BaseNamespace, BroadcastMixin, RoomsMixin):
+    def announcement(self, message):
+        self.emit('announcement', {'message': message})
+        self.emit_to_room('main', 'announcement', {'message': message})
+
     def on_authenticate(self, data):
         core = Chat.getInstance().core
         if(core.validIdPair(data)):
@@ -22,6 +26,7 @@ class ChatNamespace(BaseNamespace, BroadcastMixin, RoomsMixin):
             client.sockets['chat'] = self
             self.socket.session['client'] = client
             self.join('main') # Join the main room
+            self.announcement(client.name + ' has joined.');
 
     def on_pm(self, data):
         core = Chat.getInstance().core

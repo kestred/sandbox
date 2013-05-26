@@ -5,6 +5,7 @@ class Client:
         self.publicId = publicId
         self.privateId = privateId
         self.sockets = {}
+        self.name = 'Player' + publicId[0:4].upper()
 
     def authenticate(self, privateId):
         if not validPrivateId(privateId):

@@ -49,6 +49,11 @@
     padding-right:4px;
     font-size:12px;
 }
+.chat-announcement {
+    color:#666; line-height:16px;
+    font-size:12px; font-weight:bold;
+    margin-bottom:4px; padding:0 14px;
+}
 
 .chat-input input[type="text"] {
     position:absolute; font-size:12px;

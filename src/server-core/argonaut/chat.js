@@ -14,12 +14,12 @@ Chat.prototype.init = function(type, io, core) {
 Chat.prototype.buildSocket = function(socket) {
     var chat = Chat.getInstance();
     var core = chat.core;
-
     socket.on('authenticate', function(data) {
         if(core.validIdPair(data)) {
             core.clients[data.publicId].sockets['chat'] = socket;
             socket.client = core.clients[data.publicId];
             socket.join('main')
+            chat.announcement(socket.client.name + ' has joined.');
         }
     });
 
@@ -47,6 +47,9 @@ Chat.prototype.buildSocket = function(socket) {
 }
 Chat.getInstance = function() {
     return Chat.instance;
+};
+Chat.prototype.announcement = function(message) {
+    this.sockets.in('main').emit('announcement', {message: message});
 };
 
 /* Export chat */

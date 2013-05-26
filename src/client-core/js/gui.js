@@ -77,7 +77,13 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
             }
             log.append(line);
             log.scrollTop(log.scrollHeight);
-            return panel;
+            return panel; // Chaining
+        };
+        panel.announce = function(message) {
+            var block = '<p class="chat-announcement">';
+            block += message + '</p>';
+            log.append(block);
+            return panel; // Chaining
         };
 
         var form = jQuery('<form class="chat-input"></form>');

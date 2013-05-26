@@ -8,7 +8,7 @@ mods['chat'] = new Argonaut.Module('chat', priority.CORE, 'gui');
         var socket = io.connect(document.URL + 'chat');
         argo.sockets.chat = chat.socket = socket;
         socket.on('chat', function(data) {
-            var name = 'SYSTEM';
+            var name = 'UNKNOWN';
             if(data.playerId == argo.localPlayer.id) {
                 name = argo.localPlayer.name;
             } else if(data.playerId == argo.gamemaster.id) {
@@ -17,6 +17,9 @@ mods['chat'] = new Argonaut.Module('chat', priority.CORE, 'gui');
                 name = argo.players[data.playerId].name;
             }
             chat.mainChat.logMessage(data.message, name);
+        });
+        socket.on('announcement', function(data) {
+            chat.mainChat.announce(data.message);
         });
         socket.on('pm', function(data) {
             var player = argo.players[data.senderId];
