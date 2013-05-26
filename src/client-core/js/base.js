@@ -137,7 +137,7 @@ Argonaut.prototype.start = function() {
 };
 Argonaut.prototype.stop = function() {
     if(this.status == 'stopped' || this.status == 'stopping') { return; }
-    this.status == 'stopping';
+    this.status = 'stopping';
     jQuery('#stop-modal').modal({backdrop: 'static', keyboard: 'false'});
     for(var name in this.modules) {
         this.modules[name].destroy();
