@@ -44,6 +44,12 @@ Chat.prototype.buildSocket = function(socket) {
                                               , message: cleanMessage});
         }
     });
+
+    socket.on('disconnect', function() {
+        if('client' in socket) {
+            chat.announcement(socket.client.name + ' has left.');
+        }
+    });
 }
 Chat.getInstance = function() {
     return Chat.instance;

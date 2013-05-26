@@ -52,3 +52,8 @@ class ChatNamespace(BaseNamespace, BroadcastMixin, RoomsMixin):
             self.emit_to_room('main', 'chat', {'room': 'main'
                                              , 'playerId': playerId
                                              , 'message': cleanMessage})
+
+    def recv_disconnect(self):
+        if 'client' in self.socket.session:
+            client = self.socket.session['client']
+            self.announcement(client.name + ' has left.');
