@@ -27,8 +27,22 @@ body.dark {
 .stderr-queue {
     position:fixed; top:5%;
     left:0; width:100%;
-    text-align:center;
+    z-index:2000;
 }
+.stderr-queue li { text-align:center; }
+.stderr-queue .alert {
+    display:inline-block;
+    margin-bottom:8px;
+    max-width:80%;
+    min-width:256px;
+    text-align:left;
+}
+.stderr-queue li:nth-child(1) { opacity:0.9; }
+.stderr-queue li:nth-child(2) { opacity:0.75; }
+.stderr-queue li:nth-child(3) { opacity:0.6; }
+.stderr-queue li:nth-child(4) { opacity:0.45; }
+.stderr-queue li:nth-child(5) { opacity:0.30; }
+.stderr-queue li:nth-child(n+5) { opacity:0.0; }
 
 /* Built-in Elements */
 #loading-modal .progress { margin-bottom:0; }

@@ -11,12 +11,6 @@
        -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
             box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
 }
-.video-container.big .video {
-    -webkit-transition:height 0.35s ease;
-       -moz-transition:height 0.35s ease;
-         -o-transition:height 0.35s ease;
-            transition:height 0.35s ease;
-}
 .video-container.big .navbar {
     position:absolute; left:0; bottom:0; right:0;
 }

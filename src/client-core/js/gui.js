@@ -79,6 +79,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                 options.target.toggleClass('minimized');
                 icon.toggleClass('icon-resize-small');
                 icon.toggleClass('icon-resize-full');
+                button.tooltip('destroy');
                 button.tooltip(
                     {title: function() {
                          if(options.target.hasClass('minimized')) {
@@ -405,7 +406,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
 
         /* Change argonaut.stderr to display errors on the gui */
         div['stderr'] = gui.create['queueWidget']();
-        div['stderr'].addClass('stderr-queue');
+        div['stderr'].addClass('stderr-queue').appendTo('body');
         argo.stderr = util.extend(argo.stderr, function(message) {
             var html = '<strong>[stderr]</strong> ' + message;
             var alert = gui.create['errorAlert'](html);
