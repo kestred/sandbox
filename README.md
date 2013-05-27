@@ -8,6 +8,11 @@ Argonaut is being developed as a no-download application (no plugins, no exe/jar
 Initial development will be focused on the core architecture and the PDQ# system, follow by the Shadowrun system.
 The core architecture is intended to be Game-System and Setting neutral, and instead be highly extensible to support any specific ruleset and setting.
 
+##### See current and planned features on the [wiki](https://github.com/kestred/argonaut-tabletop/wiki)
+* [Core Features (Implemented)](https://github.com/kestred/argonaut-tabletop/wiki/Core-Features-(Implemented\))
+* [Core Features (Planned)](https://github.com/kestred/argonaut-tabletop/wiki/Core-Features-(Planned\))
+
+
 ## Installing the Environment
 
 Argonaut uses a WSGI (python) or Nodejs (javascript) environment, and has a number of required packages.
