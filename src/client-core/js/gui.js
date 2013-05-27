@@ -413,8 +413,31 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
             div['stderr'].enqueue(alert);
         });
 
-        /* Major menus */
+        /* Main Menu */
         div['mainMenu'] = jQuery('<div class="main-menu"></div>');
+        var arrangeSelect = jQuery('<select></select>');
+        for(var title in gui.arrange) {
+            if(title !== 'hidden'
+               && (title.indexOf('gamemaster') < 0
+                   || argo.localPlayer.id == argo.gamemaster.id)
+               && (title.indexOf('player') < 0
+                   || argo.localPlayer.id != argo.gamemaster.id)) {
+                var option = jQuery('<option></option>');
+                var optionName = title.split(/(?=[A-Z])/).join(' ');
+                option.html(util.ucwords(optionName));
+                option.val(title);
+                arrangeSelect.append(option);
+            }
+        }
+        arrangeSelect.appendTo(div['mainMenu']);
+        arrangeLabel = jQuery('<label>Interface Options</label>');
+        arrangeLabel.insertBefore(arrangeSelect);
+        arrangeSelect.change(function() {
+            gui.arrange[arrangeSelect.val()]();
+        });
+
+
+        /* GM Menu */
         if(argo.localPlayer.id == argo.gamemaster.id) {
             div['gmMenu'] = jQuery('<div class="gm-menu"></div>');
         }
