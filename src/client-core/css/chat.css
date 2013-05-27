@@ -1,35 +1,11 @@
 /* Chat Styling */
-.chat-input, .chat-history {
-    color:#999999;
-    padding:12px 24px;
-    border:1px solid #252525;
-    border-top:0;
-    background-color:#1b1b1b;
-    background-repeat:repeat-x;
-    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
-       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
-            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
-}
+.chat-input, .chat-history { padding:12px 24px; }
 .chat-input {
     width:100%; height:54px;
     position:relative;
-    margin:0;
-    box-sizing:border-box;
-    /* @alternate */ background-image:-moz-linear-gradient(top, #222222, #111111);
-    /* @alternate */ background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#222222), to(#111111));
-    /* @alternate */ background-image:-webkit-linear-gradient(top, #222222, #111111);
-    /* @alternate */ background-image:-o-linear-gradient(top, #222222, #111111);
-    background-image:linear-gradient(to bottom, #222222, #111111);
+    margin:0; box-sizing:border-box;
 }
-.chat-history {
-    position:relative;
-    box-sizing:border-box;
-    /* @alternate */ background-image:-moz-linear-gradient(top, #111111, #222222);
-    /* @alternate */ background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#111111), to(#222222));
-    /* @alternate */ background-image:-webkit-linear-gradient(top, #111111, #222222);
-    /* @alternate */ background-image:-o-linear-gradient(top, #111111, #222222);
-    background-image:linear-gradient(to bottom, #111111, #222222);
-}
+.chat-history { position:relative; box-sizing:border-box; }
 
 .chat-history dl {
     position:absolute;
@@ -37,10 +13,7 @@
     left:24px; right:20px;
     width:auto; height:auto;
     margin:0; padding:12px 0;
-    border-left:2px ridge #666;
-    border-right:2px groove #666;
     box-sizing:border-box;
-    background:rgba(255,255,255,0.025);
     overflow:hidden;
 }
 .chat-history dt { width:80px; font-size:12px; }
@@ -50,7 +23,7 @@
     font-size:12px;
 }
 .chat-announcement {
-    color:#666; line-height:16px;
+    line-height:16px;
     font-size:12px; font-weight:bold;
     margin-bottom:4px; padding:0 14px;
 }
