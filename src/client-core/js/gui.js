@@ -413,6 +413,12 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
             div['stderr'].enqueue(alert);
         });
 
+        /* Major menus */
+        div['mainMenu'] = jQuery('<div class="main-menu"></div>');
+        if(argo.localPlayer.id == argo.gamemaster.id) {
+            div['gmMenu'] = jQuery('<div class="gm-menu"></div>');
+        }
+
         /* Build Player Status Menu */
         div['statusMenu'] = jQuery('<div class="status-menu"></div>');
         div['statusList'] = jQuery('<div class="status-list"></div>');
@@ -926,7 +932,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         gui.arrange['hidden']();
 
         gui.elements['outer'].west.expand();
-        gui.place('gmControls', '#outer-west');
+        gui.place('gmMenu', '#outer-west');
         gui.place('statusMenu', '#outer-west');
         gui.place('mainChat', '#outer-west');
 

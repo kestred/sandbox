@@ -67,20 +67,31 @@ body.dark {
 }
 
 /* Base Elements Styling */
-.status-list, .subwindow .modal-header {
+.main-menu,
+.status-list,
+.subwindow .modal-header {
     color:#999999;
     padding:12px 24px;
     border:1px solid #252525;
     background-color:#1b1b1b;
+    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+}
+.status-list,
+.subwindow .modal-header {
     background-repeat:repeat-x;
     /* @alternate */ background-image:-moz-linear-gradient(top, #222222, #111111);
     /* @alternate */ background-image:-webkit-gradient(linear, 0 0, 0 100%, from(#222222), to(#111111));
     /* @alternate */ background-image:-webkit-linear-gradient(top, #222222, #111111);
     /* @alternate */ background-image:-o-linear-gradient(top, #222222, #111111);
     background-image:linear-gradient(to bottom, #222222, #111111);
-    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
-       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
-            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+}
+.west .main-menu, .east .main-menu { width:100%; }
+.north .main-menu { height:100%; }
+#inner-west .main-menu,
+#inner-east .main-menu {
+    height:100%;
 }
 .status-list ol {
     display:inline-block;
