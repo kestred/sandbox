@@ -91,7 +91,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                    , placement: function() {
                          if(options.target.offset().top > 40) {
                              return 'top';
-                         } else { return 'bottom'; } 
+                         } else { return 'bottom'; }
                      }
                     });
                 gui.resizeAfter();
@@ -341,7 +341,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                     }
                 }
             }
-        } var chatWindow = gui.create['windowWidget'](options); var 
+        } var chatWindow = gui.create['windowWidget'](options); var
         chatPanel = gui.create['chatWidget'](); chatWindow.body.append
         (chatPanel); chatWindow.chat = chatPanel; chatWindow.addClass
         ('subwindow-chat'); return chatWindow;
@@ -430,11 +430,24 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
             }
         }
         arrangeSelect.appendTo(div['mainMenu']);
-        arrangeLabel = jQuery('<label>Interface Options</label>');
+        var arrangeLabel = jQuery('<label>Interface Modes</label>');
         arrangeLabel.insertBefore(arrangeSelect);
         arrangeSelect.change(function() {
             gui.arrange[arrangeSelect.val()]();
         });
+        var themeSelect = jQuery('<select></select>');
+        var optionDark = jQuery('<option value="dark"></option>');
+        optionDark.html('Classic Dark').appendTo(themeSelect);
+        var optionNone = jQuery('<option value="unstyled"></option>');
+        optionNone.html('Unstyled').appendTo(themeSelect);
+        themeSelect.appendTo(div['mainMenu']);
+        var themeLabel = jQuery('<label>Interface Themes</label>');
+        themeLabel.insertBefore(themeSelect);
+        themeSelect.change(function() {
+            jQuery('body').attr('class', '');
+            jQuery('body').addClass(themeSelect.val());
+        });
+
 
 
         /* GM Menu */
@@ -590,7 +603,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                 div['rtcGamemaster'].video[0].play();
                 div['rtcFeedback'].video[0].play();
                 placeholder.remove();
-                gui.resizeAfter();
+                gui.resizeAfter(0);
             }
             var gmVideoSwap = gui.create['swapButton'](
                             {tooltip: 'Swap with<br />Video Feedback'});
@@ -992,13 +1005,13 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         gui.arrange['hidden']();
 
         gui.elements['outer'].west.expand();
-        gui.place('mainMenu', '#outer-west');
         gui.place('statusMenu', '#outer-west');
         gui.place('mainChat', '#outer-west');
 
         gui.place('rtcPlayers', '#inner-center');
 
         gui.elements['outer'].east.expand();
+        gui.place('mainMenu', '#outer-east');
         gui.place('gmControls', '#outer-east');
         gui.place('rtcFeedback', '#outer-east');
 
