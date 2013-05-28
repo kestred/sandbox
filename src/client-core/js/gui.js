@@ -32,45 +32,28 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         alert.append(message);
         return alert;
     };
-    gui.create['shrinkButton'] = function(options) {
+    gui.create['buttonWidget'] = function(options) {
         if(typeof options === 'undefined') { options = {}; }
-        var button = jQuery('<button></button>');
-        var icon = jQuery('<i></i>');
-        icon.addClass('icon-white icon-resize-small');
-        button.addClass('btn btn-inverse').append(icon);
-        button.icon = icon;
-        if('tooltip' in options) {
-            if(options.tooltip !== false) {
-                button.tooltip({placement: 'top', html: 'true'
-                              , title: options.tooltip});
-            }
-        } else { button.tooltip({placement: 'top', title: 'Minimize'}); }
-        if('target' in options) {
-            button.click(function() {
-                options.target.toggleClass('minimized');
-                icon.toggleClass('icon-resize-small');
-                icon.toggleClass('icon-resize-full');
-                button.tooltip('destroy');
-                button.tooltip(
-                    {title: function() {
-                         if(options.target.hasClass('minimized')) {
-                             return 'Maximize';
-                         } else {
-                             return 'Minimize';
-                         }
-                     }
-                   , placement: function() {
-                         if(options.target.offset().top > 40) {
-                             return 'top';
-                         } else { return 'bottom'; }
-                     }
-                    });
-                gui.resizeAfter();
-            });
+        var button = jQuery('<button class="btn"></button>');
+        if('type' in options) { button.addClass('btn-' + options.type); }
+        if('title' in options) { button.html(options.title); }
+        if('icon' in options) { 
+            var icon = jQuery('<i></i>');
+            icon.addClass('icon-white icon-' + options.icon);
+            button.prepend(icon).icon = icon;
         }
-
+        if('tooltip' in options) {
+            button.tooltip(
+                {title: options.tooltip
+               , html: true
+               , placement: function() {
+                     if(button.offset().top <= 40) {
+                         return 'bottom';
+                     } else { return 'top'; }
+                 }});
+        }
         return button;
-    }
+    };
     gui.create['windowWidget'] = function(options) {
         var modal = jQuery('<div class="modal hide fade"></div>');
         var header = jQuery('<div class="modal-header"></div>');
@@ -234,33 +217,96 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         };
         return queue;
     };
+    gui.create['splitDropdownButton'] = function(options) {
+        var dropdownGroup = jQuery('<div class="btn-group"></div>');
+        var caretOptions = {};
+        caretOptions.title = '<span class="caret"></span>';
+        if('button' in options) {
+            dropdownGroup.append(options.button);
+            dropdownGroup.primary = options.button;
+            var types = options.button[0].className.match(/btn-[^\s]+/);
+            if(types) { caretOptions.type = types[0].substr(4); }
+        } else {
+            var primaryOptions = {};
+            if('title' in options) { buttonOptions.title = title; }
+            if('icon' in options) { buttonOptions.icon = icon; }
+            if('type' in options) { buttonOptions.type = type; }
+            var primaryButton = gui.create['buttonWidget'](primaryOptions);
+            dropdownGroup.append(primaryButton);
+            dropdownGroup.primary = primaryButton;
+        }
+        if('type' in options) { caretOptions.type = type; }
+        var caretButton = gui.create['buttonWidget'](caretOptions);
+        caretButton.addClass('dropdown-toggle');
+        caretButton.attr('data-toggle', 'dropdown');
+        var dropdownMenu = jQuery('<ul class="dropdown-menu"></ul>');
+        dropdownMenu.append = function(element) {
+            var listItem = jQuery('<li></li>');
+            listItem.append(element).appendTo(dropdownMenu);
+            return dropdownMenu;
+        }
+        dropdownMenu.prepend = function(element) {
+            var listItem = jQuery('<li></li>');
+            listItem.append(element).prependTo(dropdownMenu);
+            return dropdownMenu;
+        }
+        dropdownGroup.append(caretButton);
+        dropdownGroup.caret = caretButton;
+        dropdownGroup.append(dropdownMenu);
+        dropdownGroup.menu = dropdownMenu;
+        return dropdownGroup;
+    };
+    gui.create['minimizeButton'] = function(options) {
+        if(typeof options === 'undefined') { options = {}; }
+        if('target' in options) {
+            options.tooltip = function() {
+                 if(options.target.hasClass('minimized')) {
+                     return 'Maximize';
+                 } else {
+                     return 'Minimize';
+                 }
+            };
+        } else {
+            options.tooltip = 'Minimize';
+        }
+        options.icon = 'resize-small';
+        var button = gui.create['buttonWidget'](options);
+        if('target' in options) {
+            button.click(function() {
+                options.target.toggleClass('minimized');
+                button.icon.toggleClass('icon-resize-small');
+                button.icon.toggleClass('icon-resize-full');
+                gui.resizeAfter();
+            });
+        }
+        return button;
+    };
     gui.create['playerActionBar'] = function() {
-        var controls = jQuery('<div class="navbar navbar-inverse">'
-                            + '<div class="navbar-inner">'
-                            + '<ul class="nav pull-right">'
-                            + '<li class="btn-group">'
-                            + '</li></ul></div></div>');
-        controls.setName = function(name) {
-            var brand = this.find('.brand');
-            if(!!brand.length) { brand.html(name); }
+        var bar = jQuery('<div class="action-bar"></div>');
+        var controls = jQuery('<ul class="actions"></ul>');
+        bar.setName = function(name) {
+            var title = this.find('.title');
+            if(!!title.length) { title.html(name); }
             else {
-                brand = jQuery('<span class="brand">'
+                title = jQuery('<span class="title">'
                                + name + '</span>');
-                this.find('.navbar-inner').prepend(brand);
+                title.prependTo(bar);
             }
-            return controls; // function chaining
+            return bar; // function chaining
         };
-        controls.append = function(element) {
-            var ctrlGroup = this.find('.btn-group');
-            ctrlGroup.append(element);
-            return controls; // function chaining
+        bar.append(controls);
+        bar.list = controls;
+        bar.append = function(element) {
+            var listItem = jQuery('<li></li>');
+            listItem.append(element).appendTo(controls);
+            return bar; // function chaining
         };
-        controls.prepend = function(element) {
-            var ctrlGroup = this.find('.btn-group');
-            ctrlGroup.prepend(element);
-            return controls; // function chaining
+        bar.prepend = function(element) {
+            var listItem = jQuery('<li></li>');
+            listItem.append(element).prependTo(controls);
+            return bar; // function chaining
         };
-        return controls;
+        return bar;
     };
     gui.create['playerStatusBar'] = function() {
         var bar = jQuery('<li></li>');
@@ -303,6 +349,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
 
         /* Main Menu */
         div['mainMenu'] = jQuery('<div class="main-menu"></div>');
+        div['mainMenu'].addClass('pane');
         var arrangeSelect = jQuery('<select></select>');
         for(var title in gui.arrange) {
             if(title !== 'hidden'
@@ -346,10 +393,10 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
 
         /* Build Player Status Menu */
         div['statusMenu'] = jQuery('<div class="status-menu"></div>');
-        div['statusList'] = jQuery('<div class="status-list"></div>');
-        div['statusList'].list = jQuery('<ol class="unstyled"></ol>');
-        div['statusList'].append(div['statusList'].list);
-        div['statusMenu'].append(div['statusList']);
+        div['statusMenu'].list = jQuery('<ol class="unstyled"></ol>');
+        div['statusMenu'].append(div['statusMenu'].list);
+        div['statusMenu'].addClass('pane');
+        div['statusMenu'].list.addClass('well');
 
         /* Player function to add player-based GUI elements */
         var proto = Argonaut.Player.prototype;
@@ -368,7 +415,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                     return util.ucwords(player.status);
                 }
             });
-            div['statusList'].list.append(this.statusBar);
+            div['statusMenu'].list.append(this.statusBar);
             mods['gui'].resizeAfter();
             this.setName = util.extend(this.setName, function(name) {
                 this.statusBar.name.html(this.getLongName());
@@ -444,6 +491,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
             this.statusBar.remove();
             delete this['controls'];
             delete this['statusBar'];
+            gui.resizeAfter(125);
         });
 
         /* Apply GUI to default players */
@@ -670,7 +718,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                           , west: {size: '20%', minPx: 220}
                           , east: {size: '20%'}};
         var innerOptions = {north: {size: '20%', minPx: 182}
-                          , west: {size: '16%'}
+                          , west: {size: '16%', minPx: 176}
                           , east: {size: '40%'}};
         gui.layouts['page'].applyTo(gui.elements['outer'], outerOptions);
         gui.layouts['page'].applyTo(gui.elements['inner'], innerOptions);

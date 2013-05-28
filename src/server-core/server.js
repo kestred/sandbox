@@ -38,6 +38,7 @@ app.get('/', function (req, res) {
 app.use('/js', Express.static(__dirname + '/js'));
 app.use('/css', Express.static(__dirname + '/css'));
 app.use('/img', Express.static(__dirname + '/img'));
+app.use('/font', Express.static(__dirname + '/font'));
 app.use('/vendor', Express.static(__dirname + '/vendor'));
 
 /* Setup argonaut */

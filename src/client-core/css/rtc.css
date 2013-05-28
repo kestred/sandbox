@@ -1,20 +1,27 @@
 /* Basic container styling */
 .video-container { min-width:182px; background:#000000; }
-.video-container video { width:100%; display:block; }
-.video-container .navbar { margin-bottom:0; }
-.video-container .navbar-inner { border-radius:0; padding-right:6px; }
+.video-container video {
+    display:block; width:100%;
+    max-width:100%; max-height:100%;
+}
+.video-container .action-bar { border-radius:0; padding-right:6px; }
 .video-container.feedback {
     position:relative;
     box-sizing:border-box;
 }
-.video-container.big .navbar {
+.video-container.big .caret {
+    border-top-color:#ffffff;
+    border-bottom-color:#ffffff;
+}
+.video-container.big .action-bar {
     position:absolute; left:0; bottom:0; right:0;
 }
-.video-container.big:not(.minimized) .navbar-inner {
+.video-container.big .action-bar i.danger { color:#a50000; }
+.video-container.big:not(.minimized) .action-bar {
     color:#ffffff; background:transparent; border:0;
 }
-.video-container.big:not(.minimized) .navbar-inner:hover {
-    background:rgba(0,0,0,0.3);
+.video-container.big:not(.minimized) .action-bar:hover {
+    background:rgba(0,0,0,0.5);
 }
 .video-container.big:not(.minimized) .btn {
     background:transparent; box-shadow:none; border-color:transparent;
@@ -25,11 +32,11 @@
 /* Video-group styling */
 .video-group { width:100%; overflow:auto; white-space:nowrap; }
 .video-group .video-container { display:inline-block; }
-.video-group .video-container .navbar-inner {
+.video-group .video-container .action-bar {
     min-height:24px;
     padding-left:6px;
 }
-.video-group .video-container .brand {
+.video-group .video-container .title {
     font-size:18px;
     margin-left:-6px;
     padding:2px 6px;
@@ -63,14 +70,9 @@
 @media (max-width: 1199px) {
     /* Normal screens */
     .video-container.minimized { height:24px; }
-    .video-container .navbar-inner {
+    .video-container .action-bar {
         min-height:24px;
         padding-left:6px;
-    }
-    .video-container .brand {
-        font-size:18px;
-        margin-left:-6px;
-        padding:2px 6px;
     }
     .video-container .divider-vertical { height:24px; }
     .video-container .btn { padding:0 6px; margin-top:0; }
@@ -79,12 +81,8 @@
 }
 @media (min-width: 1200px) {
     /* HD Screens */
-    .video-container .navbar-inner {
+    .video-container .action-bar {
         padding-left:12px;
         padding-right:6px;
-    }
-    .video-container .brand {
-        margin-left:-12px;
-        padding:10px 12px;
     }
 }

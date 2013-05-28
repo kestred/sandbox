@@ -1,21 +1,6 @@
 /*! === WebRTC GUI Components === */
 (function() { // Begin anonymous namespace
     var gui = mods['gui'];
-    gui.create['swapButton'] = function(options) {
-        if(typeof options === 'undefined') { options = {}; }
-        var button = jQuery('<button></button>');
-        var icon = jQuery('<i></i>');
-        icon.addClass('icon-white icon-retweet');
-        button.addClass('btn btn-inverse').append(icon);
-        button.icon = icon;
-        if('tooltip' in options) {
-            if(options.tooltip !== false) {
-                button.tooltip({placement: 'top', html: 'true'
-                              , title: options.tooltip});
-            }
-        } else { button.tooltip({placement: 'top', title: 'Swap'}); }
-        return button;
-    }
     gui.create['videoWidget'] = function(options) {
         var container = jQuery('<div class="video-container"></div>');
         var video = jQuery('<video autoplay></video>');
@@ -33,6 +18,7 @@
         return container;
     };
     gui.routines['rtc'] = function() {
+        var rtc = mods['rtc'];
         var div = gui.elements;
 
         /* Local feedback, gamemaster video, and players video-group */
@@ -41,7 +27,7 @@
                                              {controls: self.controls});
         div['rtcFeedback'].addClass('big').addClass('feedback');
         self.videoContainer = div['rtcFeedback'];
-        var hideFeedback = gui.create['shrinkButton'](
+        var hideFeedback = gui.create['minimizeButton'](
                                           {target: div['rtcFeedback']});
         self.controls.append(hideFeedback);
         if(self.id != gm.id) {
@@ -60,16 +46,19 @@
                 placeholder.remove();
                 gui.resizeAfter(0);
             }
-            var gmVideoSwap = gui.create['swapButton'](
-                            {tooltip: 'Swap with<br />Video Feedback'});
+            var gmVideoSwap = gui.create['buttonWidget'](
+                            {icon: 'retweet'
+                           , tooltip: 'Swap with<br />Video Feedback'});
             gmVideoSwap.click(swap);
             gm.controls.prepend(gmVideoSwap);
-            var selfVideoSwap = gui.create['swapButton'](
-                                   {tooltip: 'Swap with<br />GM Video'});
+            var selfVideoSwap = gui.create['buttonWidget'](
+                                  {icon: 'retweet'
+                                 , tooltip: 'Swap with<br />GM Video'});
             selfVideoSwap.click(swap);
             self.controls.prepend(selfVideoSwap);
         }
         div['rtcPlayers'] = jQuery('<div class="video-group"></div>');
+        div['rtcPlayers'].addClass('pane');
 
         /* Update (Non-GM/LP) player init/destroy for video elements */
         var proto = Argonaut.Player.prototype;
@@ -103,6 +92,52 @@
         jQuery.each(argo.players, function(id, player) {
             proto.setupVideo.apply(player);
         });
+
+        /* Video-Connection Control */
+        var eyeButton = gui.create['buttonWidget']({icon: 'eye-open'});
+        var eyeMenu = gui.create['splitDropdownButton']({
+                                                     button: eyeButton});
+        eyeButton.click(function() {
+            rtc.requestLocalVideo(
+                {'video':false, 'audio':true}
+              , function() {
+                    for(var id in argo.players) {
+                        rtc.connectToPeer(id);
+                    }
+                });
+        });
+        var eyeControl = eyeButton.clone(true);
+        eyeMenu.primary.addClass('btn-mini');
+        eyeMenu.caret.addClass('btn-mini');
+        eyeButton.append(' Hide');
+        var softEye = jQuery('<a href="">Soft Hide</a>');
+        var hardEye = jQuery('<a href="">Hard Hide</a>');
+        eyeMenu.menu.append(softEye).append(hardEye);
+        eyeMenu.appendTo(div['mainMenu']);
+        argo.localPlayer.controls.prepend(eyeControl);
+
+        /* Audio-Connection Control */
+        var muteButton = gui.create['buttonWidget']({icon: 'microphone'});
+        var muteMenu = gui.create['splitDropdownButton']({
+                                                     button: muteButton});
+        muteButton.click(function() {
+            rtc.requestLocalVideo(
+                {'video':true, 'audio':false}
+              , function() {
+                    for(var id in argo.players) {
+                        rtc.connectToPeer(id);
+                    }
+                });
+        });
+        var muteControl = muteButton.clone(true);
+        muteMenu.primary.addClass('btn-mini');
+        muteMenu.caret.addClass('btn-mini');
+        muteButton.append(' Mute');
+        var softMute = jQuery('<a href="">Soft Mute</a>');
+        var hardMute = jQuery('<a href="">Hard Mute</a>');
+        muteMenu.menu.append(softMute).append(hardMute);
+        muteMenu.appendTo(div['mainMenu']);
+        argo.localPlayer.controls.prepend(muteControl);
     };
 
     var div = gui.elements;

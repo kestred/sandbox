@@ -74,13 +74,18 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
 
 
     /* Ask web-browser for Webcam access, load into 'video' element */
-    rtc.requestLocalVideo = function() {
-        navigator.getUserMedia({'audio': true, 'video': true},
+    rtc.requestLocalVideo = function(constraints, callback) {
+        if(typeof constraints === 'undefined') {
+            constraints = {'video': true, 'audio': true};
+        }
+        navigator.getUserMedia(constraints,
             function(stream) {
+                if('localStream' in rtc) { rtc.localStream.stop(); }
                 rtc.localStream = stream;
                 rtc.localVideo = argo.localPlayer.videoContainer.video;
                 rtc.localVideo.attachStream(stream);
                 rtc.localVideo[0].muted = true;
+                if(typeof callback !== 'undefined') { callback(); }
             },
             // TODO: Generate blank localStream on fail
             function() { argo.stderr('(requestLocalVideo)'

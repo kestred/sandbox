@@ -1,28 +1,14 @@
 /*! === Chat GUI Components === */
 (function() { // Begin anonymous namespace
-    var gui = mods['gui']
-    gui.create['chatButton'] = function(options) {
-        var button = jQuery('<button></button>');
-        var icon = jQuery('<i></i>');
-        icon.addClass('icon-white icon-comment');
-        button.addClass('btn btn-inverse').append(icon);
-        button.icon = icon;
-        if('tooltip' in options) {
-            if(options.tooltip !== false) {
-                button.tooltip({placement: 'top', html: 'true'
-                              , title: options.tooltip});
-            }
-        } else { button.tooltip({placement: 'top', title: 'Chat'}); }
-        return button;
-    };
+    var gui = mods['gui'];
     gui.create['chatWidget'] = function() {
-        var panel = jQuery('<div class="chat-panel"></div>');
+        var panel = jQuery('<div class="chat-panel pane"></div>');
 
         var history = jQuery('<div class="chat-history"></div>');
         panel.append(history);
         panel.history = history;
 
-        var log = jQuery('<dl class="dl-horizontal"></div>');
+        var log = jQuery('<dl class="dl-horizontal well"></div>');
         history.append(log);
         history.log = log;
         panel.logMessage = function(message, name) {
@@ -196,8 +182,9 @@
                 }
             });
 
-            var button = gui.create['chatButton'](
-                                             {tooltip: 'Private Chat'});
+            var button = gui.create['buttonWidget'](
+                                             {icon: 'comment'
+                                            , tooltip: 'Private Chat'});
             button.click(player.chatWindow.toggle);
             player.controls.append(button);
         };
