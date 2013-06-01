@@ -137,7 +137,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         }
         if(options.controls !== false) {
             var controlGroup = jQuery('<div class="btn-group"></div>');
-            var minimize = jQuery('<button class="btn btn-inverse">');
+            var minimize = jQuery('<button class="btn">');
             var miniIcon = jQuery('<i class="icon-chevron-up">');
             var closeBtn = jQuery('<button class="btn btn-danger">');
             var closeIcon = jQuery('<i class="icon-remove">');
@@ -718,7 +718,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
                           , west: {size: '20%', minPx: 220}
                           , east: {size: '20%'}};
         var innerOptions = {north: {size: '20%', minPx: 182}
-                          , west: {size: '16%', minPx: 176}
+                          , west: {size: '16%', minPx: 178}
                           , east: {size: '40%'}};
         gui.layouts['page'].applyTo(gui.elements['outer'], outerOptions);
         gui.layouts['page'].applyTo(gui.elements['inner'], innerOptions);

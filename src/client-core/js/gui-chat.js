@@ -28,7 +28,7 @@
             return panel; // Chaining
         };
 
-        var form = jQuery('<form class="chat-input"></form>');
+        var form = jQuery('<div class="chat-input"></div>');
         panel.append(form);
         panel.form = form;
 
@@ -112,6 +112,7 @@
                     }
                     chat.sendMessage(message);
                 }
+                event.preventDefault();
                 return false; // Stops form submit
             } else if((event.keyCode === 8 || event.keyCode === 46)
                       && length === 1 && player.status == 'typing') {
@@ -171,6 +172,7 @@
                         chatBox.form.input.val('');
                         chat.privateMessage(player.id, message);
                     }
+                    event.preventDefault();
                     return false; // Stops form submit
                 }
             });

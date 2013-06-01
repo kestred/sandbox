@@ -31,6 +31,13 @@ body.dark .subwindow {
     background:#e9e9e9;
     border-color:#252525;
 }
+body.dark .subwindow .modal-header {
+    color:#ffffff; text-shadow:none;
+    background-color:#5c5c5c;
+    background-image:linear-gradient(to bottom,#666666,#4d4d4d);
+    border-color:rgba(0,0,0,0.1) rgba(0,0,0,0.1) rgba(0,0,0,0.25);
+    height:38px; box-sizing:border-box;
+}
 body.dark .dropdown-menu {
     background-color:#121417;
     border:1px solid #333;
@@ -63,22 +70,23 @@ body.dark .btn {
     color:#ffffff;
     background-color:#191919;
     background-image:linear-gradient(to bottom,#333333,#191919);
-    border-color:rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
+    border-color:rgba(0,0,0,0.1) rgba(0,0,0,0.1) rgba(0,0,0,0.25);
 }
 body.dark .btn-primary {
-    color:#ffffff;
     background-color:#33a6d1;
     background-image:linear-gradient(to bottom,#33b5e5,#2b97bd);
 }
 body.dark .btn-success {
-    color:#ffffff;
     background-color:#5bb75b;
     background-image:linear-gradient(to bottom,#62c462,#51a351);
 }
 body.dark .btn-danger {
-    color:#ffffff;
     background-color:#da4f49;
-    background-image:linear-gradient(to bottom, #ee5f5b, #bd362f);
+    background-image:linear-gradient(to bottom,#ee5f5b, #bd362f);
+}
+body.dark .btn-inverse {
+    background-color:#5c5c5c;
+    background-image:linear-gradient(to bottom,#666666,#4d4d4d);
 }
 body.dark .btn .caret {
     border-top: 4px solid #ffffff;
@@ -89,13 +97,18 @@ body.dark .btn:hover { background:#191919; }
 body.dark .btn-primary:hover { background:#2b97bd; }
 body.dark .btn-success:hover { background:#51a351; }
 body.dark .btn-danger:hover { background:#bd372f; }
+body.dark .btn-inverse:hover { background:#4d4d4d; }
 body.dark .btn-group.open .btn.dropdown-toggle { background-color:#333333; }
+body.dark .btn.text-warning { color:#c09853 !important; }
+body.dark .btn.text-error { color:#b94a48 !important; }
 
 /** Module Styling */
+body.dark .chat-history dl { color:#999999; }
 body.dark .chat-announcement { color:#52707a; }
 body.dark .video-container.feedback {
     border:1px solid #252525;
-    -webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
-       -moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
-            box-shadow:0 1px 4px rgba(0, 0, 0, 0.065);
+    -webkit-box-shadow:0 1px 4px rgba(0,0,0,0.065);
+       -moz-box-shadow:0 1px 4px rgba(0,0,0,0.065);
+            box-shadow:0 1px 4px rgba(0,0,0,0.065);
 }
+body.dark .video-container.big:not(.minimized) .btn:hover { color:#33a6d1; }

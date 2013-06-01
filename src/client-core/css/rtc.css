@@ -7,7 +7,8 @@
 .video-container .action-bar { border-radius:0; padding-right:6px; }
 .video-container.feedback {
     position:relative;
-    box-sizing:border-box;
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
 }
 .video-container.big .caret {
     border-top-color:#ffffff;
@@ -16,7 +17,6 @@
 .video-container.big .action-bar {
     position:absolute; left:0; bottom:0; right:0;
 }
-.video-container.big .action-bar i.danger { color:#a50000; }
 .video-container.big:not(.minimized) .action-bar {
     color:#ffffff; background:transparent; border:0;
 }

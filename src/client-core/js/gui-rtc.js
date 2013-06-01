@@ -8,6 +8,8 @@
         container.video = video;
         container.video.attachStream = function(stream) {
             video.attr('src', URL.createObjectURL(stream));
+            video[0].play();
+            video[0].muted = false;
             gui.resizeAfter();
             return video;
         };
@@ -95,47 +97,145 @@
 
         /* Video-Connection Control */
         var eyeButton = gui.create['buttonWidget']({icon: 'eye-open'});
+        var eyeControl = gui.create['buttonWidget']({icon: 'eye-open'});
         var eyeMenu = gui.create['splitDropdownButton']({
                                                      button: eyeButton});
-        eyeButton.click(function() {
-            rtc.requestLocalVideo(
-                {'video':false, 'audio':true}
-              , function() {
-                    for(var id in argo.players) {
-                        rtc.connectToPeer(id);
-                    }
-                });
-        });
-        var eyeControl = eyeButton.clone(true);
+        function guiSoftHide() {
+            rtc.softHide();
+            eyeButton.addClass('text-warning');
+            eyeControl.addClass('text-warning');
+            eyeButton.icon.removeClass('icon-eye-open');
+            eyeControl.icon.removeClass('icon-eye-open');
+            eyeButton.icon.addClass('icon-eye-close');
+            eyeControl.icon.addClass('icon-eye-close');
+            softEye.hide();
+            uneye.show();
+        }
+        function guiHardHide() {
+            rtc.hardHide();
+            eyeButton.addClass('text-error');
+            eyeControl.addClass('text-error');
+            eyeButton.icon.removeClass('icon-eye-open');
+            eyeControl.icon.removeClass('icon-eye-open');
+            eyeButton.icon.addClass('icon-eye-close');
+            eyeControl.icon.addClass('icon-eye-close');
+            softEye.hide();
+            hardEye.hide();
+            uneye.show();
+        }
+        function guiUnhide() {
+            rtc.unhide();
+            eyeButton.removeClass('text-warning');
+            eyeControl.removeClass('text-warning');
+            eyeButton.removeClass('text-error');
+            eyeControl.removeClass('text-error');
+            eyeButton.icon.removeClass('icon-eye-close');
+            eyeControl.icon.removeClass('icon-eye-close');
+            eyeButton.icon.addClass('icon-eye-open');
+            eyeControl.icon.addClass('icon-eye-open');
+            uneye.hide();
+            softEye.show();
+            hardEye.show();
+        }
         eyeMenu.primary.addClass('btn-mini');
         eyeMenu.caret.addClass('btn-mini');
         eyeButton.append(' Hide');
+        var uneye = jQuery('<a href="">Unhide</a>').hide();
         var softEye = jQuery('<a href="">Soft Hide</a>');
         var hardEye = jQuery('<a href="">Hard Hide</a>');
-        eyeMenu.menu.append(softEye).append(hardEye);
+        eyeButton.click(function() {
+            if(rtc.videoStatus == 'visible') { guiSoftHide(); }
+            else { guiUnhide(); }
+        });
+        eyeControl.click(function() {
+            if(rtc.videoStatus == 'visible') { guiSoftHide(); }
+            else { guiUnhide(); }
+        });
+        softEye.click(function(event) {
+            event.preventDefault();
+            if(rtc.videoStatus == 'visible') { guiSoftHide(); }
+        });
+        hardEye.click(function(event) {
+            event.preventDefault();
+            if(rtc.videoStatus != 'disconnected') { guiHardHide(); }
+        });
+        uneye.click(function(event) {
+            event.preventDefault();
+            if(rtc.videoStatus != 'visible') { guiUnhide(); }
+        });
+        eyeMenu.menu.append(uneye).append(softEye).append(hardEye);
         eyeMenu.appendTo(div['mainMenu']);
         argo.localPlayer.controls.prepend(eyeControl);
 
         /* Audio-Connection Control */
         var muteButton = gui.create['buttonWidget']({icon: 'microphone'});
+        var muteControl = gui.create['buttonWidget']({icon: 'microphone'});
         var muteMenu = gui.create['splitDropdownButton']({
-                                                     button: muteButton});
-        muteButton.click(function() {
-            rtc.requestLocalVideo(
-                {'video':true, 'audio':false}
-              , function() {
-                    for(var id in argo.players) {
-                        rtc.connectToPeer(id);
-                    }
-                });
-        });
-        var muteControl = muteButton.clone(true);
+                                                      button: muteButton});
+       function guiSoftMute() {
+            rtc.softMute();
+            muteButton.addClass('text-warning');
+            muteControl.addClass('text-warning');
+            muteButton.icon.removeClass('icon-microphone');
+            muteControl.icon.removeClass('icon-microphone');
+            muteButton.icon.addClass('icon-microphone-off');
+            muteControl.icon.addClass('icon-microphone-off');
+            softMute.hide();
+            unmute.show();
+        }
+        function guiHardMute() {
+            rtc.hardMute();
+            muteButton.addClass('text-error');
+            muteControl.addClass('text-error');
+            muteButton.icon.removeClass('icon-microphone');
+            muteControl.icon.removeClass('icon-microphone');
+            muteButton.icon.addClass('icon-microphone-off');
+            muteControl.icon.addClass('icon-microphone-off');
+            softMute.hide();
+            hardMute.hide();
+            unmute.show();
+        }
+        function guiUnmute() {
+            rtc.unmute();
+            muteButton.removeClass('text-warning');
+            muteControl.removeClass('text-warning');
+            muteButton.removeClass('text-error');
+            muteControl.removeClass('text-error');
+            muteButton.icon.removeClass('icon-microphone-off');
+            muteControl.icon.removeClass('icon-microphone-off');
+            muteButton.icon.addClass('icon-microphone');
+            muteControl.icon.addClass('icon-microphone');
+            unmute.hide();
+            softMute.show();
+            hardMute.show();
+        }
         muteMenu.primary.addClass('btn-mini');
         muteMenu.caret.addClass('btn-mini');
         muteButton.append(' Mute');
+        var unmute = jQuery('<a href="">Unmute</a>').hide();
         var softMute = jQuery('<a href="">Soft Mute</a>');
         var hardMute = jQuery('<a href="">Hard Mute</a>');
-        muteMenu.menu.append(softMute).append(hardMute);
+        muteButton.click(function() {
+            if(rtc.audioStatus == 'audible') { guiSoftMute(); }
+            else { guiUnmute(); }
+        });
+        muteControl.click(function() {
+            if(rtc.audioStatus == 'audible') { guiSoftMute(); }
+            else { guiUnmute(); }
+        });
+        softMute.click(function(event) {
+            event.preventDefault();
+            if(rtc.audioStatus == 'audible') { guiSoftMute(); }
+        });
+        hardMute.click(function(event) {
+            event.preventDefault();
+            if(rtc.audioStatus != 'disconnected') { guiHardMute(); }
+        });
+        unmute.click(function(event) {
+            event.preventDefault();
+            if(rtc.videoStatus != 'audible') { guiUnmute(); }
+        });
+        muteMenu.menu.append(unmute).append(softMute).append(hardMute);
         muteMenu.appendTo(div['mainMenu']);
         argo.localPlayer.controls.prepend(muteControl);
     };

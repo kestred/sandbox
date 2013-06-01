@@ -14,7 +14,11 @@ body {
 #hidden { display:none; }
 .collapsed * { display:none; }
 .west, .east, .north, .south, .center { display:inline-block; }
-.center { box-sizing:border-box; border:1px solid transparent; }
+.center {
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
+    border:1px solid transparent;
+}
 .stderr-queue {
     position:fixed; top:5%;
     left:0; width:100%;
@@ -66,7 +70,8 @@ fieldset {
 
 .main-menu {
     padding:12px 18px;
-    box-sizing:border-box;
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
 }
 .main-menu select {
     font-size:12px;
@@ -84,7 +89,8 @@ fieldset {
     display:inline-block;
     width:100%; margin:0;
     padding:6px 4px;
-    box-sizing:border-box;
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
 }
 .status-menu li { cursor:pointer; margin:4px 0; padding:0 6px; }
 .status-menu li:hover { background:rgba(255,255,255,0.1); }
@@ -92,7 +98,8 @@ fieldset {
     text-align:center;
     width:30px; height:18px;
     margin-right:6px;
-    box-sizing:border-box;
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
 }
 
 .action-bar ul {
@@ -135,7 +142,7 @@ fieldset {
     cursor:default;
 }
 .subwindow .modal-header .btn-group {
-    position:absolute; top:-2px; right:-1px; height:38px;
+    position:absolute; top:0; right:-1px; height:38px;
 }
 .subwindow .modal-header .btn-group > .btn { height:100%; }
 .subwindow .modal-header .btn-group > .btn:first-child {
@@ -148,4 +155,7 @@ fieldset {
        -moz-border-bottom-right-radius:0;
             border-bottom-right-radius:0;
 }
-.subwindow .modal-body { box-sizing:border-box; }
+.subwindow .modal-body {
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
+}
