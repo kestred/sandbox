@@ -14,6 +14,11 @@ body {
 #hidden { display:none; }
 .collapsed * { display:none; }
 .west, .east, .north, .south, .center { display:inline-block; }
+.center {
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
+    border:1px solid transparent;
+}
 .stderr-queue {
     position:fixed; top:5%;
     left:0; width:100%;
@@ -63,22 +68,56 @@ fieldset {
     border: 0;
 }
 
-.main-menu { box-sizing:border-box; }
-.main-menu select { width:100%; border-radius:0; }
+.main-menu {
+    padding:12px 18px;
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
+}
+.main-menu select {
+    font-size:12px;
+    width:100%; padding:2px;
+    border-radius:1px;
+}
 .west .main-menu, .east .main-menu { width:100%; }
 .north .main-menu { height:100%; }
 #inner-west .main-menu,
 #inner-east .main-menu { height:100%; }
 
-.main-menu, .status-list, .subwindow .modal-header { padding:12px 24px; }
+.status-menu, .subwindow .modal-header { padding:12px 24px; }
 
-.status-list ol {
+.status-menu ol {
     display:inline-block;
     width:100%; margin:0;
+    padding:6px 4px;
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
 }
-.status-list li { cursor:pointer; margin:4px 0; padding:0 6px; }
-.status-list li:hover { background:rgba(255,255,255,0.1); }
-.status-list .badge { margin-right:6px; }
+.status-menu li { cursor:pointer; margin:4px 0; padding:0 6px; }
+.status-menu li:hover { background:rgba(255,255,255,0.1); }
+.status-menu .badge {
+    text-align:center;
+    width:30px; height:18px;
+    margin-right:6px;
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
+}
+
+.action-bar ul {
+    float:right;
+    height:24px;
+    line-height:24px;
+    list-style:none;
+    margin:0;
+}
+.action-bar li, .action-bar .btn {
+    display:inline-block;
+    height:100%;
+    line-height:100%;
+}
+.action-bar .title {
+    margin-left:-6px;
+    padding:2px 6px;
+}
 
 .subwindow {
     position:fixed !important;
@@ -103,7 +142,7 @@ fieldset {
     cursor:default;
 }
 .subwindow .modal-header .btn-group {
-    position:absolute; top:-2px; right:-1px; height:38px;
+    position:absolute; top:0; right:-1px; height:38px;
 }
 .subwindow .modal-header .btn-group > .btn { height:100%; }
 .subwindow .modal-header .btn-group > .btn:first-child {
@@ -116,4 +155,7 @@ fieldset {
        -moz-border-bottom-right-radius:0;
             border-bottom-right-radius:0;
 }
-.subwindow .modal-body { box-sizing:border-box; }
+.subwindow .modal-body {
+    -moz-box-sizing:border-box;
+         box-sizing:border-box;
+}

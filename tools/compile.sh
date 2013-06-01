@@ -78,6 +78,7 @@ fi
 # Migrate raw files
 cp src/client-core/core.html build/client.html
 cp -r src/client-core/vendor build/vendor
+cp -r src/client-core/font build/font
 cp -r src/client-core/img build/img
 if [ "$jsServer" == "true" ]; then
     cp src/server-core/argonaut/*.js build/argonaut

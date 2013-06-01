@@ -23,7 +23,7 @@ class RTCNamespace(BaseNamespace, BroadcastMixin):
 
     def on_syn(self, data):
         core = WRTC.getInstance().core
-        if('targetId' in data
+        if('client' in self.socket.session and 'targetId' in data
            and data['targetId'] in core.clients):
             callerId = self.socket.session['client'].publicId
             target = core.clients[data['targetId']].sockets['rtc']
@@ -32,7 +32,7 @@ class RTCNamespace(BaseNamespace, BroadcastMixin):
 
     def on_ack(self, data):
         core = WRTC.getInstance().core
-        if('targetId' in data
+        if('client' in self.socket.session and 'targetId' in data
            and data['targetId'] in core.clients):
             calleeId = self.socket.session['client'].publicId
             target = core.clients[data['targetId']].sockets['rtc']
@@ -40,7 +40,28 @@ class RTCNamespace(BaseNamespace, BroadcastMixin):
                               , 'calleeDesc': data['calleeDesc']})
 
     def on_ice(self, data):
-        core = WRTC.getInstance().core
-        candidateId = self.socket.session['client'].publicId
-        self.broadcast_event('ice', {'candidateId': candidateId
-                                   , 'candidate': data['candidate']})
+        if 'client' in self.socket.session:
+            candidateId = self.socket.session['client'].publicId
+            self.broadcast_event('ice',
+                                 {'candidateId': candidateId
+                                , 'candidate': data['candidate']})
+
+    def on_mute(self):
+        if 'client' in self.socket.session:
+            playerId = self.socket.session['client'].publicId
+            self.broadcast_event('mute', {'playerId': playerId})
+
+    def on_unmute(self):
+        if 'client' in self.socket.session:
+            playerId = self.socket.session['client'].publicId
+            self.broadcast_event('unmute', {'playerId': playerId})
+
+    def on_hide(self):
+        if 'client' in self.socket.session:
+            playerId = self.socket.session['client'].publicId
+            self.broadcast_event('hide', {'playerId': playerId})
+
+    def on_unhide(self):
+        if 'client' in self.socket.session:
+            playerId = self.socket.session['client'].publicId
+            self.broadcast_event('unhide', {'playerId': playerId})

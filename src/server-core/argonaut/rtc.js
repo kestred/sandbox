@@ -57,9 +57,34 @@ Wrtc.prototype.buildSocket = function(socket) {
     /* on-rtc-ice event */
     socket.on('ice', function(data) {
         if('client' in socket) {
-            rtc.sockets.emit('ice', {candidateId: socket.client.publicId
-                                   , candidate: data.candidate});
+            socket.broadcast.emit('ice',
+                                  {candidateId: socket.client.publicId
+                                 , candidate: data.candidate});
         }
+    });
+
+    /* on-mute-event */
+    socket.on('mute', function() {
+        socket.broadcast.emit('mute',
+                              {playerId: socket.client.publicId});
+    });
+
+    /* on-unmute-event */
+    socket.on('unmute', function() {
+        socket.broadcast.emit('unmute',
+                              {playerId: socket.client.publicId});
+    });
+
+    /* on-hide-event */
+    socket.on('hide', function() {
+        socket.broadcast.emit('hide',
+                              {playerId: socket.client.publicId});
+    });
+
+    /* on-unhide-event */
+    socket.on('unhide', function() {
+        socket.broadcast.emit('unhide',
+                              {playerId: socket.client.publicId});
     });
 }
 Wrtc.getInstance = function() {

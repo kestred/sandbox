@@ -13,6 +13,11 @@ MIME = {
   , '.jpg' : 'image/jpeg'
   , '.jpeg': 'image/jpeg'
   , '.jpe' : 'image/jpe'
+  , '.svg' : 'image/svg+xml'
+  , '.ttf' : 'application/x-font-ttf'
+  , '.otf' : 'application/octet-stream'
+  , '.eot' : 'application/vnd.ms-fontobject'
+  , '.woff': 'application/font-woff'
 }
 
 def logIOError(ioex, filepath):

@@ -34,7 +34,7 @@ class Application(object):
                 return getFile(start_response, path)
             socketio_manage(environ, self.namespaces, self.request)
 
-        pathExp = r"^(js|vendor|css|img)/" # Folders
+        pathExp = r"^(js|vendor|css|img|font)/" # Folders
         pathExp += r"[A-Za-z0-9-_]+(\.[A-Za-z0-9-_]+)*\.[a-z]{2,4}$"
         if re.match(pathExp, path):
             return getFile(start_response, path)

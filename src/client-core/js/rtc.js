@@ -16,6 +16,10 @@ navigator.getUserMedia = navigator.getUserMedia
 mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
 (function() { // Begin anonymous namespace
     var rtc = mods['rtc'];
+    rtc.useVideo = true;
+    rtc.useAudio = true;
+    rtc.videoStatus = 'visible';
+    rtc.audioStatus = 'audible';
     rtc.start = util.extend(rtc.start, function() {
         argo.loader.update('Starting video conferencing');
         rtc.peers = {};
@@ -48,6 +52,42 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             }
         });
 
+        /* On player-soft-mute request */
+        socket.on('mute', function(data) {
+            if(data.playerId in argo.players) {
+                var player = argo.players[data.playerId];
+                player.videoContainer.video[0].muted = true;
+                player.videoContainer.video.softMute = true;
+            }
+        });
+
+        /* On player-unmute request */
+        socket.on('unmute', function(data) {
+            if(data.playerId in argo.players) {
+                var player = argo.players[data.playerId];
+                player.videoContainer.video[0].muted = false;
+                player.videoContainer.video.softMute = false;
+            }
+        });
+
+        /* On player-soft-hide request */
+        socket.on('hide', function(data) {
+            if(data.playerId in argo.players) {
+                var player = argo.players[data.playerId];
+                player.videoContainer.screen.show();
+                player.videoContainer.video.softHide = true;
+            }
+        });
+
+        /* On player-soft-unhide request */
+        socket.on('unhide', function(data) {
+            if(data.playerId in argo.players) {
+                var player = argo.players[data.playerId];
+                player.videoContainer.screen.hide();
+                player.videoContainer.video.softHide = false;
+            }
+        });
+
         /* On player-joined, send rtc-synchronize packaet */
         var proto = Argonaut.Player.prototype;
         proto.init = util.extend(proto.init, function() {
@@ -74,19 +114,79 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
 
 
     /* Ask web-browser for Webcam access, load into 'video' element */
-    rtc.requestLocalVideo = function() {
-        navigator.getUserMedia({'audio': true, 'video': true},
+    rtc.requestLocalVideo = function(callback) {
+        constraints = {'video': rtc.useVideo, 'audio': rtc.useAudio};
+        navigator.getUserMedia(constraints,
             function(stream) {
+                if('localStream' in rtc) { rtc.localStream.stop(); }
                 rtc.localStream = stream;
                 rtc.localVideo = argo.localPlayer.videoContainer.video;
                 rtc.localVideo.attachStream(stream);
                 rtc.localVideo[0].muted = true;
+                if(typeof callback !== 'undefined') { callback(); }
             },
             // TODO: Generate blank localStream on fail
             function() { argo.stderr('(requestLocalVideo)'
                                    + 'Video capture failed'); }
         );
     };
+
+    rtc.unmute = function() {
+        rtc.audioStatus = 'audible';
+        if(!rtc.useAudio) {
+            rtc.useAudio = true;
+            rtc.requestLocalVideo(function() {
+                for(var id in argo.players) {
+                    rtc.connectToPeer(id);
+                }
+            });
+        } else { rtc.socket.emit('unmute'); }
+    }
+    rtc.softMute = function() {
+        if(rtc.useAudio) {
+            rtc.audioStatus = 'muted';
+            rtc.socket.emit('mute');
+        }
+    }
+    rtc.hardMute = function() {
+        if(rtc.useAudio) {
+            rtc.useAudio = false;
+            rtc.audioStatus = 'disconnected';
+            rtc.requestLocalVideo(function() {
+                for(var id in argo.players) {
+                    rtc.connectToPeer(id);
+                }
+            });
+        }
+    }
+    rtc.unhide = function() {
+        rtc.videoStatus = 'visible';
+        if(!rtc.useVideo) {
+            rtc.useVideo = true;
+            rtc.requestLocalVideo(function() {
+                for(var id in argo.players) {
+                    rtc.connectToPeer(id);
+                }
+            });
+        } else { rtc.socket.emit('unhide'); }
+    }
+    rtc.softHide = function() {
+        if(rtc.useVideo) {
+            rtc.videoStatus = 'hidden';
+            rtc.socket.emit('hide');
+        }
+    }
+    rtc.hardHide = function() {
+        if(rtc.useVideo) {
+            rtc.useVideo = false;
+            rtc.videoStatus = 'disconnected';
+            rtc.requestLocalVideo(function() {
+                for(var id in argo.players) {
+                    rtc.connectToPeer(id);
+                }
+            });
+        }
+    }
 
     rtc.getVideoById = function(id) {
         if(id == argo.localPlayer.id) {
