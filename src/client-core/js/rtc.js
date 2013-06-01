@@ -52,6 +52,42 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             }
         });
 
+        /* On player-soft-mute request */
+        socket.on('mute', function(data) {
+            if(data.playerId in argo.players) {
+                var player = argo.players[data.playerId];
+                player.videoContainer.video[0].muted = true;
+                player.videoContainer.video.softMute = true;
+            }
+        });
+
+        /* On player-unmute request */
+        socket.on('unmute', function(data) {
+            if(data.playerId in argo.players) {
+                var player = argo.players[data.playerId];
+                player.videoContainer.video[0].muted = false;
+                player.videoContainer.video.softMute = false;
+            }
+        });
+
+        /* On player-soft-hide request */
+        socket.on('hide', function(data) {
+            if(data.playerId in argo.players) {
+                var player = argo.players[data.playerId];
+                player.videoContainer.screen.show();
+                player.videoContainer.video.softHide = true;
+            }
+        });
+
+        /* On player-soft-unhide request */
+        socket.on('unhide', function(data) {
+            if(data.playerId in argo.players) {
+                var player = argo.players[data.playerId];
+                player.videoContainer.screen.hide();
+                player.videoContainer.video.softHide = false;
+            }
+        });
+
         /* On player-joined, send rtc-synchronize packaet */
         var proto = Argonaut.Player.prototype;
         proto.init = util.extend(proto.init, function() {

@@ -4,12 +4,19 @@
     gui.create['videoWidget'] = function(options) {
         var container = jQuery('<div class="video-container"></div>');
         var video = jQuery('<video autoplay></video>');
+        var screen = jQuery('<div class="video-screen"></div>').hide();
+        video.softHide = false;
+        video.softMute = false;
+        container.append(screen);
+        container.screen = screen;
         container.append(video);
         container.video = video;
         container.video.attachStream = function(stream) {
             video.attr('src', URL.createObjectURL(stream));
             video[0].play();
-            video[0].muted = false;
+            video[0].muted = video.softMute;
+            if(video.softHide) { screen.show(); }
+            else { screen.hide(); }
             gui.resizeAfter();
             return video;
         };
