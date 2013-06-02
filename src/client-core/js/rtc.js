@@ -209,7 +209,9 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             }, 500);
             return;
         }
-        var peer = new RTCPeerConnection(null);
+        var config = {iceServers:
+                      [{url: 'stun:stun.l.google.com:19302'}]};
+        var peer = new RTCPeerConnection(config);
         peer.onicecandidate = function(event) {
             rtc.socket.emit('ice', {candidate: event.candidate});
         };

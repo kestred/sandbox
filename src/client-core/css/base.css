@@ -149,6 +149,9 @@ fieldset {
     -webkit-border-top-left-radius:0;
        -moz-border-top-left-radius:0;
             border-top-left-radius:0;
+    -webkit-border-bottom-left-radius:0;
+       -moz-border-bottom-left-radius:0;
+            border-bottom-left-radius:0;
 }
 .subwindow .modal-header .btn-group > .btn:last-child {
     -webkit-border-bottom-right-radius:0;

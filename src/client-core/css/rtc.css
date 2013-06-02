@@ -36,7 +36,7 @@
 .video-container.big:not(.minimized) .action-bar {
     color:#ffffff; background:transparent; border:0;
 }
-.video-container.big:not(.minimized) .action-bar:hover {
+.video-container.big:not(.minimized):hover .action-bar {
     background:rgba(0,0,0,0.5);
 }
 .video-container.big:not(.minimized) .btn {

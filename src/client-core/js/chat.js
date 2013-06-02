@@ -27,7 +27,8 @@ mods['chat'] = new Argonaut.Module('chat', priority.CORE, 'gui');
                                         , player.chatWindow[0]);
             if(!visible) {
                 player.chatWindow.find('.btn-danger').click(
-                    function() { button.button('toggle'); }
+                    function() {
+                        player.controls.privateChat.button('toggle'); }
                 );
                 player.chatWindow.appendTo('body');
                 player.chatWindow.show();

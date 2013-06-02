@@ -19,12 +19,14 @@
             }
             log.append(line);
             log.scrollTop(log.scrollHeight);
+            console.log(log.scrollHeight);
             return panel; // Chaining
         };
         panel.announce = function(message) {
             var block = '<p class="chat-announcement">';
             block += message + '</p>';
             log.append(block);
+            log.scrollTop(log.scrollHeight);
             return panel; // Chaining
         };
 
@@ -170,7 +172,7 @@
                     var message = chatBox.form.input.val();
                     if(message.length > 0) {
                         chatBox.form.input.val('');
-                        chat.privateMessage(player.id, message);
+                        chat.privateMessage(player, message);
                     }
                     event.preventDefault();
                     return false; // Stops form submit
@@ -188,6 +190,7 @@
                                              {icon: 'comment'
                                             , tooltip: 'Private Chat'});
             button.click(player.chatWindow.toggle);
+            player.controls.privateChat = button;
             player.controls.append(button);
         };
         proto.init = util.extend(proto.init, proto.setupPrivateChat);
