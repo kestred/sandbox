@@ -3,6 +3,7 @@ var Http = require('http');
 var Express = require('express');
 var SocketIO = require('socket.io');
 var Optimist = require('optimist');
+var Prompt = require('prompt');
 
 /* Import local modules */
 var Core = require('./argonaut/core.js');
@@ -46,5 +47,22 @@ var core = new Core(io);
 var chat = new Chat(io, core);
 var wrtc = new Wrtc(io, core);
 
-console.log('[Argonaut] Server ready.');
+console.log('argonaut - '.cyan + 'server ready'.blue);
 
+/* Start server-side prompt */
+var schema = {properties: {command: {description:' ', type: 'string'}}};
+Prompt.message = 'argonaut'.cyan + '$'.blue;
+Prompt.delimiter = '';
+Prompt.start();
+function doPrompt() {
+    Prompt.get(schema, function(err, result) {
+        if(err) { return; }
+        var cmd = result.command;
+        if(cmd == 'exit') {
+            process.exit(0);
+        } else {
+	        doPrompt();
+	    }
+    });
+}
+doPrompt();

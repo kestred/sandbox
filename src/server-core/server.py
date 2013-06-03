@@ -2,7 +2,7 @@
 from gevent import monkey; monkey.patch_all()
 from socketio import socketio_manage
 from socketio.server import SocketIOServer
-import sys, os, re, argparse
+import sys, os, re, argparse, threading
 
 # Import local modules
 from argonaut.httphandlers import *
@@ -51,6 +51,24 @@ core = Core(app)
 chat = Chat(app, core)
 wrtc = WRTC(app, core)
 
+class SocketThread (threading.Thread):
+    def __init__(self, options):
+        self.options = options
+
+    def run(self):
+        SocketIOServer(('0.0.0.0', 6058), app, **self.options).serve_forever()
+
+colors = {
+    'blue'    : '\x1B[34m'
+  , 'cyan'    : '\x1B[36m'
+  , 'green'   : '\x1B[32m'
+  , 'magenta' : '\x1B[35m'
+  , 'red'     : '\x1B[31m'
+  , 'yellow'  : '\x1B[33m'
+}
+def color(string, colorName):
+    return colors[colorName] + string + '\x1B[39m'
+   
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(
@@ -72,7 +90,16 @@ if __name__ == "__main__":
              , 'policy_listener': ('0.0.0.0', 10843)}
 
     # Start server
-    sys.stdout.write("[Argonaut] Starting server... ")
-    sys.stdout.write("Ports: App - 6058, Flash - 843\n")
+    sys.stdout.write(color('Argonaut - ', 'cyan'))
+    sys.stdout.write(color('Starting server...\n', 'blue'))
+    sys.stdout.write(color('   Ports - ', 'cyan'))
+    sys.stdout.write(color('App: ', 'blue') + color('6058  ', 'red'))
+    sys.stdout.write(color('Flash: ', 'blue') + color('843\n', 'red'))
     sys.stdout.flush()
-    SocketIOServer(('0.0.0.0', 6058), app, **options).serve_forever()
+
+    # Start server-side prompt
+    prompt = color('Argonaut', 'cyan') + color('$ ', 'blue')
+    while True:
+        cmd = raw_input(prompt)
+        if cmd == 'exit':
+            exit(0)
