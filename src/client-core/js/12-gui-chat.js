@@ -18,8 +18,7 @@
                 line = '<dt>' + name + '</dt>' + line;
             }
             log.append(line);
-            log.scrollTop(log.scrollHeight);
-            console.log(log.scrollHeight);
+            log.scrollTop(log[0].scrollHeight);
             return panel; // Chaining
         };
         panel.announce = function(message) {
