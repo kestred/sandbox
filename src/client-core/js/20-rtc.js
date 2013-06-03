@@ -16,18 +16,18 @@ navigator.getUserMedia = navigator.getUserMedia
 mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
 (function() { // Begin anonymous namespace
     var rtc = mods['rtc'];
-    rtc.useVideo = true;
-    rtc.useAudio = true;
-    rtc.videoStatus = 'visible';
-    rtc.audioStatus = 'audible';
     rtc.start = util.extend(rtc.start, function() {
         argo.loader.update('Starting video conferencing');
+        rtc.peers = {};
         rtc.sdpConstraints = {'mandatory': {
                               'OfferToReceiveAudio': true,
                               'OfferToReceiveVideo': true }};
         rtc.iceServers = {iceServers:
                           [{url: 'stun:stun.l.google.com:19302'}]};
-        rtc.peers = {};
+        rtc.useVideo = true;
+        rtc.useAudio = true;
+        rtc.videoStatus = 'visible';
+        rtc.audioStatus = 'audible';
         rtc.requestLocalVideo();
         var socket = io.connect(document.URL + 'rtc');
 		argo.sockets.rtc = rtc.socket = socket;
@@ -108,6 +108,10 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             delete this['rtcPeer'];
             delete rtc.peers[this.id];
         });
+
+		/* Create peerConnection objects for existing players */
+		for(var id in argo.players) { rtc.createPeerConnection(id); }
+
         return true;
     }, {order: 'prepend'});
     rtc.stop = util.extend(rtc.stop, function() {
@@ -135,6 +139,11 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
                 rtc.localVideo.attachStream(stream);
                 rtc.localVideo[0].muted = true;
                 if(typeof callback !== 'undefined') { callback(); }
+                for(var id in argo.players) {
+                	if(!rtc.peers[id].getLocalStreams().length) {
+                		rtc.peers[id].addStream(stream)
+                	}
+                }
             },
             // TODO: Generate blank localStream on fail
             function() { argo.stderr('(requestLocalVideo)'
@@ -226,42 +235,41 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             argo.players[peerId].rtcPeer = peer;
         }
         rtc.peers[peerId] = peer;
-        peer.addStream(rtc.localStream);
+        peer.playerId = peerId;
+        if('localStream' in rtc) { peer.addStream(rtc.localStream); }
         return peer;
     }
     /* Negotiate a new WebRTC audio/video connection to 'peerId' */
-    rtc.connectToPeer = function(peerId) {
+    rtc.connectToPeer = function(peer) {
         if(!('localStream' in rtc)) {
             setTimeout(function() {
-                rtc.connectToPeer(peerId);
+                rtc.connectToPeer(peer);
             }, 500);
             return;
         }
-        var peer = rtc.createPeerConnection(peerId);
         peer.createOffer(sendCallerDescription, null, rtc.sdpConstraints);
         function sendCallerDescription(desc) {
             peer.setLocalDescription(desc);
-            rtc.socket.emit('syn', {targetId: peerId
+            rtc.socket.emit('syn', {targetId: peer.playerId
                                      , callerDesc: desc});
         }
     };
 
     /* Recieve a request for WebRTC audio/video connection */
-    rtc.recieveConnection = function(peerId, remote) {
+    rtc.recieveConnection = function(peer, remote) {
         if(!('localStream' in rtc)) {
             setTimeout(function() {
-                rtc.recieveConnection(peerId, remote);
+                rtc.recieveConnection(peer, remote);
             }, 500);
             return;
         }
-        var peer = rtc.createPeerConnection(peerId);
         peer.setRemoteDescription(new RTCSessionDescription(remote));
         peer.createAnswer(sendCalleeDescription, null, rtc.sdpConstraints);
         function sendCalleeDescription(desc) {
             peer.setLocalDescription(desc);
             rtc.socket.emit('ack', {publicId: argo.publicId
                                      , privateId: argo.privateId
-                                     , targetId: peerId
+                                     , targetId: peer.playerId
                                      , calleeDesc: desc});
         }
     };
