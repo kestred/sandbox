@@ -14,8 +14,6 @@ function trace(text) {
 }
 
 if (navigator.mozGetUserMedia) {
-  console.log("This appears to be Firefox");
-
   webrtcDetectedBrowser = "firefox";
 
   // The RTCPeerConnection object.
@@ -41,13 +39,11 @@ if (navigator.mozGetUserMedia) {
 
   // Attach a media stream to an element.
   attachMediaStream = function(element, stream) {
-    console.log("Attaching media stream");
     element.mozSrcObject = stream;
     element.play();
   };
 
   reattachMediaStream = function(to, from) {
-    console.log("Reattaching media stream");
     to.mozSrcObject = from.mozSrcObject;
     to.play();
   };
@@ -61,8 +57,6 @@ if (navigator.mozGetUserMedia) {
     return [];
   };
 } else if (navigator.webkitGetUserMedia) {
-  console.log("This appears to be Chrome");
-
   webrtcDetectedBrowser = "chrome";
   webrtcDetectedVersion =
              parseInt(navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./)[2]);
@@ -110,12 +104,8 @@ if (navigator.mozGetUserMedia) {
   // The representation of tracks in a stream is changed in M26.
   // Unify them for earlier Chrome versions in the coexisting period.
   if (!webkitMediaStream.prototype.getVideoTracks) {
-    webkitMediaStream.prototype.getVideoTracks = function() {
-      return this.videoTracks;
-    };
-    webkitMediaStream.prototype.getAudioTracks = function() {
-      return this.audioTracks;
-    };
+    webkitMediaStream.prototype.getVideoTracks = function() { return this.videoTracks; };
+    webkitMediaStream.prototype.getAudioTracks = function() { return this.audioTracks; };
   }
 
   // New syntax of getXXXStreams method in M26.
@@ -127,6 +117,4 @@ if (navigator.mozGetUserMedia) {
       return this.remoteStreams;
     };
   }
-} else {
-  console.log("Browser does not appear to be WebRTC-capable");
 }
