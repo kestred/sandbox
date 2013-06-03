@@ -2,7 +2,7 @@
 from gevent import monkey; monkey.patch_all()
 from socketio import socketio_manage
 from socketio.server import SocketIOServer
-import sys, os, re, argparse, threading
+import sys, os, re, argparse, time, select
 
 # Import local modules
 from argonaut.httphandlers import *
@@ -51,19 +51,6 @@ core = Core(app)
 chat = Chat(app, core)
 wrtc = WRTC(app, core)
 
-class SocketThread(threading.Thread):
-    def __init__(self, options):
-        threading.Thread.__init__(self)
-        self.options = options
-        self.server = SocketIOServer(('0.0.0.0', 6058), app, **self.options)
-
-    def run(self):
-        self.server.serve_forever()
-
-    def exit(self):
-        self.server.stop()
-
-
 colors = {
     'blue'    : '\x1B[34m'
   , 'cyan'    : '\x1B[36m'
@@ -74,6 +61,14 @@ colors = {
 }
 def color(string, colorName):
     return colors[colorName] + string + '\x1B[39m'
+
+# Non Blocking raw_input for use with eventlets
+def raw_input(message):
+    sys.stdout.write(message)
+    sys.stdout.flush()
+
+    select.select([sys.stdin], [], [])
+    return sys.stdin.readline()
    
 if __name__ == "__main__":
     # Parse command line arguments
@@ -102,15 +97,13 @@ if __name__ == "__main__":
     sys.stdout.write(color('App: ', 'blue') + color('6058  ', 'red'))
     sys.stdout.write(color('Flash: ', 'blue') + color('843\n', 'red'))
     sys.stdout.flush()
-    socketThread = SocketThread(options)
-    socketThread.start()
+    server = SocketIOServer(('0.0.0.0', 6058), app, **options)
+    server.start()
 
     # Start server-side prompt
     prompt = color('Argonaut', 'cyan') + color('$ ', 'blue')
     while True:
         cmd = raw_input(prompt)
-        if cmd == 'exit':
-            socketThread.exit()
-            exit(0)
-
-    
+        if cmd.startswith('exit'):
+           server.stop()
+           exit(0)
