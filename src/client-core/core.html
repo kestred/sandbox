@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+
+<!-- Metadata -->
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="description" content="<!-- Search Engine Description-->" />
+<meta name="viewport" content="width=device-width" />
+<title>Argonaut Tabletop</title>
+
+<!-- Stylesheets -->
+<link rel="stylesheet" type="text/css" href="vendor/bootstrap.min.css" />
+<link rel="stylesheet" type="text/css" href="vendor/font-awesome.min.css" />
+<link rel="stylesheet" type="text/css" href="css/core.css" />
+</head>
+
+<!-- Main Content -->
+<body class="dark">
+<div id="layout">
+  <div class="west snap-target" id="outer-west"></div>
+  <div class="center" id="outer-center">
+    <div class="north snap-target" id="inner-north"></div>
+    <div class="center" id="inner-center"></div>
+    <div class="west snap-target" id="inner-west"></div>
+    <div class="east snap-target" id="inner-east"></div>
+  </div>
+  <div class="east" id="outer-east"></div>
+</div>
+
+<!-- Built-in Elements -->
+<div class="modal hide fade in" style="display:block" id="loading-modal">
+  <div class="modal-header">
+    <h3 id="loading-message">Loading...</h3>
+  </div>
+  <noscript><div class="modal-body"><p>
+    Javascript must be enabled to use Argonaut.
+  </p></div></noscript>
+  <div class="modal-footer">
+    <div class="progress progress-striped active">
+      <div id="loading-progress" class="bar"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal hide fade" id="stop-modal">
+  <div class="modal-header"><h3>Argonaut has Stopped</h3></div>
+  <div class="modal-body">
+    <p>This Argonaut session has ended.</p>
+    <p>If this occured unexpectedly, try refreshing the page.</p>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-success"
+            onClick="document.location.reload(true)">
+      <i class="icon-refresh icon-white"></i> Refresh
+    </button>
+  </div>
+</div>
+
+<div id="mobile-warning" class="alert alert-error">
+  <strong>Warning!</strong>
+  <p>Argonaut currently has no support for small devices.</p>
+  <p>Please ensure your device is oriented in landscape, or connect with
+  a different device to access the User Interface.</p>
+  <p>If you are connecting with a laptop or desktop, please expand the
+  window size. Audio feedback should continue to play either way.</p>
+</div>
+
+<!-- Hidden Content -->
+<div id="hidden"></div>
+
+<!-- Scripts -->
+<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+<script type="text/javascript" src="vendor/webrtc-adapter.js"></script>
+<script type="text/javascript" src="vendor/jquery-1.9.1.min.js"></script>
+<script type="text/javascript" src="vendor/jquery-ui-1.10.3.min.js"></script>
+<script type="text/javascript" src="vendor/bootstrap.min.js"></script>
+<script type="text/javascript" src="js/core.js"></script>
+
+</body>
+</html>
