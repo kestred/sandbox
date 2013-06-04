@@ -49,7 +49,6 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
 
         /* On recieve rtc-ice */
         socket.on('ice', function(data) {
-            console.log('recieved ice');
             if(data.candidateId in rtc.peers) {
                 var peer = rtc.peers[data.candidateId];
                 if('candidate' in data && data.candidate !== null) {
@@ -240,8 +239,6 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
         if(typeof loop === 'undefined') { loop = 0; }
         var candidate = new RTCIceCandidate(description);
         try {
-            console.log(candidate);
-            console.log('Loop:' + loop);
             peer.addIceCandidate(candidate);
         } catch (DOMException) {
             setTimeout(function() {
