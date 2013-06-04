@@ -37,13 +37,12 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
 
         /* On recieve rtc-syn */
         socket.on('syn', function(data) {
-            console.log('recieved syn');
-            rtc.recieveConnection(data.callerId, data.callerDesc);
+            var peer = rtc.peers[data.callerId];
+            rtc.recieveConnection(peer, data.callerDesc);
         });
 
         /* On recieve rtc-ack */
         socket.on('ack', function(data) {
-            console.log('recieved ack');
             var desc = new RTCSessionDescription(data.calleeDesc);
             rtc.peers[data.calleeId].setRemoteDescription(desc);
         });
@@ -53,11 +52,8 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             console.log('recieved ice');
             if(data.candidateId in rtc.peers) {
                 var peer = rtc.peers[data.candidateId];
-                console.log('candidate in peers');
                 if('candidate' in data && data.candidate !== null) {
-                    console.log(data.candidate);
-                    var candidate = new RTCIceCandidate(data.candidate);
-                    peer.addIceCandidate(candidate);
+                    rtc.recieveICE(peer, data.candidate);
                 }
             }
         });
@@ -101,8 +97,8 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
         /* On player-joined, send rtc-synchronize packaet */
         var proto = Argonaut.Player.prototype;
         proto.init = util.extend(proto.init, function() {
-            console.log('Connecting: '+this.id);
-            rtc.connectToPeer(this.id);
+            var peer = rtc.createPeerConnection(this.id);
+            rtc.connectToPeer(peer);
         });
         proto.destroy = util.extend(proto.destroy, function() {
             delete this['rtcPeer'];
@@ -157,7 +153,7 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             rtc.useAudio = true;
             rtc.requestLocalVideo(function() {
                 for(var id in argo.players) {
-                    rtc.connectToPeer(id);
+                    rtc.connectToPeer(rtc.peers[id]);
                 }
             });
         } else { rtc.socket.emit('unmute'); }
@@ -174,7 +170,7 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             rtc.audioStatus = 'disconnected';
             rtc.requestLocalVideo(function() {
                 for(var id in argo.players) {
-                    rtc.connectToPeer(id);
+                    rtc.connectToPeer(rtc.peers[id]);
                 }
             });
         }
@@ -185,7 +181,7 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             rtc.useVideo = true;
             rtc.requestLocalVideo(function() {
                 for(var id in argo.players) {
-                    rtc.connectToPeer(id);
+                    rtc.connectToPeer(rtc.peers[id]);
                 }
             });
         } else { rtc.socket.emit('unhide'); }
@@ -202,7 +198,7 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
             rtc.videoStatus = 'disconnected';
             rtc.requestLocalVideo(function() {
                 for(var id in argo.players) {
-                    rtc.connectToPeer(id);
+                    rtc.connectToPeer(rtc.peers[id]);
                 }
             });
         }
@@ -238,7 +234,22 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
         peer.playerId = peerId;
         if('localStream' in rtc) { peer.addStream(rtc.localStream); }
         return peer;
-    }
+    };
+
+    rtc.recieveICE = function(peer, description, loop) {
+        if(typeof loop === 'undefined') { loop = 0; }
+        var candidate = new RTCIceCandidate(description);
+        try {
+            console.log(candidate);
+            console.log('Loop:' + loop);
+            peer.addIceCandidate(candidate);
+        } catch (DOMException) {
+            setTimeout(function() {
+                rtc.recieveICE(peer, description, loop + 1);
+            }, 125);
+        }
+    };
+
     /* Negotiate a new WebRTC audio/video connection to 'peerId' */
     rtc.connectToPeer = function(peer) {
         if(!('localStream' in rtc)) {
@@ -251,7 +262,7 @@ mods['rtc'] = new Argonaut.Module('rtc', priority.CORE, 'gui');
         function sendCallerDescription(desc) {
             peer.setLocalDescription(desc);
             rtc.socket.emit('syn', {targetId: peer.playerId
-                                     , callerDesc: desc});
+                                  , callerDesc: desc});
         }
     };
 
