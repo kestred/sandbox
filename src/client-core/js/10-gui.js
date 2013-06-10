@@ -352,17 +352,24 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         div['mainMenu'].addClass('pane');
         var arrangeSelect = jQuery('<select></select>');
         for(var title in gui.arrange) {
-            if(title !== 'hidden'
-               && (title.indexOf('gamemaster') < 0
-                   || argo.localPlayer.id == argo.gamemaster.id)
-               && (title.indexOf('player') < 0
-                   || argo.localPlayer.id != argo.gamemaster.id)) {
-                var option = jQuery('<option></option>');
-                var optionName = title.split(/(?=[A-Z])/).join(' ');
-                option.html(util.ucwords(optionName));
-                option.val(title);
-                arrangeSelect.append(option);
+            var self = argo.localPlayer, gm = argo.gamemaster;
+            var gmIndex = title.indexOf('gamemaster');
+            var plIndex = title.indexOf('player');
+            var optionName = title;
+            if(gmIndex >= 0) {
+                if(self.id == gm.id) {
+                    optionName = title.substr('gamemaster'.length);
+                } else { continue; }
             }
+            if(plIndex >= 0) {
+                if(self.id != gm.id) {
+                    optionName = title.substr('player'.length);
+                } else { continue; }
+            }
+            optionName = optionName.split(/(?=[A-Z])/).join(' ');
+            var option = jQuery('<option></option>');
+            option.html(util.ucwords(optionName)).val(title);
+            arrangeSelect.append(option);
         }
         arrangeSelect.appendTo(div['mainMenu']);
         var arrangeLabel = jQuery('<label>Interface Modes</label>');
