@@ -25,7 +25,7 @@
             var block = '<p class="chat-announcement">';
             block += message + '</p>';
             log.append(block);
-            log.scrollTop(log.scrollHeight);
+            log.scrollTop(log[0].scrollHeight);
             return panel; // Chaining
         };
 
@@ -87,6 +87,8 @@
             div['mainChat'].height(height);
             height -= div['mainChat'].form.outerHeight(true);
             div['mainChat'].history.css('height', height + 'px');
+            var mainLog = div['mainChat'].history.log;
+            mainLog.scrollTop(mainLog[0].scrollHeight);
         });
         div['mainChat'].form.input.attr('placeholder',
                                         "Type message and hit 'enter'");

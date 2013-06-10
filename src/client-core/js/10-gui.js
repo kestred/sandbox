@@ -369,7 +369,7 @@ mods['gui'] = new Argonaut.Module('gui', priority.CORE);
         arrangeLabel.insertBefore(arrangeSelect);
         arrangeSelect.change(function() {
             gui.arrange[arrangeSelect.val()]();
-            gui.resizeAfter(0);
+            gui.resizeAfter(15);
         });
         var themeSelect = jQuery('<select></select>');
         var optionDark = jQuery('<option value="dark"></option>');
