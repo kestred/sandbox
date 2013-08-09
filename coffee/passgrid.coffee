@@ -1,6 +1,8 @@
 class Point
 	constructor: (@x, @y, @cell) ->
-	stringy: -> "(#{this.x}, #{this.y})"
+		this.cell.key = this
+	toString: -> "Point(#{this.x}, #{this.y})"
+	stringy: -> "#{this.x},#{this.y}"
 
 class Pattern
 	constructor: ->
@@ -12,12 +14,18 @@ class Pattern
 				return
 		this.points = [this.points..., point]
 
-	toHash: ->
-		if CryptoJS.SHA3?
-			stringify = ""
-			for p in this.points
-				stringify += p.stringy()
-			CryptoJS.SHA3(stringify)
+	toHash: (stringToHash) ->
+		stringify = this.points[0].stringy()
+		for p in this.points[1..]
+			stringify += '|' + p.stringy()
+
+		return stringToHash(stringify)
+
+	toString: ->
+		stringify = this.points[0].toString()
+		for p in this.points[1..]
+			stringify += ", " + p.toString()
+		return stringify
 
 window.PasswordGrid = (width, height) ->
 	points = []
@@ -34,7 +42,7 @@ window.PasswordGrid = (width, height) ->
 		j = 0
 		while j < width
 			td = tr.insertCell(-1)
-			points = [points..., new Point(i, j, td)]
+			points = [points..., new Point(j, i, td)]
 			j++
 		i++
 
@@ -43,7 +51,7 @@ window.PasswordGrid = (width, height) ->
 			jQuery(point.cell).click(
 				(eventObject) ->
 					if this.innerHTML is ""
-						password.addPoint(point)
+						password.addPoint(this.key)
 						this.innerHTML = password.points.length
 						this.className += " active"
 			)
@@ -51,7 +59,7 @@ window.PasswordGrid = (width, height) ->
 			point.cell.onclick = 
 				(eventObject) ->
 					if this.innerHTML is ""
-						password.addPoint(point)
+						password.addPoint(this.key)
 						this.innerHTML = password.points.length
 						this.className += " active"
 

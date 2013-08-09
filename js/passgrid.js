@@ -8,10 +8,15 @@
       this.x = x;
       this.y = y;
       this.cell = cell;
+      this.cell.key = this;
     }
 
+    Point.prototype.toString = function() {
+      return "Point(" + this.x + ", " + this.y + ")";
+    };
+
     Point.prototype.stringy = function() {
-      return "(" + this.x + ", " + this.y + ")";
+      return "" + this.x + "," + this.y;
     };
 
     return Point;
@@ -33,17 +38,26 @@
       return this.points = __slice.call(this.points).concat([point]);
     };
 
-    Pattern.prototype.toHash = function() {
+    Pattern.prototype.toHash = function(stringToHash) {
       var p, stringify, _i, _len, _ref;
-      if (CryptoJS.SHA3 != null) {
-        stringify = "";
-        _ref = this.points;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          p = _ref[_i];
-          stringify += p.stringy();
-        }
-        return CryptoJS.SHA3(stringify);
+      stringify = this.points[0].stringy();
+      _ref = this.points.slice(1);
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        p = _ref[_i];
+        stringify += '|' + p.stringy();
       }
+      return stringToHash(stringify);
+    };
+
+    Pattern.prototype.toString = function() {
+      var p, stringify, _i, _len, _ref;
+      stringify = this.points[0].toString();
+      _ref = this.points.slice(1);
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        p = _ref[_i];
+        stringify += ", " + p.toString();
+      }
+      return stringify;
     };
 
     return Pattern;
@@ -63,7 +77,7 @@
       j = 0;
       while (j < width) {
         td = tr.insertCell(-1);
-        points = __slice.call(points).concat([new Point(i, j, td)]);
+        points = __slice.call(points).concat([new Point(j, i, td)]);
         j++;
       }
       i++;
@@ -73,7 +87,7 @@
       if (typeof jQuery !== "undefined" && jQuery !== null) {
         jQuery(point.cell).click(function(eventObject) {
           if (this.innerHTML === "") {
-            password.addPoint(point);
+            password.addPoint(this.key);
             this.innerHTML = password.points.length;
             return this.className += " active";
           }
@@ -81,7 +95,7 @@
       } else {
         point.cell.onclick = function(eventObject) {
           if (this.innerHTML === "") {
-            password.addPoint(point);
+            password.addPoint(this.key);
             this.innerHTML = password.points.length;
             return this.className += " active";
           }

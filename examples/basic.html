@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+	<style type="text/css">
+	@font-face {
+		font-family: 'Linux Libertine';
+		src: url('fonts/LinLibertine_R.eot');
+		src: url('fonts/LinLibertine_R.ttf') format('truetype');
+		font-weight: normal;
+		font-style: normal;
+	}
+	body { font-family: "Linux Libertine", serif; margin: 0; padding: 0; }
+	header { background-color: #ffffee; padding: 8px; margin-bottom: 32px; }
+	#generate, label { display: inline-block; height: 24px; width: 15%; margin: 0; text-align: center; }
+	#password, #pattern { display: inline-block; height: 18px; width: 83%; margin: 8px 0 0; }
+	table.passgrid {
+		margin: 0 auto;
+		background-color: rgba(0, 0, 0, 0.2);
+		border: 1px solid #000;
+	}
+	table.passgrid td {
+		font-size: 32px;
+		font-weight: bold;
+		line-height: 64px;
+		text-align: center;
+		position: relative;
+		width: 64px;
+		height: 64px;
+		background-image: url("img/point.png");
+		background-position: center;
+		background-repeat: no-repeat;
+		background-size: 48px;
+	}
+	table.passgrid td.active {
+		color: white;
+		text-shadow: 2px 2px rgba(0,0,0,0.5);
+		background-image: url("img/active.png");
+	}
+	</style>
+</head>
+<body>
+	<header>
+		<button id="generate">Show Password</button>
+		<input id="password" type="text">
+		<label for="pattern">Pattern</label>
+		<input id="pattern" type="text">
+	</header>
+	<script type="text/javascript" src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/sha3.js"></script>
+	<script src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/components/enc-base64-min.js"></script>
+	<script type="text/javascript" src="../js/passgrid.js"></script>
+	<script type="text/javascript">
+		var foo = PasswordGrid(6, 6);
+		document.body.appendChild(foo);
+
+		var gen = document.getElementById("generate");
+		var pass = document.getElementById("password");
+		var pattern = document.getElementById("pattern")
+		gen.onclick = function() {
+			string = foo.pattern.toString();
+			pass.value = foo.pattern.toHash(CryptoJS.SHA3).toString(CryptoJS.enc.Base64);
+			pattern.value = foo.pattern.toString()
+		}
+	</script>
+</body>
+</html>
