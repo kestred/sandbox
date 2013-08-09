@@ -13,7 +13,7 @@ Also, if anyone is interested in adding UI elements like edges between selected 
 http://rawgithub.com/kestred/passgrid.coffee/master/examples/basic.html
 
 ### Basic Usage
-```js
+```html
 <script src="js/passgrid.js"></script>
 <script type="text/javascript">
   var foo = PasswordGrid(6, 6);
@@ -23,7 +23,7 @@ http://rawgithub.com/kestred/passgrid.coffee/master/examples/basic.html
 ```
 
 ### More realistic example
-```js
+```html
 <script src="http://codeorigin.jquery.com/jquery-2.0.3.min.js"></script>
 <script src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/sha3.js"></script>
 <script src="http://crypto-js.googlecode.com/svn/tags/3.1.2/build/components/enc-base64-min.js"></script>
@@ -31,7 +31,7 @@ http://rawgithub.com/kestred/passgrid.coffee/master/examples/basic.html
 <script type="text/javascript">
   var passgrid = PasswordGrid(6, 6);
   $('#form').prepend(passgrid);
-  $('#form input[type="submit"]).click(function() {
+  $('#form input[type="submit"]').click(function() {
     password = passgrid.pattern.toHash(CryptoJS.SHA3).toString(CryptoJS.enc.Base64);
     $.post("<domain>", { user: username, pwd: password })
   });
