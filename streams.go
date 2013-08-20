@@ -167,52 +167,6 @@ func (s *Stream) advertise(feats []string) error {
 	return nil
 }
 
-func (s *Stream) readXML() error {
-	d := xml.NewDecoder(s.incoming)
-	t, xmlErr := d.RawToken()
-	if xmlErr != nil {
-		s.CloseError(StreamErr("bad-format", ""))
-		return xmlErr
-	}
-
-	switch t := t.(type) {
-	case xml.StartElement:
-		handler := s.handlers[t.Name.Local]
-		if handler == nil {
-			var err *StreamError
-			if s.authorized {
-				err = StreamErr("unsupported-stanza-type", "")
-			} else {
-				err = StreamErr("not-authorized", "")
-			}
-			s.CloseError(err)
-			return err
-		}
-
-		return handler(s, d, t)
-	case xml.EndElement:
-		if t.Name.Local != "stream" {
-			err := StreamErr("not-well-formed", "")
-			s.CloseError(err)
-			return err
-		} else {
-			s.Close()
-			return errors.New("stream closed by peer")
-		}
-	case xml.ProcInst:
-		if s.sentHeader == false {
-			return procInstHandler(s, t)
-		}
-		err := StreamErr("restricted-xml", "")
-		s.CloseError(err)
-		return err
-	default:
-		err := StreamErr("restricted-xml", "")
-		s.CloseError(err)
-		return err
-	}
-}
-
 // TODO: Finish implementation
 func (s *Stream) negotiateOutgoing(tls bool) error {
 	var err error
@@ -339,6 +293,53 @@ func (s *Stream) Outgoing() net.Conn {
 	return s.outgoing
 }
 
+func (s *Stream) readXML() error {
+	d := xml.NewDecoder(s.incoming)
+	t, xmlErr := d.RawToken()
+	if xmlErr != nil {
+		s.CloseError(StreamErr("bad-format", ""))
+		return xmlErr
+	}
+
+	switch t := t.(type) {
+	case xml.StartElement:
+		handler := s.handlers[t.Name.Local]
+		if handler == nil {
+			var err *StreamError
+			if s.authorized {
+				err = StreamErr("unsupported-stanza-type", "")
+			} else {
+				err = StreamErr("not-authorized", "")
+			}
+			s.CloseError(err)
+			return err
+		}
+
+		return handler(s, d, t)
+	case xml.EndElement:
+		if t.Name.Local != "stream" {
+			err := StreamErr("not-well-formed", "")
+			s.CloseError(err)
+			return err
+		} else {
+			s.Close()
+			return errors.New("stream closed by peer")
+		}
+	case xml.ProcInst:
+		if s.sentHeader == false {
+			return procInstHandler(s, t)
+		}
+		err := StreamErr("restricted-xml", "")
+		s.CloseError(err)
+		return err
+	default:
+		err := StreamErr("restricted-xml", "")
+		s.CloseError(err)
+		return err
+	}
+}
+
+// Handler for recieving a peer's <stream:stream> header element.
 func headerHandler(s *Stream, d *xml.Decoder, e xml.StartElement) error {
 	h := new(recvHeader)
 	s.peerHeader = h
@@ -362,8 +363,10 @@ func headerHandler(s *Stream, d *xml.Decoder, e xml.StartElement) error {
 		return err
 	}
 
-	// Ignore recieved stream id (RFC 6120 Sec. 4.7.3.)
-	h.Id = ""
+	if s.receiving {
+		// Ignore recieved stream id (RFC 6120 Sec. 4.7.3.)
+		h.Id = ""
+	}
 
 	// Handle recieved XMPP version (RFC 6120 Sec. 4.7.5.)
 	if len(h.Version) == 0 {
@@ -396,9 +399,14 @@ func headerHandler(s *Stream, d *xml.Decoder, e xml.StartElement) error {
 
 	return nil
 }
+
+// Handler for <stream:error> elements
+// TODO: Implement
 func errorHandler(s *Stream, d *xml.Decoder, e xml.StartElement) error {
 	return nil
 }
+
+// Handler for XML processing instructions <?target instructions...?>
 func procInstHandler(s *Stream, pi xml.ProcInst) error {
 	if pi.Target != "xml" {
 		err := StreamErr("restricted-xml", "")
