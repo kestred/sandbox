@@ -78,7 +78,7 @@ func (jid *JID) Set(val string) error {
 // An Extension represents an XMPP Extension such as those defined in XEPs (http://xmpp.org/xmpp-protocols/xmpp-extensions/).
 type Extension struct {
 	//TODO: Finalize fields and <doc> each field.
-	StanzaHandlers map[string]func(*xml.Name) interface{}
+	StanzaHandlers map[string]func(*Stream, *xml.Decoder, *xml.StartElement) interface{}
 	Start          func(*Stream)
 }
 

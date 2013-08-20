@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net"
 	"strings"
-	"time"
 )
 
 // A Stream represents a pair of XMPP streams: one incoming, one outgoing.
@@ -38,7 +37,12 @@ type Stream struct {
 	outgoing   net.Conn
 	extensions []Extension
 	hosts      []string
+	peerHeader *recvHeader
+	sentHeader bool
 	receiving  bool
+	authorized bool
+
+	handlers map[string]func(*Stream, *xml.Decoder, xml.StartElement) error
 }
 
 // NewStream returns a new Stream that is ready to start stream negotiation.
@@ -64,127 +68,37 @@ func NewStream(to JID, from JID, lang string) *Stream {
 // Recieve returns a new Stream that is ready to start stream negotiation.
 //
 // Recieve(), typically followed by Stream.Negotiate() is used to handle an XMPP connection as the 'Recieving Entity'
-func Recieve(conn net.Conn, timeout time.Duration, hosts []string) (*Stream, error) {
-	data := setupData{conn, nil, hosts, timeout}
-
-	decoder := xml.NewDecoder(conn)
-	decoder.AutoClose = []string{"stream"}
-
-	for {
-		token, xmlErr := decoder.Token()
-		if xmlErr != nil {
-			err := streamErr("bad-format", "")
-			closeSetup(data, err)
-			return nil, err
-		}
-
-		switch t := token.(type) {
-		case xml.ProcInst:
-			if t.Target != "xml" {
-				err := streamErr("restricted-xml", "")
-				closeSetup(data, err)
-				return nil, err
-			}
-
-			insts := strings.Split(string(t.Inst), " ")
-			for _, inst := range insts {
-				parts := strings.Split(inst, "=")
-				switch parts[0] {
-				case "version":
-					if parts[1] != `"1.0"` {
-						err := streamErr("unsupported-encoding", "xml version '"+parts[1]+"' is unsupported")
-						closeSetup(data, err)
-						return nil, err
-					}
-				case "encoding":
-					if parts[1] != `"UTF-8"` {
-						err := streamErr("unsupported-encoding", "")
-						closeSetup(data, err)
-						return nil, err
-					}
-				default:
-					err := streamErr("restricted-xml", "<?xml "+parts[0]+"?> cannot be processed")
-					closeSetup(data, err)
-					return nil, err
-				}
-			}
-		case xml.StartElement:
-			h := new(recvHeader)
-			data.Header = h
-
-			decoder.DecodeElement(h, &t)
-			if h.XMLName.Local != "stream" {
-				err := streamErr("not-authorized", "")
-				closeSetup(data, err)
-				return nil, err
-			}
-
-			if h.XMLName.Space != NsStream {
-				err := streamErr("invalid-namespace", "")
-				closeSetup(data, err)
-				return nil, err
-			}
-
-			// Ignore recieved stream id (RFC 6120 Sec. 4.7.3.)
-			h.Id = ""
-
-			// Handle recieved XMPP version (RFC 6120 Sec. 4.7.5.)
-			if len(h.Version) == 0 {
-				err := streamErr("unsupported-version", "")
-				closeSetup(data, err)
-				return nil, err
-			}
-			recvMajor, recvMinor := parseVersion(h.Version)
-			thisMajor, thisMinor := parseVersion(Version)
-			if recvMajor >= thisMajor && recvMinor >= thisMinor {
-				h.Version = Version
-			}
-
-			// TODO: Check for `improper-addressing`. See RFC 6120 4.9.3.7.
-
-			if len(h.To) > 0 {
-				badHost := true
-				for _, host := range data.Hosts {
-					if h.To == host {
-						badHost = false
-						break
-					}
-				}
-				if badHost {
-					err := streamErr("host-unknown", "")
-					closeSetup(data, err)
-					return nil, err
-				}
-			}
-
-			// SUCCESS
-			return makeStream(conn, h), nil
-		default:
-			err := streamErr("restricted-xml", "")
-			closeSetup(data, err)
-			return nil, err
-		}
-	}
-}
-
-//func Send(w *io.Writer, h StreamHeader) Stream, error {
-//	stream := new(xmlStream)
-//}
-
-func makeStream(conn net.Conn, h *recvHeader) *Stream {
+func Recieve(conn net.Conn, hosts []string) (*Stream, error) {
 	s := new(Stream)
-	s.incoming = conn
 	s.receiving = true
+	s.incoming = conn
+	s.hosts = hosts
+	s.handlers = make(map[string]func(*Stream, *xml.Decoder, xml.StartElement) error)
+	s.handlers["stream"] = headerHandler
+	s.handlers["error"] = errorHandler
 
-	s.To.Set(h.From)
-	s.From.Set(h.To)
-	s.Lang = h.Lang // PrepLangTag(h.Lang)
-
-	if h.Content != NsStream {
-		s.Content = h.Content
+	err := s.readXML()
+	for err == nil {
+		if s.peerHeader != nil {
+			break
+		}
+		err = s.readXML()
 	}
 
-	return s
+	if err != nil {
+		return nil, err
+	}
+
+	delete(s.handlers, "stream")
+
+	s.To.Set(s.peerHeader.From)
+	s.From.Set(s.peerHeader.To)
+	s.Lang = s.peerHeader.Lang // PrepLangTag(h.Lang)
+	if s.peerHeader.Content != NsStream {
+		s.Content = s.peerHeader.Content
+	}
+
+	return s, nil
 }
 
 // Negotiate handles securing and setup for an XMPP Stream.
@@ -199,7 +113,7 @@ func (s *Stream) Negotiate(tls bool) error {
 		return errors.New("content-type is required to negotiate")
 	case s.Content != NsServer && s.Content != NsClient:
 		if s.receiving {
-			s.CloseError("invalid-namespace", "")
+			s.CloseError(StreamErr("invalid-namespace", ""))
 		}
 		return errors.New("unsupported content-type: " + s.Content)
 	}
@@ -239,9 +153,64 @@ func (s *Stream) negotiateIncoming(tls bool) error {
 		feat.Mechanisms.Mechanism = mechs
 	}
 
-	// TODO: Finish negotiation
-
 	return nil
+}
+
+// Send the <stream:features> element
+// Accepted features:
+// 		tls-required
+//		tls-optional
+//		sasl
+//		bind
+//		session
+func (s *Stream) advertise(feats []string) error {
+	return nil
+}
+
+func (s *Stream) readXML() error {
+	d := xml.NewDecoder(s.incoming)
+	t, xmlErr := d.RawToken()
+	if xmlErr != nil {
+		s.CloseError(StreamErr("bad-format", ""))
+		return xmlErr
+	}
+
+	switch t := t.(type) {
+	case xml.StartElement:
+		handler := s.handlers[t.Name.Local]
+		if handler == nil {
+			var err *StreamError
+			if s.authorized {
+				err = StreamErr("unsupported-stanza-type", "")
+			} else {
+				err = StreamErr("not-authorized", "")
+			}
+			s.CloseError(err)
+			return err
+		}
+
+		return handler(s, d, t)
+	case xml.EndElement:
+		if t.Name.Local != "stream" {
+			err := StreamErr("not-well-formed", "")
+			s.CloseError(err)
+			return err
+		} else {
+			s.Close()
+			return errors.New("stream closed by peer")
+		}
+	case xml.ProcInst:
+		if s.sentHeader == false {
+			return procInstHandler(s, t)
+		}
+		err := StreamErr("restricted-xml", "")
+		s.CloseError(err)
+		return err
+	default:
+		err := StreamErr("restricted-xml", "")
+		s.CloseError(err)
+		return err
+	}
 }
 
 // TODO: Finish implementation
@@ -267,6 +236,8 @@ func (s *Stream) negotiateOutgoing(tls bool) error {
 	return nil
 }
 
+//func (s *Stream) restart() {}
+
 // Close closes the stream, signaling that no further message will be sent.
 // Incoming messages can still be recieved and processed after the method
 // returns until the peer also closes the stream, after which the underlying
@@ -282,7 +253,11 @@ func (s *Stream) Close() error {
 // RFC 6120 Sec. 4.4. and Sec 4.9. for handling connection errors.
 //
 // TODO: Implement
-func (s *Stream) CloseError(condition string, message string) error {
+func (s *Stream) CloseError(err *StreamError) error {
+	if !s.sentHeader {
+		return s.closeSetup(err)
+	}
+
 	if s.outgoing != nil {
 
 	}
@@ -292,58 +267,37 @@ func (s *Stream) CloseError(condition string, message string) error {
 	return nil
 }
 
-//func (s *Stream) reset() {}
-
-// Outgoing returns the underlying connection the stream uses to send outgoing XMPP stanzas.
-// In the case of a Client-To-Server connection, this is typically the same as Incoming().
-func (s *Stream) Outgoing() net.Conn {
-	return s.outgoing
-}
-
-// Outgoing returns the underlying connection the stream uses to recieve incoming XMPP stanzas.
-// In the case of a Client-To-Server connection, this is typically the same as Outgoing().
-func (s *Stream) Incoming() net.Conn {
-	return s.incoming
-}
-
-type setupData struct {
-	Conn    net.Conn
-	Header  *recvHeader
-	Hosts   []string
-	Timeout time.Duration
-}
-
 // closeSetup does the same as CloseError, except on a connection that has not finished stream setup.
-func closeSetup(data setupData, err *streamError) error {
+func (s *Stream) closeSetup(err *StreamError) error {
 	// Build response header
 	reply := new(header)
 	reply.Lang = "en"
 	reply.Version = Version
-	if len(data.Hosts) > 0 {
-		reply.From = data.Hosts[0]
+	if len(s.hosts) > 0 {
+		reply.From = s.hosts[0]
 	}
 
-	if data.Header != nil {
-		if len(data.Header.From) != 0 {
+	if s.peerHeader != nil {
+		if len(s.peerHeader.From) != 0 {
 			recvFrom := JID{}
-			recvFrom.Set(data.Header.From)
+			recvFrom.Set(s.peerHeader.From)
 			reply.To = recvFrom.String()
 		}
-		if len(data.Header.To) != 0 {
-			for _, host := range data.Hosts {
-				if host == data.Header.To {
-					reply.From = data.Header.To
+		if len(s.peerHeader.To) != 0 {
+			for _, host := range s.hosts {
+				if host == s.peerHeader.To {
+					reply.From = s.peerHeader.To
 					break
 				}
 			}
 		}
-		if len(data.Header.Version) == 0 {
+		if len(s.peerHeader.Version) == 0 {
 			reply.Version = ""
-		} else if Version != data.Header.Version {
-			recvMajor, recvMinor := parseVersion(data.Header.Version)
+		} else if Version != s.peerHeader.Version {
+			recvMajor, recvMinor := parseVersion(s.peerHeader.Version)
 			thisMajor, thisMinor := parseVersion(Version)
 			if recvMajor < thisMajor || (recvMajor == thisMajor && recvMinor < thisMinor) {
-				reply.Version = data.Header.Version
+				reply.Version = s.peerHeader.Version
 			}
 		}
 	}
@@ -357,35 +311,123 @@ func closeSetup(data setupData, err *streamError) error {
 
 	errorPacket := bytes.Join([][]byte{xmlBytes, headerBytes, condBytes, closeBytes}, []byte{})
 
-	// Set default timeout
-	if data.Timeout.Nanoseconds() <= 0 {
-		data.Timeout = 6 * time.Second
+	s.incoming.Write(errorPacket)
+
+	decoder := xml.NewDecoder(s.incoming)
+	for {
+		token, err := decoder.RawToken()
+		if err != nil {
+			break
+		}
+		if t, ok := token.(xml.EndElement); ok && t.Name.Local == "stream" {
+			break
+		}
 	}
 
-	// Send closing packet, read replies
-	quit := make(chan bool)
-	decoder := xml.NewDecoder(data.Conn)
-	timeout := time.After(data.Timeout)
-	go data.Conn.Write(errorPacket)
-	go func(d *xml.Decoder, ch chan bool) {
-		for {
-			token, err := d.RawToken()
-			if err != nil {
-				quit <- true
-				return
-			}
-			if t, ok := token.(xml.EndElement); ok && t.Name.Local == "stream" {
-				quit <- true
-				return
+	return s.incoming.Close()
+}
+
+// Outgoing returns the underlying connection the stream uses to recieve incoming XMPP stanzas.
+// In the case of a Client-To-Server connection, this is typically the same as Outgoing().
+func (s *Stream) Incoming() net.Conn {
+	return s.incoming
+}
+
+// Outgoing returns the underlying connection the stream uses to send outgoing XMPP stanzas.
+// In the case of a Client-To-Server connection, this is typically the same as Incoming().
+func (s *Stream) Outgoing() net.Conn {
+	return s.outgoing
+}
+
+func headerHandler(s *Stream, d *xml.Decoder, e xml.StartElement) error {
+	h := new(recvHeader)
+	s.peerHeader = h
+
+	err := d.DecodeElement(h, &e)
+	if err != nil {
+		err := StreamErr("bad-format", "")
+		s.CloseError(err)
+		return err
+	}
+
+	if h.XMLName.Local != "stream" {
+		err := StreamErr("not-authorized", "")
+		s.CloseError(err)
+		return err
+	}
+
+	if h.XMLName.Space != NsStream {
+		err := StreamErr("invalid-namespace", "")
+		s.CloseError(err)
+		return err
+	}
+
+	// Ignore recieved stream id (RFC 6120 Sec. 4.7.3.)
+	h.Id = ""
+
+	// Handle recieved XMPP version (RFC 6120 Sec. 4.7.5.)
+	if len(h.Version) == 0 {
+		err := StreamErr("unsupported-version", "")
+		s.CloseError(err)
+		return err
+	}
+	recvMajor, recvMinor := parseVersion(h.Version)
+	thisMajor, thisMinor := parseVersion(Version)
+	if recvMajor >= thisMajor && recvMinor >= thisMinor {
+		h.Version = Version
+	}
+
+	// TODO: Check for `improper-addressing`. See RFC 6120 4.9.3.7.
+
+	if len(h.To) > 0 {
+		badHost := true
+		for _, host := range s.hosts {
+			if h.To == host {
+				badHost = false
+				break
 			}
 		}
-	}(decoder, quit)
-
-	// Wait for clean exit from peer
-	select {
-	case <-quit:
-	case <-timeout:
+		if badHost {
+			err := StreamErr("host-unknown", "")
+			s.CloseError(err)
+			return err
+		}
 	}
 
-	return data.Conn.Close()
+	return nil
+}
+func errorHandler(s *Stream, d *xml.Decoder, e xml.StartElement) error {
+	return nil
+}
+func procInstHandler(s *Stream, pi xml.ProcInst) error {
+	if pi.Target != "xml" {
+		err := StreamErr("restricted-xml", "")
+		s.CloseError(err)
+		return err
+	}
+
+	insts := strings.Split(string(pi.Inst), " ")
+	for _, inst := range insts {
+		parts := strings.Split(inst, "=")
+		switch parts[0] {
+		case "version":
+			if parts[1] != `"1.0"` {
+				err := StreamErr("unsupported-encoding", "xml version '"+parts[1]+"' is unsupported")
+				s.CloseError(err)
+				return err
+			}
+		case "encoding":
+			if parts[1] != `"UTF-8"` {
+				err := StreamErr("unsupported-encoding", "")
+				s.CloseError(err)
+				return err
+			}
+		default:
+			err := StreamErr("restricted-xml", "<?xml "+parts[0]+"?> cannot be processed")
+			s.CloseError(err)
+			return err
+		}
+	}
+
+	return nil
 }
