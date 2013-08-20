@@ -6,30 +6,9 @@ import (
 	"net"
 )
 
-// ClientDial starts a client-to-server connection.
 // Dial opens a new TCP connection with XMPP-style peer discovery.
-//
-// USAGE: Typically, NewStream() should be called instead and the Stream
-//        object will call Dial where appropriate.
-// WARNING: Dial is currently an unstable part of the public API and may
-//          be removed or altered to maintain a simple, clean library.
-func ClientDial(jid JID) (conn *net.TCPConn, err error) {
-	return dial(jid.Domain, SrvClient, PortClient)
-}
-
-// ServerDial starts a server-to-server connection.
-// Dial opens a new TCP connection with XMPP-style peer discovery.
-//
-// USAGE: Typically, NewStream() should be called instead and the Stream
-//        object will call Dial where appropriate.
-// WARNING: Dial is currently an unstable part of the public API and may
-//          be removed or altered to maintain a simple, clean library.
-func ServerDial(jid JID) (conn *net.TCPConn, err error) {
-	return dial(jid.Domain, SrvServer, PortServer)
-}
-
-// dial opens a new TCP connection with XMPP-style peer discovery.
-func dial(domain, service string, defaultPort uint16) (*net.TCPConn, error) {
+// Typically, Dial is not called directly but instead called when necessary by the stream object.
+func Dial(domain, service string, defaultPort uint16) (*net.TCPConn, error) {
 	_, srvs, err := net.LookupSRV(service, "tcp", domain)
 
 	// Try fallback process if SRV lookup fails
@@ -53,6 +32,16 @@ func dial(domain, service string, defaultPort uint16) (*net.TCPConn, error) {
 	}
 
 	return nil, errors.New("dial: the server '" + domain + "' failed to respond.")
+}
+
+// clientDial starts a client-to-server connection. Convenience function.
+func clientDial(jid JID) (conn *net.TCPConn, err error) {
+	return Dial(jid.Domain, SrvClient, PortClient)
+}
+
+// SserverDial starts a server-to-server connection. Convenience function.
+func serverDial(jid JID) (conn *net.TCPConn, err error) {
+	return Dial(jid.Domain, SrvServer, PortServer)
 }
 
 func dialRecord(srv *net.SRV) (*net.TCPConn, error) {

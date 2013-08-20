@@ -156,17 +156,6 @@ func (s *Stream) negotiateIncoming(tls bool) error {
 	return nil
 }
 
-// Send the <stream:features> element
-// Accepted features:
-// 		tls-required
-//		tls-optional
-//		sasl
-//		bind
-//		session
-func (s *Stream) advertise(feats []string) error {
-	return nil
-}
-
 // TODO: Finish implementation
 func (s *Stream) negotiateOutgoing(tls bool) error {
 	var err error
@@ -174,9 +163,9 @@ func (s *Stream) negotiateOutgoing(tls bool) error {
 	if s.outgoing == nil {
 		switch s.Content {
 		case NsServer:
-			s.outgoing, err = ServerDial(s.To)
+			s.outgoing, err = serverDial(s.To)
 		case NsClient:
-			s.outgoing, err = ClientDial(s.To)
+			s.outgoing, err = clientDial(s.To)
 		}
 		if err != nil {
 			return err
