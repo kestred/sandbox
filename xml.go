@@ -70,7 +70,7 @@ type streamFeatures struct {
 	Mechanisms *mechanisms `xml:",omitempty"`
 	Bind       *bind       `xml:",omitempty"` // TODO: appropriate XML qualifier
 	//Session    *XMLGeneric    `xml:",omitempty"` // TODO: appropriate XML qualifier
-	//Any        *XMLGeneric    `xml:",omitempty"` // TODO: appropriate XML qualifier
+	//Any        []*XMLGeneric  `xml:",omitempty"` // TODO: appropriate XML qualifier
 }
 
 type starttls struct {
@@ -89,7 +89,8 @@ type bind struct {
 	Jid      string   `xml:"jid"`
 }
 
-// A XMLGeneric is an XML encodable struct which can represent almost any XML data
+// A XMLGeneric is an XML encodable struct which can represent any attribute-free XML data.
+// Its useful for one-of XML elements and also unknown/variable-name elements (like XMPP StreamError conditions).
 type XMLGeneric struct {
 	XMLName  xml.Name
 	Any      []*XMLGeneric `xml:",any,omitempty"`

@@ -3,7 +3,11 @@
 // The package provides a complete XMPP API to build extensible XMPP Clients and Servers.
 // Simple client and server implementations are provided in the client and server subpackages.
 //
-// TODO: Provide common usage examples in overview (see 'package net' overview as example documentation)
+// NOTE: Implementation unfinished. Currently implements RFC 6120 Sec. 1 - Sec.5
+//
+// TODO(Next Step): Implement SASL
+// TODO(Maintenance): Clean and Update API and code (package crypto/tls provides some good patterns, probably implement a StreamState and also consider a Config)
+// TODO(Documentation): Provide common usage examples in overview (see 'package net' overview as example documentation)
 package xmpp
 
 import (
@@ -73,13 +77,6 @@ func (jid *JID) Set(val string) error {
 	jid.Domain = parts[3]
 	jid.Resource = parts[5]
 	return nil
-}
-
-// An Extension represents an XMPP Extension such as those defined in XEPs (http://xmpp.org/xmpp-protocols/xmpp-extensions/).
-type Extension struct {
-	//TODO: Finalize fields and <doc> each field.
-	StanzaHandlers map[string]func(*Stream, *xml.Decoder, *xml.StartElement) interface{}
-	Start          func(*Stream)
 }
 
 // A Mechanism represents an XMPP SASL mechanism for peer authentication.

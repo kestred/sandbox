@@ -132,9 +132,7 @@ func (s *Stream) negotiateIncoming(tls bool) error {
 		return errors.New("recieved stream has no connection")
 	}
 
-	//encoder := xml.NewEncoder(s.incoming)
-	//decoder := xml.NewDecoder(s.incoming)
-	//decoder.DefaultSpace = s.Content
+	encoder := xml.NewEncoder(s.incoming)
 
 	feat := new(streamFeatures)
 	feat.Starttls = new(starttls)
@@ -153,7 +151,16 @@ func (s *Stream) negotiateIncoming(tls bool) error {
 		feat.Mechanisms.Mechanism = mechs
 	}
 
-	return nil
+	// TODO: Get tls.Config from somewhere
+
+	encoder.Encode(feat)
+
+	ext := tlsExt(nil)
+	s.handlers["startls"] = func(s *Stream, d *xml.Decoder, e xml.StartElement) error {
+		return ext.Handle("starttls", s, d, e)
+	}
+
+	return s.readXML()
 }
 
 // TODO: Finish implementation
@@ -172,14 +179,19 @@ func (s *Stream) negotiateOutgoing(tls bool) error {
 		}
 	}
 
-	//encoder := xml.NewEncoder(s.outgoing)
-	//decoder := xml.NewDecoder(s.outgoing)
-	//decoder.DefaultSpace = s.Content
+	s.handlers["features"] = featureHandler
 
-	return nil
+	return s.readXML()
 }
 
-//func (s *Stream) restart() {}
+// Restart Performs an XMPP Stream Restart.
+// Most uses of this package should not call Restart explicitly:
+// custom XMPP extensions may need to call Restart,
+// and it is otherwise called automatically according to the specification.
+// TODO: Implement
+func (s *Stream) Restart() error {
+	return nil
+}
 
 // Close closes the stream, signaling that no further message will be sent.
 // Incoming messages can still be recieved and processed after the method
@@ -389,10 +401,35 @@ func headerHandler(s *Stream, d *xml.Decoder, e xml.StartElement) error {
 	return nil
 }
 
-// Handler for <stream:error> elements
-// TODO: Implement
+// Handler for <stream:features> element.
+func featureHandler(s *Stream, d *xml.Decoder, e xml.StartElement) error {
+	return errors.New("Handling <stream:features> not implemented")
+}
+
+// Handler for <stream:error> elements. Always returns an error (stream errors are unrecoverable).
+// TODO: Finish implementation
 func errorHandler(s *Stream, d *xml.Decoder, e xml.StartElement) error {
-	return nil
+	err := new(StreamError)
+	xmlErr := d.DecodeElement(err, &e)
+	if xmlErr != nil {
+		// TODO: Close TCP connections as necessary
+	}
+
+	// TODO: Write </stream> to incoming and outgoing streams as necessary.
+
+	for {
+		token, closeErr := d.RawToken()
+		if closeErr != nil {
+			break
+		}
+		if t, ok := token.(xml.EndElement); ok && t.Name.Local == "stream" {
+			break
+		}
+	}
+
+	// TODO: Close TCP connections as necessary
+
+	return err
 }
 
 // Handler for XML processing instructions <?target instructions...?>
