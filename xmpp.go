@@ -88,3 +88,9 @@ type Mechanism struct {
 	//TODO: Finalize fields and <doc> each field.
 	SASLHandler func(*xml.Name) interface{}
 }
+
+// An Extension represents an XMPP Extension such as those defined in XEPs (http://xmpp.org/xmpp-protocols/xmpp-extensions/).
+type Extension struct {
+	//Features []func(Stream, Conn) string
+	Handlers map[string]func(DecodeData) error
+}

@@ -2,8 +2,6 @@ package xmpp
 
 import (
 	"encoding/xml"
-	"strconv"
-	"strings"
 )
 
 // <stream:stream>
@@ -17,7 +15,7 @@ type header struct {
 }
 
 // A recieved <stream:stream> that captures the content namespace.
-type recvHeader struct {
+type remoteHeader struct {
 	header
 	Content string `xml:"xmlns,attr,omitempty"`
 }
@@ -68,14 +66,15 @@ type streamFeatures struct {
 	XMLName    xml.Name    `xml:"http://etherx.jabber.org/streams features"`
 	Starttls   *starttls   `xml:",omitempty"`
 	Mechanisms *mechanisms `xml:",omitempty"`
-	Bind       *bind       `xml:",omitempty"` // TODO: appropriate XML qualifier
+	//Bind       *bind       `xml:",omitempty"` // TODO: appropriate XML qualifier
 	//Session    *XMLGeneric    `xml:",omitempty"` // TODO: appropriate XML qualifier
-	//Any        []*XMLGeneric  `xml:",omitempty"` // TODO: appropriate XML qualifier
+	Any []*XMLGeneric `xml:",omitempty"`
 }
 
+// <starttls:starttls>
 type starttls struct {
 	XMLName  xml.Name `xml:"urn:ietf:params:xml:ns:xmpp-tls starttls"`
-	Required bool     `xml:",omitempty"` // TODO: appropriate XML qualifier
+	Required bool     `xml:",omitempty"`
 }
 
 type mechanisms struct {
@@ -95,22 +94,4 @@ type XMLGeneric struct {
 	XMLName  xml.Name
 	Any      []*XMLGeneric `xml:",any,omitempty"`
 	Chardata string        `xml:",chardata"`
-}
-
-func parseVersion(s string) (uint, uint) {
-	var major, minor uint64
-
-	nums := strings.Split(s, ".")
-
-	major, _ = strconv.ParseUint(nums[0], 0, 64)
-	switch {
-	case len(nums) == 2:
-		minor, _ = strconv.ParseUint(nums[1], 0, 64)
-	case len(nums) > 2:
-		minor, _ = strconv.ParseUint(strings.Join(nums, ""), 0, 64)
-	default:
-		minor = 0
-	}
-
-	return uint(major), uint(minor)
 }

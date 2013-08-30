@@ -1,10 +1,48 @@
 package xmpp
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
 )
+
+type Conn struct {
+	net.Conn
+
+	Started      bool
+	TLSComplete  bool
+	SASLComplete bool
+	BindComplete bool
+	Negotiated   bool
+
+	header *remoteHeader
+}
+
+func newConn(conn net.Conn) *Conn {
+	c := new(Conn)
+	c.Conn = conn
+	return c
+}
+func (c *Conn) startTLS(cfg *tls.Config) (state tls.ConnectionState, err error) {
+	tlsc := tls.Server(c.Conn, cfg)
+	err = tlsc.Handshake()
+	state = tlsc.ConnectionState()
+	return
+}
+func (c *Conn) proceedTLS(cfg *tls.Config) (state tls.ConnectionState, err error) {
+	tlsc := tls.Client(c.Conn, cfg)
+	err = tlsc.Handshake()
+	state = tlsc.ConnectionState()
+	c.Conn = tlsc
+	return
+}
+
+type SRV struct {
+	Service string
+	Domain  string
+	Port    uint16
+}
 
 // Dial opens a new TCP connection with XMPP-style peer discovery.
 // Typically, Dial is not called directly but instead called when necessary by the stream object.
