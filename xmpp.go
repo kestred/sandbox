@@ -5,8 +5,9 @@
 //
 // NOTE: Implementation unfinished. Currently implements RFC 6120 Sec. 1 - Sec.5
 //
+//
 // TODO(Next Step): Implement SASL
-// TODO(Maintenance): Clean and Update API and code (package crypto/tls provides some good patterns, probably implement a StreamState and also consider a Config)
+//
 // TODO(Documentation): Provide common usage examples in overview (see 'package net' overview as example documentation)
 package xmpp
 
