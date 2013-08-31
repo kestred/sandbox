@@ -19,8 +19,11 @@ type Config struct {
 	//
 	// SCRAM-SHA-1-PLUS, SCRAM-SHA-1, and DIGEST-MD5 are provided (in that order) automatically.
 	// Mechanisms SCRAM-SHA1 are mandatory to support in RFC 6120; DIGEST-MD5 is provided for interoperability.
-	// SASL-External will be automatically prepended to the array when recommended by RFC 6120, unless it is already in the slice.
-	// If Mechanism PLAIN is found anywhere in the array, it will be moved to the end and only offered after successfuly TLS negotation.
+	//
+	// Mechanism PLAIN will always be at the end of the list.
+	//
+	// SASL-External will be automatically prepended to the list when recommended by RFC 6120, unless it is already in the list.
+	// During server-to-server negotiation mechanisms after SASL-External will be rejected as too-weak.
 	Mechanisms []Mechanism
 
 	// TLS is the tls configuration used for the Stream's connections.
@@ -35,7 +38,10 @@ type Config struct {
 	// Records is a list of service/hostname/port combinations accepted by Recieve
 	Records []SRV
 
-	// Id returns a unique (typically random) ID for a Stream or Stanza
+	// ServerDialback indicates whether a server-to-server stream should attempt Server Dialback [XEP-0220] if SASL External fails.
+	ServerDialback bool
+
+	// Id returns a unique (typically random) ID for a Stream or Stanza. If nil, uses library built-in secure random generator.
 	Id func() string
 }
 
@@ -52,6 +58,11 @@ func (cfg Config) setRequired() {
 	// Required to implement TLS cipher suite
 	if cfg.TLS.CipherSuites != nil {
 		cfg.TLS.CipherSuites = append(cfg.TLS.CipherSuites, tls.TLS_RSA_WITH_AES_128_CBC_SHA)
+	}
+
+	// Default XMPP Id generator
+	if cfg.Id == nil {
+		cfg.Id = generateId
 	}
 }
 
@@ -140,6 +151,7 @@ func Recieve(conn net.Conn, cfg *Config) (s *Stream, err error) {
 	return s, nil
 }
 
+// TODO: Figure out best way to handle feature advertising
 func (s *Stream) negotiateRecieved(c *Conn) error {
 	if len(s.content) == 0 {
 		return errors.New("content-type is required to negotiate")
@@ -211,7 +223,7 @@ func (s *Stream) Close() error {
 // CloseError closes an XMPP Stream with a given <stream:error>.
 // The underlying TCP connection is closed gracefully according to
 // RFC 6120 Sec. 4.4. and Sec 4.9. for handling connection errors.
-func (s *Stream) CloseError(c *Conn, err *StreamError) error {
+func (s *Stream) CloseError(c *Conn, err *Error) error {
 	if c.Started {
 		return s.closeSetup(c, err)
 	}
@@ -222,7 +234,7 @@ func (s *Stream) CloseError(c *Conn, err *StreamError) error {
 }
 
 // closeSetup does the same as closeError, except on a connection that has not finished stream setup.
-func (s *Stream) closeSetup(c *Conn, err *StreamError) error {
+func (s *Stream) closeSetup(c *Conn, err *Error) error {
 	// Build response header
 	reply := new(header)
 	reply.Lang = "en"

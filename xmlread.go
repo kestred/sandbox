@@ -27,7 +27,7 @@ func readXML(s *Stream, c *Conn) error {
 	case xml.StartElement:
 		handler := s.handlers[t.Name.Local]
 		if handler == nil {
-			var err *StreamError
+			var err *Error
 			if c.BindComplete {
 				err = StreamErr("unsupported-stanza-type", "")
 			} else {
@@ -114,7 +114,7 @@ func headerHandler(data DecodeData) error {
 // Handler for <stream:error> elements. Always returns an error (stream errors are unrecoverable).
 // TODO: Finish implementation
 func errorHandler(data DecodeData) error {
-	err := new(StreamError)
+	err := new(Error)
 	xmlErr := data.Decoder.DecodeElement(err, data.RawToken)
 	if xmlErr != nil {
 		// TODO: Close TCP connections as necessary
@@ -312,6 +312,23 @@ func tlsFail(s *Stream) {
 	incoming := s.Incoming()
 	incoming.Write(failBytes)
 	incoming.Close()
+}
+
+// Handler for <sasl:auth>
+func authHandler(data DecodeData) error {
+
+}
+
+func saslSuccessHandler(data DecodeData) error {
+	return errors.New("Handling SASL success not implemented")
+}
+
+func saslFailureHandler(data DecodeData) error {
+	return errors.New("Handling SASL success not implemented")
+}
+
+func saslAbortHandler(data DecodeData) error {
+	return errors.New("Handling SASL success not implemented")
 }
 
 // Handler for XML processing instructions <?target instructions...?>

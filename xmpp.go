@@ -95,3 +95,8 @@ type Extension struct {
 	//Features []func(Stream, Conn) string
 	Handlers map[string]func(DecodeData) error
 }
+
+// TODO: Implement
+func generateId() string {
+	return "not-implemented"
+}

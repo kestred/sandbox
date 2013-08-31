@@ -20,45 +20,41 @@ type remoteHeader struct {
 	Content string `xml:"xmlns,attr,omitempty"`
 }
 
-// A StreamError represents a <stream:error> element.
+// An Error represents a <stream:error> or <sasl:failure> element.
 //
-// The first condition will always be the XMPP error condition.
+// The first condition will always be the XMPP defined error condition.
 // Other conditions, if they exist, will be application-specific error conditions
-type StreamError struct {
-	XMLName    xml.Name         `xml:"http://etherx.jabber.org/streams error"`
-	Conditions []*XMLGeneric    `xml:",any,omitempty"`
-	Text       *StreamErrorText `xml:",omitempty"`
+type Error struct {
+	XMLName    xml.Name
+	Conditions []*XMLGeneric `xml:",any,omitempty"`
+	Text       *XMLText      `xml:",omitempty"`
 }
 
-// StreamErr is a helper function which returns a StreamError in typical XMPP format.
-func StreamErr(condition string, text string) *StreamError {
+// StreamErr is a helper function which returns a <stream:error> element.
+func StreamErr(condition string, text string) *Error {
 	conds := make([]*XMLGeneric, 0, 2)
 	conds[0] = new(XMLGeneric)
 	conds[0].XMLName.Local = condition
 	conds[0].XMLName.Space = NsStreams
 
-	var textElem *StreamErrorText
+	var textElem *XMLText
 	if len(text) > 0 {
-		textElem = new(StreamErrorText)
+		textElem = new(XMLText)
+		textElem.XMLName.Space = NsStreams
 		textElem.Text = text
 		textElem.Lang = "en"
 	}
-	errElem := new(StreamError)
+	errElem := new(Error)
+	errElem.XMLName.Local = "error"
+	errElem.XMLName.Space = NsStream
 	errElem.Conditions = conds
 	errElem.Text = textElem
 	return errElem
 }
 
 // Error implements the error interface
-func (err *StreamError) Error() string {
+func (err *Error) Error() string {
 	return "stream error: " + err.Conditions[0].XMLName.Local + ": " + err.Text.Text
-}
-
-// StreamErrorText represents the <text> child of a stream error
-type StreamErrorText struct {
-	XMLName xml.Name `xml:"urn:ietf:params:xml:ns:xmpp-streams text"`
-	Lang    string   `xml:"http://www.w3.org/XML/1998/namespace lang,attr,omitempty"`
-	Text    string   `xml:",chardata"`
 }
 
 // <stream:features>
@@ -77,9 +73,17 @@ type starttls struct {
 	Required bool     `xml:",omitempty"`
 }
 
+// <sasl:mechanisms>
 type mechanisms struct {
 	XMLName   xml.Name `xml:"urn:ietf:params:xml:ns:xmpp-sasl mechanisms"`
 	Mechanism []string `xml:"urn:ietf:params:xml:ns:xmpp-sasl mechanism"`
+}
+
+// <sasl:auth>
+type auth struct {
+	XMLName   xml.Name `xml:"urn:ietf:params:xml:ns:xmpp-sasl auth"`
+	Mechanism string   `xml:",attr"`
+	Response  string   `xml:",chardata"`
 }
 
 type bind struct {
@@ -94,4 +98,11 @@ type XMLGeneric struct {
 	XMLName  xml.Name
 	Any      []*XMLGeneric `xml:",any,omitempty"`
 	Chardata string        `xml:",chardata"`
+}
+
+// XMLText represents the <text> child of a <stream:error> or <sasl:failure>
+type XMLText struct {
+	XMLName xml.Name `xml:"text"`
+	Lang    string   `xml:"http://www.w3.org/XML/1998/namespace lang,attr,omitempty"`
+	Text    string   `xml:",chardata"`
 }
