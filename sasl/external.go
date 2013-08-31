@@ -1,20 +1,15 @@
-package xmpp
+package sasl
 
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"encoding/base64"
 )
 
-// Process recommended by [XEP-0178]
-func authExternal(initialResponse string, cert x509.Certificate, existsAcct func(string) bool) (id string, errCond string) {
+// SASL External as described in [XEP-0178]
+func External(initialResponse string, cert x509.Certificate, existsAcct func(string) bool) (id string, errCond string) {
 	var ids []string
-	if initialResponse != "=" {
-		response, _ := base64.StdEncoding.DecodeString(initialResponse)
-		id = string(response)
-		// TODO: Handler error case
-	}
+	id = base64Decode(initialResponse)
 
 	ids, _ = xmppAddrFromX509(cert)
 	switch len(ids) {

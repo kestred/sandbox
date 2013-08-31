@@ -316,19 +316,19 @@ func tlsFail(s *Stream) {
 
 // Handler for <sasl:auth>
 func authHandler(data DecodeData) error {
-
+	return errors.New("Handling <sasl:auth> not implemented")
 }
 
 func saslSuccessHandler(data DecodeData) error {
-	return errors.New("Handling SASL success not implemented")
+	return errors.New("Handling <sasl:success> not implemented")
 }
 
 func saslFailureHandler(data DecodeData) error {
-	return errors.New("Handling SASL success not implemented")
+	return errors.New("Handling <sasl:failure> not implemented")
 }
 
 func saslAbortHandler(data DecodeData) error {
-	return errors.New("Handling SASL success not implemented")
+	return errors.New("Handling <sasl:abort> not implemented")
 }
 
 // Handler for XML processing instructions <?target instructions...?>
