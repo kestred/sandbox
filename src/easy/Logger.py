@@ -12,10 +12,10 @@ class Logger:
         else: self.logprefix = "easyirc %s: " % logname
         self.ansi = ansi
 
-    def color(msg, sev):
+    def color(self, msg, sev):
         return "%s%s%s" % (self.colors[sev], msg, self.colors["base"])
 
-    def log(msg, sev=None):
+    def log(self, msg, sev=None):
         msg = self.logprefix + msg
         if self.ansi and sev is not None:
             print self.color(msg, sev)

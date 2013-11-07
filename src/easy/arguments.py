@@ -70,4 +70,4 @@ addArguments(actionSubparser, actionArguments)
 def parseArguments():
     args = parser.parse_args()
     args.ident = args.ident if args.ident is not None else args.nick
-    return parser.parser_args()
+    return args

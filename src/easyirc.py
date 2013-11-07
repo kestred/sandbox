@@ -14,6 +14,8 @@ def main():
         # TODO: add handlers
 
         cnxn.connect()
+        while True:
+            pass # TODO: add command reader
 
 if __name__ == '__main__':
     main()

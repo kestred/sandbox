@@ -1,3 +1,4 @@
+import string
 
 class Command:
     commands = {}
@@ -13,7 +14,7 @@ class Command:
             self.maxArgs = numargs
         Command.commands[self.name] = self
 
-    def _check(arguments):
+    def _check(self, arguments):
         if len(arguments) < self.minArgs:
             return (False, "<<< %s: not enough arguments >>>" % self.name)
         if len(arguments) > self.maxArgs:
@@ -46,7 +47,7 @@ class Command:
         if self.format is None:
             packed += string.join(arguments)
         else:
-            packet += self.format % arguments
+            packed += self.format % arguments
         packed += "\r\n"
         return packed
 
