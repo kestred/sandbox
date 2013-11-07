@@ -3,16 +3,16 @@ from copy import deepcopy
 import argparse
 
 ### Arguments ###
+#    [-short, --long],    {help text and argument configuration options}
+
 verbosityArguments = [
     (['-q', '--quiet'],   {'help':"don't show any output", 'action':'store_true'}),
-#    (['-v', '--verbose'], {'help':"print human readable messages from server", 'action':'store_true'})
+    #(['-v', '--verbose'], {'help':"print human readable messages from server", 'action':'store_true'})
 ]
-
 formattingArguments = [
-#    (['-w', '--format-file'], {'help':"specify a file to load formatting options from", 'type':'file'}),
+    #(['-w', '--format-file'], {'help':"specify a file to load formatting options from", 'type':'file'}),
     (['-x', '--no-color'],    {'help':"don't use ANSI colors in output", 'action':'store_true'})
 ]
-
 connectionArguments = [
     (['-H', '--host'],    {'help':"the irc host to connect to"}),
     (['-P', '--port'],    {'help':"the port to connect to, default: 6667", 'type':int, 'default':6667}),
@@ -22,16 +22,22 @@ connectionArguments = [
     (['-C', '--channel'], {'help':"the channel to connect to (without `#` prefix)"}),
     (['-K', '--keyword'], {'help':"the keyword (password) for the channel"})
 ]
-
 robotArguments = [
-#    (['-F', '--command-file'],  {'help':"the file the bot should read commands from"})
-#    (['-H', '--handlers-file'], {'help':" ... TODO: somehow defines handlers"})
+    #(['-F', '--command-file'],  {'help':"the file the bot should read commands from"})
+    #(['-H', '--handlers-file'], {'help':" ... TODO: somehow defines handlers"})
 ]
 
-actionArguments = [
-]
-
+# Singleton hidden switches to help with parsing the options internally
 subparserArg = (['-!', '--subcommand'], {'help':argparse.SUPPRESS})
+spellbookArg = (['-~', '--magic-word'], {'help':argparse.SUPPRESS})
+
+#    magic word      help text and subparser configuration
+magicParsers = [
+    ('motd',      {'help':"shows the motd of the connected server"})
+]
+magicArguments = {
+    'motd': [] # no arguments
+}
 
 ### Helper Functions ###
 def addArguments(group, arguments, requireds=[], defaults={}):
@@ -42,8 +48,9 @@ def addArguments(group, arguments, requireds=[], defaults={}):
             argument[1]['required'] = True
         elif name in defaults.keys():
             argument[1]['default'] = defaults[name]
-        elif 'default' not in argument[1]:
+        elif 'default' not in argument[1] and ('required' not in argument[1] or argument[1]['required'] is False):
             argument[1]['default'] = None
+
         group.add_argument(*argument[0], **argument[1])
 
 ### Output Parser ###
@@ -54,20 +61,28 @@ addArguments(outputParser, formattingArguments)
 
 ### Main parser ###
 formatter = lambda prog: argparse.HelpFormatter(prog, max_help_position=40)
-parser = argparse.ArgumentParser(description='A command line interface to IRC, for people and robot-people', formatter_class=formatter)
-subparsers = parser.add_subparsers(help='easyirc command-line commands')
-humanSubparser = subparsers.add_parser('human', help='start an easyirc chat client', parents=[outputParser], formatter_class=formatter)
-addArguments(humanSubparser, [subparserArg], defaults={'subcommand':'human'})
-addArguments(humanSubparser, connectionArguments)
-robotSubparser = subparsers.add_parser('robot', help='start an easyirc daemon', parents=[outputParser], formatter_class=formatter)
-addArguments(robotSubparser, [subparserArg], defaults={'subcommand':'robot'})
-addArguments(robotSubparser, connectionArguments, requireds=['host', 'nick'])
-addArguments(robotSubparser, robotArguments)
-actionSubparser = subparsers.add_parser('magic', help='send a command to an easyirc daemon')
-addArguments(actionSubparser, [subparserArg], defaults={'subcommand':'magic'})
-addArguments(actionSubparser, actionArguments)
+mainParser = argparse.ArgumentParser(description='A command line interface to IRC, for people and robot-people', formatter_class=formatter)
+mainSubparsers = mainParser.add_subparsers(help='easyirc command-line commands')
+# parser for `easyirc human` (interactive client interface)
+humanParser = mainSubparsers.add_parser('human', help='start an easyirc chat client', parents=[outputParser], formatter_class=formatter)
+addArguments(humanParser, [subparserArg], defaults={'subcommand':'human'})
+addArguments(humanParser, connectionArguments)
+# parser for `easyirc robot` (creating an ircbot daemon)
+robotParser = mainSubparsers.add_parser('robot', help='start an easyirc bot daemon', parents=[outputParser], formatter_class=formatter)
+addArguments(robotParser, [subparserArg], defaults={'subcommand':'robot'})
+addArguments(robotParser, connectionArguments, requireds=['host', 'nick'])
+addArguments(robotParser, robotArguments)
+# parser for `easyirc magic` (interacting with and instruction a daemon)
+magicParser = mainSubparsers.add_parser('magic', help='interact with an easyirc daemon via commandline', parents=[outputParser], formatter_class=formatter)
+addArguments(magicParser, [subparserArg], defaults={'subcommand':'magic'})
+magicSubparsers = magicParser.add_subparsers(help='the "spellbook" of commands that allows interaction with an easyirc bot')
+for entry in magicParsers:
+    magicWord = entry[0]
+    parser = magicSubparsers.add_parser(magicWord, **entry[1])
+    addArguments(parser, [spellbookArg], defaults={'magic-word':magicWord})
+    addArguments(parser, magicArguments[magicWord])
 
 def parseArguments():
-    args = parser.parse_args()
-    args.ident = args.ident if args.ident is not None else args.nick
+    args = mainParser.parse_args()
+    if 'nick' in args: args.ident = args.ident if args.ident is not None else args.nick
     return args
