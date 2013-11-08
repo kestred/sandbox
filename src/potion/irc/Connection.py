@@ -1,10 +1,10 @@
-from irc.Command import Nick, User, Join, Pong
+from Command import Nick, User, Join, Pong
 import string, socket, thread, sys
 
 def handlePing(conn, line, namespace=None):
     conn.doCommand(Pong, line[1])
 
-def handlerError(conn, line, namespace=None):
+def handleError(conn, line, namespace=None):
     line = line[1:]
     line[1] = line[1][1:]
     print "Error: " + string.join(line)
@@ -58,7 +58,7 @@ class Connection:
                 # Get namespace
                 namespace = None
                 if line[0][0] is ':':
-                    namespace = line[0][1:]
+                    namespace = string.lstrip(line[0], ':')
                     line = line[1:]
 
                 # Call message handler

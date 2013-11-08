@@ -7,7 +7,7 @@ import argparse
 
 verbosityArguments = [
     (['-q', '--quiet'],   {'help':"don't show any output", 'action':'store_true'}),
-    #(['-v', '--verbose'], {'help':"print human readable messages from server", 'action':'store_true'})
+    (['-v', '--verbose'], {'help':"print human readable messages from server", 'action':'store_true'})
 ]
 formattingArguments = [
     #(['-w', '--format-file'], {'help':"specify a file to load formatting options from", 'type':'file'}),
@@ -23,7 +23,7 @@ connectionArguments = [
     (['-K', '--keyword'], {'help':"the keyword (password) for the channel"})
 ]
 robotArguments = [
-    #(['-F', '--command-file'],  {'help':"the file the bot should read commands from"})
+    (['-d', '--daemon'], {'help':"runs the process as a daemon, returning immediately", 'action':'store_true'})
     #(['-H', '--handlers-file'], {'help':" ... TODO: somehow defines handlers"})
 ]
 
@@ -31,19 +31,30 @@ robotArguments = [
 subparserArg = (['-!', '--subcommand'], {'help':argparse.SUPPRESS})
 spellbookArg = (['-~', '--magic-word'], {'help':argparse.SUPPRESS})
 
-#    magic word      help text and subparser configuration
+#    spell      help text and subparser configuration
 magicParsers = [
-    ('motd',      {'help':"shows the motd of the connected server"})
+    #('status', {'help':"shows the current daemon status, exits with 1 if bot not found"}),
+    ('motd',   {'help':"shows the motd of the connected server"}),
+    #('chat',   {'help':"send a chat message to a joined channel"}),
+    #('join',   {'help':"join a channel"})
 ]
 magicArguments = {
-    'motd': [] # no arguments
+    'status': [], # no arguments
+    'motd': [], # no arguments
+    'chat': [
+        (['message'],         {'help':"the message to send in chat"}),
+        (['-C', '--channel'], {'help':"the channel to send the message to"})
+    ],
+    'join': [
+        (['channel'], {'help':"the name of the channel to join", 'metavar':"CHANNEL"})
+    ],
 }
 
 ### Helper Functions ###
 def addArguments(group, arguments, requireds=[], defaults={}):
     arguments = deepcopy(arguments)
     for argument in arguments:
-        name = argument[0][1][2:]
+        name = argument[0][0] if (len(argument[0]) is 1) else argument[0][1][2:]
         if name in requireds:
             argument[1]['required'] = True
         elif name in defaults.keys():
@@ -66,7 +77,7 @@ mainSubparsers = mainParser.add_subparsers(help='easyirc command-line commands')
 # parser for `easyirc human` (interactive client interface)
 humanParser = mainSubparsers.add_parser('human', help='start an easyirc chat client', parents=[outputParser], formatter_class=formatter)
 addArguments(humanParser, [subparserArg], defaults={'subcommand':'human'})
-addArguments(humanParser, connectionArguments)
+addArguments(humanParser, connectionArguments, defaults={'quiet':True})
 # parser for `easyirc robot` (creating an ircbot daemon)
 robotParser = mainSubparsers.add_parser('robot', help='start an easyirc bot daemon', parents=[outputParser], formatter_class=formatter)
 addArguments(robotParser, [subparserArg], defaults={'subcommand':'robot'})
@@ -75,6 +86,7 @@ addArguments(robotParser, robotArguments)
 # parser for `easyirc magic` (interacting with and instruction a daemon)
 magicParser = mainSubparsers.add_parser('magic', help='interact with an easyirc daemon via commandline', parents=[outputParser], formatter_class=formatter)
 addArguments(magicParser, [subparserArg], defaults={'subcommand':'magic'})
+magicParser.add_argument('botname', help='the nick name of the bot to send commands to', metavar="BOT_NICK")
 magicSubparsers = magicParser.add_subparsers(help='the "spellbook" of commands that allows interaction with an easyirc bot')
 for entry in magicParsers:
     magicWord = entry[0]
@@ -82,7 +94,7 @@ for entry in magicParsers:
     addArguments(parser, [spellbookArg], defaults={'magic-word':magicWord})
     addArguments(parser, magicArguments[magicWord])
 
-def parseArguments():
+def parse():
     args = mainParser.parse_args()
     if 'nick' in args: args.ident = args.ident if args.ident is not None else args.nick
     return args
