@@ -1,9 +1,8 @@
 from potion import handlers, util, NewOutput, Pipe
+from irc.Command import Mesg
 import string, sys
 
 _options = {}
-_options['nick'] = ""
-_options['logger'] = None
 
 ### Input from magic to `potion robot` ###
 def _handleMotd(line):
@@ -47,10 +46,16 @@ def _handleStop(line):
     _options['logger'].log("Stopping.", verbose=True)
     sys.exit(0)
 
+def _handleChat(line):
+    if _options["channel"] is not None:
+        line = string.join(line[1:])
+        _options["connection"].doCommand(Mesg, "#" + _options["channel"], line)
+
 _robotHandlers = {
     '!motd': _handleMotd,
     '!status': _handleStatus,
-    '!stop': _handleStop
+    '!stop': _handleStop,
+    ':': _handleChat
 }
 def readSpell(line):
     print line
@@ -75,6 +80,8 @@ def _writeToDaemon(name, line):
 
 def _formatSimple(opts):
     return "!" + opts.magic_word
+def _formatChat(opts):
+    return ": " + opts.message
 
 def _getMotd(opts, pipe):
     _options['logger'].log(pipe.read())
@@ -88,7 +95,8 @@ def _getStop(opts, pipe):
 _magicFormatters = {
     'stop': _formatSimple,
     'status': _formatSimple,
-    'motd': _formatSimple
+    'motd': _formatSimple,
+    'chat': _formatChat
 }
 _magicPipes = {
     'status': ".status",

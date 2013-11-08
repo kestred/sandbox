@@ -20,13 +20,6 @@ def runRobot(args=None, logger=None):
     quitOnInterrupt(logger)
     atexit.register(util.cleanRoutine(args.nick))
 
-    handlers._options = {
-        'daemon': args.daemon,
-        'logger': logger,
-        'nick': args.nick,
-        'subcommand': args.subcommand
-    }
-    magic._options = handlers._options
 
     cnxn = irc.Connection(args)
     cnxn.addHandler(irc.RPL_WELCOME, handlers.welcomeHandler)
@@ -37,6 +30,17 @@ def runRobot(args=None, logger=None):
     cnxn.addHandler("MODE", handlers.modeHandler)
     cnxn.addHandler("JOIN", handlers.joinHandler)
     cnxn.addHandler("PRIVMSG", handlers.msgHandler)
+
+
+    handlers._options = {
+        'channel': args.channel,
+        'connection': cnxn,
+        'daemon': args.daemon,
+        'logger': logger,
+        'nick': args.nick,
+        'subcommand': args.subcommand
+    }
+    magic._options = handlers._options
 
     cnxn.connect()
 

@@ -36,7 +36,7 @@ magicParsers = [
     ('stop',   {'help':"closes the daemon"}),
     ('status', {'help':"shows the current daemon status, exits with '5' if bot not found"}),
     ('motd',   {'help':"shows the motd of the connected server"}),
-    #('chat',   {'help':"send a chat message to a joined channel"}),
+    ('chat',   {'help':"send a chat message to a joined channel"}),
     #('join',   {'help':"join a channel"})
 ]
 magicArguments = {

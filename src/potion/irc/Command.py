@@ -56,17 +56,3 @@ User = Command("USER", "%s robot people :%s", numargs=2)
 Join = Command("JOIN", minargs=1, maxargs=2)
 Pong = Command("PONG", numargs=1)
 Mesg = Command("PRIVMSG", "%s :%s", numargs=2)
-
-
-
-'''
-    elif line[1] == RPL_WELCOME:
-        log("Connected to \"%s\" successfully!" % args.host)
-    elif line[1] == 'JOIN':
-        log("Joined channel \"%s\" succesfully!" % args.channel)
-        privateMessage(s, ["#"+args.channel], "Better pong!")
-    elif line[1] == RPL_MOTD:
-        pass
-    else:
-        print line
-'''
