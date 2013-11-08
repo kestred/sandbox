@@ -33,12 +33,14 @@ spellbookArg = (['-~', '--magic-word'], {'help':argparse.SUPPRESS})
 
 #    spell      help text and subparser configuration
 magicParsers = [
-    #('status', {'help':"shows the current daemon status, exits with 1 if bot not found"}),
+    ('stop',   {'help':"closes the daemon"}),
+    ('status', {'help':"shows the current daemon status, exits with '5' if bot not found"}),
     ('motd',   {'help':"shows the motd of the connected server"}),
     #('chat',   {'help':"send a chat message to a joined channel"}),
     #('join',   {'help':"join a channel"})
 ]
 magicArguments = {
+    'stop': [], # no arguments
     'status': [], # no arguments
     'motd': [], # no arguments
     'chat': [
@@ -86,7 +88,7 @@ addArguments(robotParser, robotArguments)
 # parser for `easyirc magic` (interacting with and instruction a daemon)
 magicParser = mainSubparsers.add_parser('magic', help='interact with an easyirc daemon via commandline', parents=[outputParser], formatter_class=formatter)
 addArguments(magicParser, [subparserArg], defaults={'subcommand':'magic'})
-magicParser.add_argument('botname', help='the nick name of the bot to send commands to', metavar="BOT_NICK")
+magicParser.add_argument('nick', help='the nick name of the bot to send commands to', metavar="BOT_NICK")
 magicSubparsers = magicParser.add_subparsers(help='the "spellbook" of commands that allows interaction with an easyirc bot')
 for entry in magicParsers:
     magicWord = entry[0]
@@ -96,5 +98,5 @@ for entry in magicParsers:
 
 def parse():
     args = mainParser.parse_args()
-    if 'nick' in args: args.ident = args.ident if args.ident is not None else args.nick
+    if 'ident' in args: args.ident = args.ident if args.ident is not None else args.nick
     return args

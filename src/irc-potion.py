@@ -12,22 +12,21 @@ def quitOnInterrupt(logger):
 def runRobot(args=None, logger=None):
     if args is None:
         args = arguments.parse()
-    if args.daemon:
-        pass
 
     if logger is None:
         verbosity = -1 if args.quiet else (1 if args.verbose else 0)
-        logPipe = Pipe(args.nick, "log.txt", output=True)
-        logger = Logger(logPipe, args.subcommand, verbosity, not args.no_color)
+        logger = NewFileLogger(args, "log.txt", verbosity=verbosity, ansi=not args.no_color and not args.daemon)
 
     quitOnInterrupt(logger)
     atexit.register(util.cleanRoutine(args.nick))
 
-    magic._options['logger'] = logger
-
-    handlers._options['logger'] = logger
-    handlers._options['nick'] = args.nick
-
+    handlers._options = {
+        'daemon': args.daemon,
+        'logger': logger,
+        'nick': args.nick,
+        'subcommand': args.subcommand
+    }
+    magic._options = handlers._options
 
     cnxn = irc.Connection(args)
     cnxn.addHandler(irc.RPL_WELCOME, handlers.welcomeHandler)
@@ -45,6 +44,15 @@ def runRobot(args=None, logger=None):
     while True:
         magic.readSpell(magicPipe.readline())
 
+def runMagic(args=None, logger=None):
+    handlers._options = {
+        'logger':logger,
+        'nick': args.nick
+    }
+    magic._options = handlers._options
+
+    magic.writeSpell(args)
+
 def main():
     args = arguments.parse()
     verbosity = -1 if args.quiet else (1 if args.verbose else 0)
@@ -60,7 +68,6 @@ def main():
         else:
             runRobot(args, logger)
     elif args.subcommand is 'magic':
-        magic.writeSpell(args)
-
+        runMagic(args, logger)
 if __name__ == '__main__':
     main()

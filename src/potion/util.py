@@ -1,4 +1,8 @@
-import fnmatch, os, tempfile, shutil, sys
+import fnmatch, os, tempfile, shutil, sys, string
+
+def autotab(msg):
+    parts = string.split(msg, "\n")
+    return string.join(parts, "\n\t")
 
 ### Helper functions to get filename
 def nickDir(nick):
@@ -24,19 +28,23 @@ def findDirs(pattern, path):
                 result.append(os.path.join(root, name))
     return result
 def findNickDirs(nick):
-    return _findDirs("robot-%s" % nick, tempfile.gettempdir())
+    return findDirs("potion-%s" % nick, tempfile.gettempdir())
 def findNickFiles(nick, pattern):
     result = []
-    tmpdirs = _findNickDirs(nick)
+    tmpdirs = findNickDirs(nick)
     for tmpdir in tmpdirs:
-        result += _findFile(pattern, tmpdir)
+        result += findFiles(pattern, tmpdir)
     return result
+def existsNickDir(nick):
+    return len(findNickDirs(nick)) > 0
+def existsNickFile(nick, pattern):
+    return len(findNickFiles(nick, pattern)) > 0
 
 ### atexit ###
 def cleanRoutine(nick):
     def cleanup():
         try: shutil.rmtree(nickDir(nick), ignore_errors=True)
         except: pass
-        #try: os.remove(pidFile(nick))
-        #except: pass
+        try: os.remove(pidFile(nick))
+        except: pass
     return cleanup

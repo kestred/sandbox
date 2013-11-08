@@ -1,5 +1,14 @@
+from potion.Pipe import Pipe
 from datetime import datetime
 import string
+
+def NewOutput(opts, name, verbosity=0, ansi=True, formatFile=None):
+    pipe = Pipe(opts['nick'], name, output=True)
+    return Logger(pipe, opts['subcommand'], verbosity, ansi, formatFile)
+
+def NewFileLogger(args, name, verbosity=0, ansi=True, formatFile=None):
+    pipe = Pipe(args.nick, name, output=True)
+    return Logger(pipe, args.subcommand, verbosity, ansi, formatFile)
 
 class Logger:
     colors = {
@@ -24,17 +33,10 @@ class Logger:
     def color(self, msg, sev):
         return "%s%s%s" % (self.colors[sev], msg, self.colors["base"])
 
-
-    def write(self, msg, autotab=False):
-        if autotab:
-            parts = string.split(msg, "\n")
-            msg = string.join(parts, "\n\t")
+    def write(self, msg):
         self._print(msg)
 
-    def log(self, msg, sev=None, verbose=False, autotab=False):
-        if autotab:
-            parts = string.split(msg, "\n")
-            msg = string.join(parts, "\n\t")
+    def log(self, msg, sev=None, verbose=False):
         if self.verbosity >= (1 if verbose else 0):
             if self.ansi and sev is not None:
                self._print(self.logprefix + self.color(msg, sev))

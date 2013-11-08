@@ -44,3 +44,21 @@ class Pipe:
             line = self._readlineEOF()
         line = string.rstrip(line)
         return line
+
+    def _readEOF(self):
+        self.file.close()
+        self.fd = os.open(self.fpath, os.O_RDONLY)
+        self.file = os.fdopen(self.fd)
+        return self.file.read()
+
+    def read(self):
+        msg = self.file.read()
+        if len(msg) is 0:
+            msg = self._readEOF()
+        return msg
+
+    def destroy(self):
+        try:
+            self.file.close()
+            os.remove(self.fpath)
+        except: pass
