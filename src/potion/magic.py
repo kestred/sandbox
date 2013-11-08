@@ -15,7 +15,7 @@ def _handleMotd(line):
 def _formatSimple(args):
     return "!" + args.magic_word
 
-### Input from magic to `easyirc robot` ###
+### Input from magic to `potion robot` ###
 _spellHandlers = {
     '!motd':_handleMotd
 }
@@ -28,7 +28,7 @@ def readSpell(line):
         _options['logger'].log("Recevied unknown magic word: %s" % line[0], "warn")
 
 
-### Output to robot from `easyirc magic` ###
+### Output to robot from `potion magic` ###
 _spellFormatters = {
     'status':_formatSimple,
     'motd':_formatSimple
