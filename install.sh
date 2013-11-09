@@ -6,6 +6,8 @@ cp -r src/* /usr/local/lib/potion/
 
 # Add the tool to /usr/local/bin
 ln -s /usr/local/lib/potion/irc-potion.py /usr/local/bin/potion
+echo "\n# IRC Potion alias"
+echo "alias use-potion='/usr/local/bin/potion magic'" > /etc/profile
 
 # Create work directory
 mkdir -p /tmp/potion/man1

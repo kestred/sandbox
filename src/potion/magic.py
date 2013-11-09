@@ -107,16 +107,43 @@ _magicEffects = {
     'motd': _getMotd,
     'stop': _getStop
 }
-def writeSpell(opts):
+def _writeSpell(word, nick, opts):
     pipe = None
-    if opts.magic_word in _magicFormatters:
-        spell = _magicFormatters[opts.magic_word](opts)
-        if opts.magic_word in _magicPipes:
-            pipe = Pipe(opts.nick, _magicPipes[opts.magic_word], logger=_options['logger'])
-        _writeToDaemon(opts.nick, spell)
+    if word in _magicFormatters:
+        spell = _magicFormatters[word](opts)
+        if word in _magicPipes:
+            pipe = Pipe(nick, _magicPipes[word], logger=_options['logger'])
+        _writeToDaemon(nick, spell)
 
     if opts.magic_word in _magicEffects:
-        _magicEffects[opts.magic_word](opts, pipe)
+        _magicEffects[word](opts, pipe)
 
     if pipe is not None:
         pipe.destroy()
+
+def writeSpell(opts):
+    # First try a specified nick name
+    if opts.nick is not None:
+        _writeSpell(word=opts.magic_word,
+                    nick=opts.nick,
+                    opts=opts)
+        return
+
+    # Otherwise, find existing bots
+    bots = util.findNickDirs("*")
+    if len(bots) is 0:
+        _options['logger'].log("No bots found.", "fail")
+        sys.exit(5)
+
+    # Use the first bot by default
+    if not opts.all:
+        _writeSpell(word=opts.magic_word,
+                    nick=util.nickFromDir(bots[0]),
+                    opts=opts)
+        return
+
+    # Or all bots if declared
+    for botdir in bots:
+        _writeSpell(word=opts.magic_word,
+                    nick=util.nickFromDir(botdir),
+                    opts=opts)

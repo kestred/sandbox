@@ -20,7 +20,6 @@ def runRobot(args=None, logger=None):
     quitOnInterrupt(logger)
     atexit.register(util.cleanRoutine(args.nick))
 
-
     cnxn = irc.Connection(args)
     cnxn.addHandler(irc.RPL_WELCOME, handlers.welcomeHandler)
     cnxn.addHandler(irc.RPL_MOTD_START, handlers.motdHandler)
@@ -51,7 +50,8 @@ def runRobot(args=None, logger=None):
 def runMagic(args=None, logger=None):
     handlers._options = {
         'logger':logger,
-        'nick': args.nick
+        'nick': args.nick,
+        'all': args.all
     }
     magic._options = handlers._options
 

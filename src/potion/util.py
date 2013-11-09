@@ -11,6 +11,10 @@ def nickFile(nick, fname):
     return os.path.join(nickDir(nick), fname)
 def pidFile(nick):
     return nickDir(nick) + ".pid"
+def nickFromDir(nickdir):
+    tmpdir = nickDir("")
+    nick = nickdir[len(tmpdir):]
+    return string.strip(nick, "/")
 
 ### Helper functions to find existing files
 def findFiles(pattern, path):

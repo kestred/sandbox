@@ -26,6 +26,10 @@ robotArguments = [
     (['-d', '--daemon'], {'help':"runs the process as a daemon, returning immediately", 'action':'store_true'})
     #(['-H', '--handlers-file'], {'help':" ... TODO: somehow defines handlers"})
 ]
+targetArguments = [
+    (['-N', '--nick'], {'help':"the nick of the bot to send commands to"}),
+    (['-a', '--all'],  {'help':"send commands to all bots", 'action':'store_true'})
+]
 
 # Singleton hidden switches to help with parsing the options internally
 subparserArg = (['-!', '--subcommand'], {'help':argparse.SUPPRESS})
@@ -45,7 +49,7 @@ magicArguments = {
     'motd': [], # no arguments
     'chat': [
         (['message'],         {'help':"the message to send in chat"}),
-        (['-C', '--channel'], {'help':"the channel to send the message to"})
+        #(['-C', '--channel'], {'help':"the channel to send the message to"})
     ],
     'join': [
         (['channel'], {'help':"the name of the channel to join", 'metavar':"CHANNEL"})
@@ -83,12 +87,13 @@ addArguments(humanParser, connectionArguments, defaults={'quiet':True})
 # parser for `easyirc robot` (creating an ircbot daemon)
 robotParser = mainSubparsers.add_parser('robot', help='start an easyirc bot daemon', parents=[outputParser], formatter_class=formatter)
 addArguments(robotParser, [subparserArg], defaults={'subcommand':'robot'})
-addArguments(robotParser, connectionArguments, requireds=['host', 'nick'])
 addArguments(robotParser, robotArguments)
+addArguments(robotParser, connectionArguments, requireds=['host', 'nick'])
 # parser for `easyirc magic` (interacting with and instruction a daemon)
 magicParser = mainSubparsers.add_parser('magic', help='interact with an easyirc daemon via commandline', parents=[outputParser], formatter_class=formatter)
 addArguments(magicParser, [subparserArg], defaults={'subcommand':'magic'})
-magicParser.add_argument('nick', help='the nick name of the bot to send commands to', metavar="BOT_NICK")
+targetGroup = magicParser.add_mutually_exclusive_group()
+addArguments(targetGroup, targetArguments)
 magicSubparsers = magicParser.add_subparsers(help='the "spellbook" of commands that allows interaction with an easyirc bot')
 for entry in magicParsers:
     magicWord = entry[0]
