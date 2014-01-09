@@ -1,0 +1,58 @@
+/* Filename: parser.yxx */
+
+%{
+	#include "lexer.hxx"
+	#include "parser.hxx"
+	using namespace std;
+
+	#define yyparser run_parser
+	#define yylex run_lexer
+	#define yyerror parser_error
+	#define yywarning parser_warning
+
+%}
+
+
+/* Use verbose errors */
+%error-verbose
+
+/* Define our yystype */
+%union {
+	int integer;
+	double floating;
+	char* string;
+	char character;
+	bool boolean;
+}
+
+/* Literal Tokens */
+%token <integer> INTEGER
+%token <floating> FLOAT
+%token <string> STRING
+%token <character> CHAR
+%token <boolean> BOOLEAN
+
+/* Misc Tokens */
+%token <string> COMMENT
+
+/* Keyword Tokens */
+%token KW_ENUM
+%token KW_STRUCT
+%token KW_CLASS
+%token KW_TYPEDEF
+
+
+%%
+
+grammar
+	:
+	;
+
+
+%%
+
+/* ---- User Subroutines ---- */
+int parser_error_count() { return lexer_error_count(); }
+int parser_warning_count() { return lexer_warning_count(); }
+void parser_error(const string &msg) { lexer_error(msg); }
+void parser_warning(const string &msg) { lexer_warning(msg); }
