@@ -36,12 +36,16 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 	endif()
 endif()
 
+## Dependencies
+find_package(FLEX REQUIRED)
+find_package(BISON REQUIRED)
+
+
 ## Define source files
 set(PARSER_SOURCES
 	src/main.cxx
 	src/parser/lexer.cxx
-	src/parser/parser.cxx
-	src/parser/preprocess.cxx)
+	src/parser/parser.cxx)
 
 include_directories(src)
 add_executable(treesap-test ${PARSER_SOURCES})

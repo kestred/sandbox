@@ -1,7 +1,11 @@
 // Filename: main.cxx
 #include "parser/parser.hxx"
 
-int main(void)
+int main(int argc, const char *argv[])
 {
-	return run_parser();
+	if(argc > 1) {
+		return run_parser(argv[1]);
+	} else {
+		return 1;
+	}
 }

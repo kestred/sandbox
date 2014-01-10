@@ -1,58 +1,224 @@
 /* Filename: parser.yxx */
 
 %{
+	#include "tree.hxx"
 	#include "lexer.hxx"
 	#include "parser.hxx"
 	using namespace std;
 
-	#define yyparser run_parser
 	#define yylex run_lexer
 	#define yyerror parser_error
 	#define yywarning parser_warning
-
 %}
 
+/* Set Parser Options */
+%glr-parser    // using glr so we can allow some conflicts in ambiguous C++ grammar
+%error-verbose // has bison output verbose errors
+%locations     // enable location tracking; we use this to pair comments with tokens
 
-/* Use verbose errors */
-%error-verbose
+//%define api.namespace {treesap}
+%define api.token.prefix {TOKEN_} // prefix tokens with TOKEN_ to avoid name conflicts
 
-/* Define our yystype */
+/* Define our YYSTYPE */
 %union {
 	int integer;
-	double floating;
-	char* string;
-	char character;
 	bool boolean;
+	char character;
+	double floating;
+	std::string* string;
 }
 
-/* Literal Tokens */
-%token <integer> INTEGER
-%token <floating> FLOAT
-%token <string> STRING
-%token <character> CHAR
-%token <boolean> BOOLEAN
+/* Lexing Symbols */
+%token END 0 "end of file" // error messages refer to "end of file" intead of $end
 
-/* Misc Tokens */
-%token <string> COMMENT
+/* Literal Tokens */
+%token <integer>   INTEGER
+%token <floating>  FLOAT
+%token <string>    STRING
+%token <character> CHAR
+%token <boolean>   BOOLEAN
+
+/* Semantic Tokens */
+%token <string> IDENTIFIER
 
 /* Keyword Tokens */
-%token KW_ENUM
-%token KW_STRUCT
-%token KW_CLASS
-%token KW_TYPEDEF
+%token KW_NAMESPACE "namespace"
+
+// Access specifiers
+%token KW_PUBLIC    "public"
+%token KW_PROTECTED "protected"
+%token KW_PRIVATE   "private"
+
+// Type-definitions
+%token KW_ENUM    "enum"
+%token KW_STRUCT  "struct"
+%token KW_CLASS   "class"
+%token KW_TYPEDEF "typedef"
+
+// Fundamental-type keywords
+%token KW_INT      "int"
+%token KW_DOUBLE   "double"
+%token KW_UNSIGNED "unsigned"
+%token KW_LONG     "long"
+%token KW_SHORT    "short"
+
+/* Operator Tokens */
+%token OP_SCOPE "::"
+
+// We're naming this ops by their symbol, because they're overload
+%token OP_AND  "&"
+%token OP_STAR "*"
 
 
 %%
 
-grammar
+cxx : empty
+	| declarations
+	| error ';'
+	;
+
+declarations
+	: declaration
+	| declarations declaration
+	;
+
+declaration
+	: namespace_decl
+	| method_decl ';'
+	| class_decl ';'
+	| struct_decl ';'
+	| enum_decl ';'
+	| variable_decl ';'
+	;
+
+statements
 	:
 	;
 
+statement
+	:
+	;
+
+class_body
+	: class_part
+	| class_body class_part
+	;
+
+class_part
+	: declaration
+	| access_specifier
+	;
+
+access_specifier
+	: KW_PUBLIC ':'
+	| KW_PROTECTED ':'
+	| KW_PRIVATE ':'
+	;
+
+enumeration
+	: IDENTIFIER
+	| enumeration ',' IDENTIFIER
+	;
+
+variable_decl
+	: type_name variable_init
+	| variable_decl ',' variable_init
+	;
+
+variable_init
+	: variable_spec
+	| variable_spec '=' statement
+	;
+
+enum_decl
+	: KW_ENUM IDENTIFIER '{' '}'
+	| KW_ENUM IDENTIFIER '{' enumeration '}'
+
+class_decl
+	: KW_CLASS IDENTIFIER         // declaration
+	| KW_CLASS IDENTIFIER '{' '}' // definition
+	| KW_CLASS IDENTIFIER '{' class_body '}'
+	;
+
+struct_decl
+	: KW_STRUCT IDENTIFIER         // declaration
+	| KW_STRUCT IDENTIFIER '{' '}' // definition
+	| KW_STRUCT IDENTIFIER '{' class_body '}'
+	;
+
+namespace_decl
+	: KW_NAMESPACE '{' '}'
+	| KW_NAMESPACE '{' declarations '}'
+	| KW_NAMESPACE IDENTIFIER '{' '}'
+	| KW_NAMESPACE IDENTIFIER '{' declarations '}'
+	;
+
+method_decl
+	: type_name variable_spec '(' ')' method_body
+	| type_name variable_spec '(' method_params ')' method_body
+	;
+
+method_params
+	: type_name
+	| type_name variable_spec
+	| method_params ',' type_name
+	| method_params ',' type_name variable_spec
+	;
+
+method_body
+	: empty
+	| '{' statements '}'
+	;
+
+variable_spec
+	: IDENTIFIER
+	| OP_AND IDENTIFIER
+	| OP_STAR variable_spec
+	;
+
+type_name
+	: integer_type
+	| scoped_name
+	;
+
+
+// For this rule, we'll allow almost everything in the grammar, but manually
+//     check to make sure the user isn't insane.
+integer_type
+	: KW_SHORT
+	| KW_LONG
+	| KW_INT
+	| KW_UNSIGNED
+	| KW_SHORT integer_type
+	| KW_LONG integer_type
+	| KW_INT integer_type
+	| KW_UNSIGNED integer_type
+	;
+
+scoped_name
+	: IDENTIFIER
+	| scoped_name OP_SCOPE IDENTIFIER
+	;
+
+/*
+string_literal
+	: STRING
+	| string_literal STRING
+	;
+*/
+
+empty
+	:
+	;
 
 %%
 
 /* ---- User Subroutines ---- */
+int run_parser(const std::string & filename) {
+	if(init_lexer(filename) != 0) { return 1; }
+	return yyparse();
+}
 int parser_error_count() { return lexer_error_count(); }
 int parser_warning_count() { return lexer_warning_count(); }
-void parser_error(const string &msg) { lexer_error(msg); }
-void parser_warning(const string &msg) { lexer_warning(msg); }
+void parser_error(const string & msg) { lexer_error(msg); }
+void parser_warning(const string & msg) { lexer_warning(msg); }
