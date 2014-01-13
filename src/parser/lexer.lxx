@@ -1,11 +1,14 @@
 /* Filename: lexer.lxx */
 
 %{
-	#include "lexer.hxx"
-	#include "parser.hxx"
+	#include "env.h"
+	#include "lexer.h"
+	#include "parser.h"
 	#include "parser.dxx"
-	#include <iostream> // std::cerr, std::ostream
-	#include <cctype>   // isxdigit
+	#include <cctype>        // isxdigit
+	#include <deque>         // std::deque
+	#include <iostream>      // std::cerr, std::ostream
+	#include <unordered_map> // std::unordered_map
 
 	#define yyerror lexer_error
 	#define yywarning lexer_warning
@@ -17,19 +20,21 @@
 	/* Lexer State */
 	static int error_count;
 	static int warning_count;
-	static InputFile* current_file;
+	static deque<InputFile*> files;
+	static unordered_map<string, Define> defines;
+	static unsigned int is_conditional_source;
 
 	#define echo() \
-		cout << "Token(" << current_file->filename << "): " << yytext << "\n"
+		cout << "Token(" << files.front()->filename << "): " << yytext << "\n"
 
 	/* Function Declarations */
 	// emit outputs the specified token from the lexer with location information
 	#define emit(token)                                      \
-		yylloc.last_line = current_file->line_number;        \
-		yylloc.last_column = current_file->col_number;       \
-		if(!current_file->comments.back().empty()) {         \
-			yylloc.comment = &current_file->comments.back(); \
-			current_file->comments.push_back("");            \
+		yylloc.last_line = files.front()->line_number;        \
+		yylloc.last_column = files.front()->col_number;       \
+		if(!files.front()->comments.back().empty()) {         \
+			yylloc.comment = &files.front()->comments.back(); \
+			files.front()->comments.push_back("");            \
 		}                                                    \
 		return token
 		
@@ -55,6 +60,7 @@
 	static char read_char_const(int & line, int & col, bool auto_escape = false);
 
 	// todo: doc
+	static void scan_define(const string& identifier);
 	static string scan_block_comment();
 	static string scan_string_literal(char quote_mark = '"');
 %}
@@ -66,6 +72,11 @@
 
 /* Lexer States */
 %x include
+%x ifndef
+%x ifdef
+%x define
+%x undef
+%x endif
 
 /* Regex Definitions */
 IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
@@ -91,9 +102,9 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	// New line.  Save a copy of the line so we can print it out for the
 	// benefit of the user in case we get an error.
 
-	current_file->current_line = yytext+1;
-	current_file->line_number++;
-	current_file->col_number = 0;
+	files.front()->current_line = yytext+1;
+	files.front()->line_number++;
+	files.front()->col_number = 0;
 
 	// Return the whole line to the lexer, except the newline character, which we eat.
 	yyless(1);
@@ -102,13 +113,13 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 \n[ \t]*\n.* {
 	// An empty line will clear our current comment
 	// This option overrides (\n.*) because it produces a longer output
-	if(!current_file->comments.back().empty()) {
-		current_file->comments.push_back("");
+	if(!files.front()->comments.back().empty()) {
+		files.front()->comments.push_back("");
 	}
 
-	current_file->current_line = yytext+2;
-	current_file->line_number += 2;
-	current_file->col_number = 0;
+	files.front()->current_line = yytext+2;
+	files.front()->line_number += 2;
+	files.front()->col_number = 0;
 
 	// Return the whole line to the lexer, except the newline characters, which we eat.
 	yyless(2);
@@ -119,14 +130,56 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	accept();
 }
 
-"#include" {
+"#"[ \t]*"include" {
 	// Preprocessor #include directive
 	accept();
 	BEGIN(include);
 }
 
-<include>[ \t]* {
-	accept(); // eat whitespace after an include
+"#"[ \t]*"ifdef" {
+	accept();
+	BEGIN(ifdef);
+}
+
+"#"[ \t]*"ifndef" {
+	accept();
+	BEGIN(ifndef);
+}
+
+"#"[ \t]*"define" {
+	accept();
+	BEGIN(define);
+}
+
+"#"[ \t]*"undef" {
+	accept();
+	BEGIN(undef);
+}
+
+"#"[ \t]*"endif".* {
+	accept();
+	if(!is_conditional_source) {
+		yyerror("Found #endif without previous #if.");
+	} else {
+		is_conditional_source--;
+	}
+}
+
+"#" {
+	// Fail on all other preprocessor ops
+	accept();
+	yyerror("Treesap hasn't implemented this preprocessor directive yet.");
+
+	// Consume the rest of the line, except the newline (\n) character
+	int c = peek_char();
+	while(c!= '\n' && c != EOF) {
+		read_char();
+		c = peek_char();
+	}
+}
+
+<include,ifndef,ifdef,define,undef>[ \t]* {
+	accept(); // eat whitespace after a statement
 }
 
 <include>["] {
@@ -142,29 +195,27 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	else { BEGIN(INITIAL); }
 }
 
-<include>[^"<]+ {
-	// Accepts any character except < or "
+<include>[^"<\n]+ {
+	// Accepts any character except \n, <, or "
+	accept();
 
 	string msg;
 	msg += "Found unexpected \"";
 	msg += yytext;
 	msg += "\" in #include directive.";
 	yyerror(msg);
-	current_file->current_line = yytext+1;
-	current_file->line_number++;
-	current_file->col_number = 0;
-
-	// Return the whole line to the lexer, except the newline character, which we eat.
-	yyless(1);
 
 	BEGIN(INITIAL);
 }
 
-
-"#" {
-	// Fail on all other preprocessor ops
+<ifdef>{IDENTIFIER} {
 	accept();
-	yyerror("Treesap hasn't implemented this preprocessor directive yet.");
+	if(defines.find(yytext) == defines.end()) {
+		BEGIN(endif);
+	} else {
+		is_conditional_source++;
+		BEGIN(INITIAL);
+	}
 
 	// Consume the rest of the line, except the newline (\n) character
 	int c = peek_char();
@@ -172,6 +223,102 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		read_char();
 		c = peek_char();
 	}
+}
+
+<ifdef>. {
+	accept();
+
+	string msg;
+	msg += "Found unexpected \"";
+	msg += yytext;
+	msg += "\" after #ifdef directive.";
+	yyerror(msg);
+
+	BEGIN(endif);
+}
+
+<ifndef>{IDENTIFIER} {
+	accept();
+	if(defines.find(yytext) == defines.end()) {
+		is_conditional_source++;
+		BEGIN(INITIAL);
+	} else {
+		BEGIN(endif);
+	}
+
+	// Consume the rest of the line, except the newline (\n) character
+	int c = peek_char();
+	while(c!= '\n' && c != EOF) {
+		read_char();
+		c = peek_char();
+	}
+}
+
+<ifndef>. {
+	accept();
+
+	string msg;
+	msg += "Found unexpected \"";
+	msg += yytext;
+	msg += "\" in #ifndef directive.";
+	yyerror(msg);
+
+	BEGIN(endif);
+}
+
+<define>{IDENTIFIER} {
+	accept();
+	scan_define(yytext);
+	BEGIN(INITIAL);
+}
+
+<undef>{IDENTIFIER} {
+	accept();
+	defines.erase(yytext);
+
+	// Consume the rest of the line, except the newline (\n) character
+	int c = peek_char();
+	while(c!= '\n' && c != EOF) {
+		read_char();
+		c = peek_char();
+	}
+
+	BEGIN(INITIAL);
+}
+
+<undef>. {
+	accept();
+
+	string msg;
+	msg += "Found unexpected \"";
+	msg += yytext;
+	msg += "\" in #undef directive.";
+	yyerror(msg);
+
+	BEGIN(endif);
+}
+
+<endif>"#endif".* {
+	accept();
+	BEGIN(INITIAL);
+}
+
+<endif>\n.* {
+	accept();
+	// Increment the line count
+	files.front()->current_line = yytext+1;
+	files.front()->line_number++;
+	files.front()->col_number = 0;
+}
+
+<endif>. {
+	accept();
+}
+
+<include,ifndef,ifdef,define,endif>. {
+	accept();
+	yyerror("Unhandled characters following pre-processor directive.");
+	yyterminate();
 }
 
 "namespace" {
@@ -227,7 +374,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 "::" {
 	// Scoping operator
 	accept();
-	emit(TOKEN_OP_SCOPE);
+	emit(TOKEN_OP_CONS);
 }
 
 "&" {
@@ -243,13 +390,13 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 "/*" {
 	// Comment block
 	accept();
-	current_file->comments.back() += scan_block_comment();
+	files.front()->comments.back() += scan_block_comment();
 }
 
 "//".* {
 	// C++-style comment
 	accept();
-	current_file->comments.back() += (yytext + 2);
+	files.front()->comments.back() += (yytext + 2);
 }
 
 ["] {
@@ -334,10 +481,10 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 // accept is called above as each piece is pulled off and
 // accepted by the lexer; it increments the current column number.
 static void accept() {
-	yylloc.file = current_file;
-	yylloc.first_line = current_file->line_number;
-	yylloc.first_column = current_file->col_number;
-	current_file->col_number += yyleng;
+	yylloc.file = files.front();
+	yylloc.first_line = files.front()->line_number;
+	yylloc.first_column = files.front()->col_number;
+	files.front()->col_number += yyleng;
 }
 
 // peek_char returns the character that will be returned by read_char next.
@@ -351,7 +498,7 @@ inline int peek_char()
 // read_char reads and returns a single character,
 //     incrementing the line and column numbers as appropriate.
 inline int read_char() {
-	return read_char(current_file->line_number, current_file->col_number);
+	return read_char(files.front()->line_number, files.front()->col_number);
 }
 static int read_char(int & line, int & col) {
 	int c = yyinput();
@@ -365,7 +512,7 @@ static int read_char(int & line, int & col) {
 }
 
 inline char read_char_const(bool auto_escape) {
-	return read_char_const(current_file->line_number, current_file->col_number, auto_escape);
+	return read_char_const(files.front()->line_number, files.front()->col_number, auto_escape);
 }
 static char read_char_const(int & line, int & col, bool auto_escape) {
 	int c;
@@ -440,6 +587,28 @@ static char read_char_const(int & line, int & col, bool auto_escape) {
 	}
 }
 
+static void scan_define(const string& identifier) {
+	Define def;
+	def.identifier = identifier;
+
+	string replace;
+	int c = read_char();
+	while(c != EOF && c != '\n') {
+		int p = peek_char();
+		if(c == '\\' && p == '\n') {
+			read_char();
+		} else {
+			replace += c;
+		}
+
+		c = read_char();
+	}
+	unput(c);
+
+	def.replace_text = replace;
+	defines.emplace(identifier, def);
+}
+
 static string scan_block_comment() {
 	// We don't touch the current line number and column number during
 	// scanning, so that if we detect a warning while scanning the comment
@@ -447,8 +616,8 @@ static string scan_block_comment() {
 	// occurring at the start of the comment, not at the end--somewhat
 	// more convenient for the user.
 	string result;
-	int line = current_file->line_number;
-	int col = current_file->col_number;
+	int line = files.front()->line_number;
+	int col = files.front()->col_number;
 
 	int c = read_char(line, col);
 	while(c != EOF) {
@@ -462,8 +631,8 @@ static string scan_block_comment() {
 		read_char(line, col); // consume '/' following the '*'
 	}
 
-	current_file->line_number = line;
-	current_file->col_number = line;
+	files.front()->line_number = line;
+	files.front()->col_number = line;
 
 	return result;
 }
@@ -475,8 +644,8 @@ static string scan_string_literal(char quote_mark) {
 	// occurring at the start of the string, not at the end--somewhat
 	// more convenient for the user.
 	string result;
-	int line = current_file->line_number;
-	int col = current_file->col_number;
+	int line = files.front()->line_number;
+	int col = files.front()->col_number;
 
 	int c = read_char(line, col);
 	while(c != quote_mark && c != EOF) {
@@ -500,8 +669,8 @@ static string scan_string_literal(char quote_mark) {
 		yyerror("String const is missing a terminating (\") character."); 
 	}
 
-	current_file->line_number = line;
-	current_file->col_number = line;
+	files.front()->line_number = line;
+	files.front()->col_number = line;
 
 	return result;
 }
@@ -509,8 +678,8 @@ static string scan_string_literal(char quote_mark) {
 static bool accept_include(char end_mark) {
 	// Get the string between the quotes
 	string filename;
-	int line = current_file->line_number;
-	int col = current_file->col_number;
+	int line = files.front()->line_number;
+	int col = files.front()->col_number;
 
 	int c = read_char(line, col);
 	while(c != end_mark && c != EOF) {
@@ -529,14 +698,27 @@ static bool accept_include(char end_mark) {
 		return false;
 	}
 
-	yyin = fopen(filename.c_str(), "r");
+	vector<string> dirs;
+	if(end_mark == '\"') {
+		yyin = fopen(filename.c_str(), "r");
+		if(yyin) { goto eatline; }
+	}
+
+	dirs = get_include_dirs();
+	for(auto it = dirs.begin(); it != dirs.end(); ++it) {
+		string filepath = (*it) + filename;
+		yyin = fopen(filepath.c_str(), "r");
+		if(yyin) { goto eatline; }
+	}
+
 	if(!yyin) {
 		yyerror("Could not open file " + filename + " for scanning.");
 		return false;
 	}
 
-	current_file->line_number = line;
-	current_file->col_number = col;
+  eatline:
+	files.front()->line_number = line;
+	files.front()->col_number = col;
 
 	c = peek_char();
 	while(c != EOF && c != '\n') {
@@ -572,11 +754,15 @@ static ostream& indent(ostream& out, unsigned int indent_level) {
 int init_lexer(const string & filename) {
 	error_count = 0;
 	warning_count = 0;
-	current_file = new InputFile;
-	current_file->filename = filename;
-	current_file->line_number = 0; // we start with an artificial newline
-	current_file->col_number = 0;
-	current_file->comments.push_back(string());
+
+	defines.clear();
+	vector<Define> predefines = get_compiler_defines();
+	for(auto it = predefines.begin(); it != predefines.end(); ++it) {
+		defines.emplace(it->identifier, (*it));
+	}
+
+	files.clear();
+	files.push_front(new InputFile(filename));
 	yyout = fopen("/dev/null", "w");
 	yyin = fopen(filename.c_str(), "r");
 	if(!yyin) { return 1; }
@@ -587,7 +773,7 @@ int lexer_error_count() { return error_count; }
 int lexer_warning_count() { return warning_count; }
 void lexer_error(const string & msg)
 {
-	InputFile* info = current_file;
+	InputFile* info = files.front();
 
 	cerr << "Error";
 	if(info->filename.empty()) {
@@ -604,7 +790,7 @@ void lexer_error(const string & msg)
 }
 void lexer_warning(const string & msg)
 {
-	InputFile* info = current_file;
+	InputFile* info = files.front();
 
 	cerr << "\nWarning";
 	if(info->filename.empty()) {

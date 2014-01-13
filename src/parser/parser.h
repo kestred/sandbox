@@ -1,4 +1,4 @@
-// Filename: parser.hxx
+// Filename: parser.h
 #pragma once
 #include <string> // std::string
 #include <list> // std::list
@@ -13,6 +13,8 @@ void parser_warning(const std::string & msg);
 // A InputFile holds extra per-file information while lexing and parsing
 struct InputFile
 {
+	InputFile(std::string name = "<???>");
+
 	std::string filename;
 	std::string current_line; // holds the current line for error reporting
 	std::list<std::string> comments;

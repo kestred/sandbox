@@ -65,7 +65,7 @@ extern int yydebug;
     TOKEN_KW_UNSIGNED = 274,
     TOKEN_KW_LONG = 275,
     TOKEN_KW_SHORT = 276,
-    TOKEN_OP_SCOPE = 277,
+    TOKEN_OP_CONS = 277,
     TOKEN_OP_AND = 278,
     TOKEN_OP_STAR = 279
   };

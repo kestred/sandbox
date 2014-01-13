@@ -52,9 +52,9 @@
 /* First part of user declarations.  */
 #line 3 "../src/parser/parser.yxx" /* glr.c:207  */
 
-	#include "tree.hxx"
-	#include "lexer.hxx"
-	#include "parser.hxx"
+	#include "cpp.h"
+	#include "lexer.h"
+	#include "parser.h"
 	using namespace std;
 
 	#define yylex run_lexer
@@ -2777,3 +2777,7 @@ int parser_error_count() { return lexer_error_count(); }
 int parser_warning_count() { return lexer_warning_count(); }
 void parser_error(const string & msg) { lexer_error(msg); }
 void parser_warning(const string & msg) { lexer_warning(msg); }
+
+InputFile::InputFile(string name) : filename(name), line_number(0), col_number(0) {
+	comments.push_back(string());
+}

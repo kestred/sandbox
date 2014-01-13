@@ -1,5 +1,5 @@
 // Filename: main.cxx
-#include "parser/parser.hxx"
+#include "parser/parser.h"
 
 int main(int argc, const char *argv[])
 {

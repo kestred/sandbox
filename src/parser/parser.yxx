@@ -1,9 +1,9 @@
 /* Filename: parser.yxx */
 
 %{
-	#include "tree.hxx"
-	#include "lexer.hxx"
-	#include "parser.hxx"
+	#include "cpp.h"
+	#include "lexer.h"
+	#include "parser.h"
 	using namespace std;
 
 	#define yylex run_lexer
@@ -63,7 +63,7 @@
 %token KW_SHORT    "short"
 
 /* Operator Tokens */
-%token OP_SCOPE "::"
+%token OP_CONS "::"
 
 // We're naming this ops by their symbol, because they're overload
 %token OP_AND  "&"
@@ -110,9 +110,9 @@ class_part
 	;
 
 access_specifier
-	: KW_PUBLIC ':'
-	| KW_PROTECTED ':'
-	| KW_PRIVATE ':'
+	: "public" ':'
+	| "protected" ':'
+	| "private" ':'
 	;
 
 enumeration
@@ -131,26 +131,26 @@ variable_init
 	;
 
 enum_decl
-	: KW_ENUM IDENTIFIER '{' '}'
-	| KW_ENUM IDENTIFIER '{' enumeration '}'
+	: "enum" IDENTIFIER '{' '}'
+	| "enum" IDENTIFIER '{' enumeration '}'
 
 class_decl
-	: KW_CLASS IDENTIFIER         // declaration
-	| KW_CLASS IDENTIFIER '{' '}' // definition
-	| KW_CLASS IDENTIFIER '{' class_body '}'
+	: "class" IDENTIFIER         // declaration
+	| "class" IDENTIFIER '{' '}' // definition
+	| "class" IDENTIFIER '{' class_body '}'
 	;
 
 struct_decl
-	: KW_STRUCT IDENTIFIER         // declaration
-	| KW_STRUCT IDENTIFIER '{' '}' // definition
-	| KW_STRUCT IDENTIFIER '{' class_body '}'
+	: "struct" IDENTIFIER         // declaration
+	| "struct" IDENTIFIER '{' '}' // definition
+	| "struct" IDENTIFIER '{' class_body '}'
 	;
 
 namespace_decl
-	: KW_NAMESPACE '{' '}'
-	| KW_NAMESPACE '{' declarations '}'
-	| KW_NAMESPACE IDENTIFIER '{' '}'
-	| KW_NAMESPACE IDENTIFIER '{' declarations '}'
+	: "namespace" '{' '}'
+	| "namespace" '{' declarations '}'
+	| "namespace" IDENTIFIER '{' '}'
+	| "namespace" IDENTIFIER '{' declarations '}'
 	;
 
 method_decl
@@ -172,8 +172,8 @@ method_body
 
 variable_spec
 	: IDENTIFIER
-	| OP_AND IDENTIFIER
-	| OP_STAR variable_spec
+	| "&" IDENTIFIER
+	| "*" variable_spec
 	;
 
 type_name
@@ -185,19 +185,19 @@ type_name
 // For this rule, we'll allow almost everything in the grammar, but manually
 //     check to make sure the user isn't insane.
 integer_type
-	: KW_SHORT
-	| KW_LONG
-	| KW_INT
-	| KW_UNSIGNED
-	| KW_SHORT integer_type
-	| KW_LONG integer_type
-	| KW_INT integer_type
-	| KW_UNSIGNED integer_type
+	: "short"
+	| "long"
+	| "int"
+	| "unsigned"
+	| "short" integer_type
+	| "long" integer_type
+	| "int" integer_type
+	| "unsigned" integer_type
 	;
 
 scoped_name
 	: IDENTIFIER
-	| scoped_name OP_SCOPE IDENTIFIER
+	| scoped_name "::" IDENTIFIER
 	;
 
 /*
@@ -222,3 +222,7 @@ int parser_error_count() { return lexer_error_count(); }
 int parser_warning_count() { return lexer_warning_count(); }
 void parser_error(const string & msg) { lexer_error(msg); }
 void parser_warning(const string & msg) { lexer_warning(msg); }
+
+InputFile::InputFile(string name) : filename(name), line_number(0), col_number(0) {
+	comments.push_back(string());
+}

@@ -1,6 +1,6 @@
-// Filename: tree.hxx
-#include <map>    // std::map
-#include <string> // std::string
+// Filename: cpp.h
+#include <string>        // std::string
+#include <unordered_map> // std::unordered_map
 
 
 
@@ -31,8 +31,7 @@ struct Symbol {
 // A SymbolTable holds references to a set of symbols by name.
 //     The parser also keeps a SymbolTable around while parsing.
 struct SymbolTable {
-	std::map<std::string, Symbol> symbols;
-	std::map<std::string, Namespace> namespaces;
+	std::unordered_map<std::string, Symbol> symbols;
 };
 
 // A Namespace is a named SymbolTable with all of its symbols being scoped
@@ -46,3 +45,4 @@ struct Namespace : SymbolTable {
 struct Module {
 	SymbolTable table;
 };
+
