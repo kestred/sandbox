@@ -1,14 +1,15 @@
 /* Filename: lexer.lxx */
 
 %{
-	#include "env.h"
 	#include "lexer.h"
 	#include "parser.h"
 	#include "parser.dxx"
+
+	#include "cpp.h"
+
 	#include <cctype>        // isxdigit
-	#include <deque>         // std::deque
 	#include <iostream>      // std::cerr, std::ostream
-	#include <unordered_map> // std::unordered_map
+	#include <deque>         // std::deque
 
 	#define yyerror lexer_error
 	#define yywarning lexer_warning
@@ -17,25 +18,40 @@
 
 	using namespace std;
 
+	/* Struct Definitions */
+	// An Input holds extra per-file information while lexing and parsing
+	struct Input : File
+	{
+		Input(const string& name = "<???>");
+
+		string current_line; // holds the current line for error reporting
+		list<string> comments;
+		int line_number; // current line of the input
+		int col_number; // current col of the input
+		int times_included; // number of times the file has been included
+	};
+
 	/* Lexer State */
 	static int error_count;
 	static int warning_count;
-	static deque<InputFile*> files;
-	static unordered_map<string, Define> defines;
-	static unsigned int is_conditional_source;
+	static int is_conditional_source;
+	static deque<Input*> inputs;
+	static Module* current_module = NULL;
+	#define defines (current_module->defines)
+	#define files (current_module->files)
 
 	#define echo() \
-		cout << "Token(" << files.front()->filename << "): " << yytext << "\n"
+		cout << "Token(" << inputs.front()->name << "): " << yytext << "\n"
 
 	/* Function Declarations */
 	// emit outputs the specified token from the lexer with location information
-	#define emit(token)                                      \
-		yylloc.last_line = files.front()->line_number;        \
-		yylloc.last_column = files.front()->col_number;       \
-		if(!files.front()->comments.back().empty()) {         \
-			yylloc.comment = &files.front()->comments.back(); \
-			files.front()->comments.push_back("");            \
-		}                                                    \
+	#define emit(token)                                        echo();\
+		yylloc.last_line = inputs.front()->line_number;        \
+		yylloc.last_column = inputs.front()->col_number;       \
+		if(!inputs.front()->comments.back().empty()) {         \
+			yylloc.comment = &inputs.front()->comments.back(); \
+			inputs.front()->comments.push_back("");            \
+		}                                                      \
 		return token
 		
 	// accept is called below when receiving a regex from the lexer;
@@ -60,6 +76,10 @@
 	static char read_char_const(int & line, int & col, bool auto_escape = false);
 
 	// todo: doc
+	static bool scan_if();
+	static bool scan_if_condition(); // used by scan_if
+	static bool scan_if_logic(bool); // used by scan_if
+	static void scan_if_end();       // used by scan_if
 	static void scan_define(const string& identifier);
 	static string scan_block_comment();
 	static string scan_string_literal(char quote_mark = '"');
@@ -71,12 +91,17 @@
 %option noyywrap
 
 /* Lexer States */
+%x pragma
 %x include
-%x ifndef
 %x ifdef
+%x ifndef
 %x define
 %x undef
 %x endif
+
+%x ifcond
+%x ifident
+%x iflogic
 
 /* Regex Definitions */
 IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
@@ -102,9 +127,9 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	// New line.  Save a copy of the line so we can print it out for the
 	// benefit of the user in case we get an error.
 
-	files.front()->current_line = yytext+1;
-	files.front()->line_number++;
-	files.front()->col_number = 0;
+	inputs.front()->current_line = yytext+1;
+	inputs.front()->line_number++;
+	inputs.front()->col_number = 0;
 
 	// Return the whole line to the lexer, except the newline character, which we eat.
 	yyless(1);
@@ -113,13 +138,13 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 \n[ \t]*\n.* {
 	// An empty line will clear our current comment
 	// This option overrides (\n.*) because it produces a longer output
-	if(!files.front()->comments.back().empty()) {
-		files.front()->comments.push_back("");
+	if(!inputs.front()->comments.back().empty()) {
+		inputs.front()->comments.push_back("");
 	}
 
-	files.front()->current_line = yytext+2;
-	files.front()->line_number += 2;
-	files.front()->col_number = 0;
+	inputs.front()->current_line = yytext+2;
+	inputs.front()->line_number += 2;
+	inputs.front()->col_number = 0;
 
 	// Return the whole line to the lexer, except the newline characters, which we eat.
 	yyless(2);
@@ -130,37 +155,69 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	accept();
 }
 
-"#"[ \t]*"include" {
+"#"[ \t]*"pragma"[ \t]+ {
+	// Preprocessor #pragma directive
+	accept();
+	BEGIN(pragma);
+}
+
+"#"[ \t]*"include"[ \t]+ {
 	// Preprocessor #include directive
 	accept();
 	BEGIN(include);
 }
 
-"#"[ \t]*"ifdef" {
+"#"[ \t]*"if"[ \t]+ {
+	accept();
+
+	is_conditional_source++;
+	if(!scan_if()) {
+		BEGIN(endif);
+	}
+
+	cout << "#if\n";
+}
+
+"#"[ \t]*"ifdef"[ \t]+ {
+	// Preprocessor #ifdef directive
 	accept();
 	BEGIN(ifdef);
 }
 
-"#"[ \t]*"ifndef" {
+"#"[ \t]*"ifndef"[ \t]+ {
+	// Preprocessor #ifndef directive
 	accept();
 	BEGIN(ifndef);
 }
 
-"#"[ \t]*"define" {
+"#"[ \t]*"define"[ \t]+ {
+	// Preprocessor #define directive
 	accept();
 	BEGIN(define);
 }
 
-"#"[ \t]*"undef" {
+"#"[ \t]*"undef"[ \t]+ {
+	// Preprocessor #undef directive
 	accept();
 	BEGIN(undef);
 }
 
+"#"[ \t]*"else".* {
+	accept();
+	if(!is_conditional_source) {
+		yyerror("Found #else without previous #if.");
+	} else {
+		BEGIN(endif);
+	}
+}
+
 "#"[ \t]*"endif".* {
+	// Preprocessor #endif directive
 	accept();
 	if(!is_conditional_source) {
 		yyerror("Found #endif without previous #if.");
 	} else {
+		cout << "#endif\n";
 		is_conditional_source--;
 	}
 }
@@ -178,8 +235,28 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	}
 }
 
-<include,ifndef,ifdef,define,undef>[ \t]* {
-	accept(); // eat whitespace after a statement
+<pragma,include,ifndef,ifdef,define,undef>[ \t]* {
+	accept(); // eat whitespace everywhere
+}
+
+<pragma>"once".* {
+	accept();
+	if(inputs.front()->times_included > 1) {
+		inputs.pop_front();
+	}
+	BEGIN(INITIAL);
+}
+
+<pragma>[^ \t\n]+.* {
+	accept();
+
+	string msg;
+	msg += "Treesap doesn't currently support \"#pragma ";
+	msg += yytext;
+	msg += "\".";
+	yyerror(msg);
+
+	BEGIN(INITIAL);
 }
 
 <include>["] {
@@ -195,8 +272,8 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	else { BEGIN(INITIAL); }
 }
 
-<include>[^"<\n]+ {
-	// Accepts any character except \n, <, or "
+<include>[^"< \t\n]+.* {
+	// Accepts any character except spaces, <, or "
 	accept();
 
 	string msg;
@@ -210,10 +287,12 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 <ifdef>{IDENTIFIER} {
 	accept();
+
+	is_conditional_source++;
 	if(defines.find(yytext) == defines.end()) {
 		BEGIN(endif);
 	} else {
-		is_conditional_source++;
+		cout << "#ifdef " << yytext << "\n";
 		BEGIN(INITIAL);
 	}
 
@@ -239,8 +318,10 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 <ifndef>{IDENTIFIER} {
 	accept();
+
+	is_conditional_source++;
 	if(defines.find(yytext) == defines.end()) {
-		is_conditional_source++;
+		cout << "#ifndef " << yytext << "\n";
 		BEGIN(INITIAL);
 	} else {
 		BEGIN(endif);
@@ -298,24 +379,40 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	BEGIN(endif);
 }
 
-<endif>"#endif".* {
+<endif>"#"[ \t]*"if".* {
+	// If we find (if|ifdef|ifndef), increment our depth by 1
 	accept();
+	is_conditional_source++;
+}
+
+<endif>"#"[ \t]*"else"[\ t]+ {
+	// If we find #else while looking for #endif, tokenize the else code
+	if(is_conditional_source) { BEGIN(INITIAL); }
+}
+
+<endif>"#"[ \t]*"endif".* {
+	accept();
+	if(is_conditional_source == 0) {
+		yyerror("Found #endif with no matching #if/#ifdef/#ifndef.");
+	} else {
+		is_conditional_source--;
+	}
 	BEGIN(INITIAL);
 }
 
 <endif>\n.* {
 	accept();
 	// Increment the line count
-	files.front()->current_line = yytext+1;
-	files.front()->line_number++;
-	files.front()->col_number = 0;
+	inputs.front()->current_line = yytext+1;
+	inputs.front()->line_number++;
+	inputs.front()->col_number = 0;
 }
 
 <endif>. {
 	accept();
 }
 
-<include,ifndef,ifdef,define,endif>. {
+<pragma,include,ifndef,ifdef,define,endif>. {
 	accept();
 	yyerror("Unhandled characters following pre-processor directive.");
 	yyterminate();
@@ -390,13 +487,13 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 "/*" {
 	// Comment block
 	accept();
-	files.front()->comments.back() += scan_block_comment();
+	inputs.front()->comments.back() += scan_block_comment();
 }
 
 "//".* {
 	// C++-style comment
 	accept();
-	files.front()->comments.back() += (yytext + 2);
+	inputs.front()->comments.back() += (yytext + 2);
 }
 
 ["] {
@@ -464,16 +561,23 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 <<EOF>> {
 	// Stop reading our current file
 	yypop_buffer_state();
+	inputs.pop_front();
 
-	// Check if we have a file to return (for example, after an #include)
+	// Check if we have a file to return to (for example, after an #include)
 	if(!YY_CURRENT_BUFFER) {
-		yyterminate();
+		// Check if we have inputs left in our queue
+		if(inputs.empty()) {
+			yyterminate();
+		}
+
+		yyin = fopen(inputs.front()->name.c_str(), "r");
+		if(!yyin) {
+			yyerror("Could not open file \"" + inputs.front()->name + "\" for scanning.");
+			yyterminate();
+		}
+
+		yypush_buffer_state(yy_new_buffer(yyin, YY_BUF_SIZE));
 	}
-
-	// Check if we have files left in our queue
-	/*if(!file_queue.empty()) {
-
-	}*/
 }
 
 %%
@@ -481,10 +585,10 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 // accept is called above as each piece is pulled off and
 // accepted by the lexer; it increments the current column number.
 static void accept() {
-	yylloc.file = files.front();
-	yylloc.first_line = files.front()->line_number;
-	yylloc.first_column = files.front()->col_number;
-	files.front()->col_number += yyleng;
+	yylloc.file = inputs.front();
+	yylloc.first_line = inputs.front()->line_number;
+	yylloc.first_column = inputs.front()->col_number;
+	inputs.front()->col_number += yyleng;
 }
 
 // peek_char returns the character that will be returned by read_char next.
@@ -498,7 +602,7 @@ inline int peek_char()
 // read_char reads and returns a single character,
 //     incrementing the line and column numbers as appropriate.
 inline int read_char() {
-	return read_char(files.front()->line_number, files.front()->col_number);
+	return read_char(inputs.front()->line_number, inputs.front()->col_number);
 }
 static int read_char(int & line, int & col) {
 	int c = yyinput();
@@ -512,7 +616,7 @@ static int read_char(int & line, int & col) {
 }
 
 inline char read_char_const(bool auto_escape) {
-	return read_char_const(files.front()->line_number, files.front()->col_number, auto_escape);
+	return read_char_const(inputs.front()->line_number, inputs.front()->col_number, auto_escape);
 }
 static char read_char_const(int & line, int & col, bool auto_escape) {
 	int c;
@@ -587,9 +691,159 @@ static char read_char_const(int & line, int & col, bool auto_escape) {
 	}
 }
 
+// for scan_if
+static string eat_word() {
+	string word;
+
+	int c = peek_char();
+	while(isalpha(c) || c == '_') {
+		word += read_char();
+		c = peek_char();
+	}
+
+	return word;
+}
+
+// for scan_if
+static void eat_space() {
+	int c = peek_char();
+	while(isblank(c)) {
+		read_char();
+		c = peek_char();
+	}
+}
+
+static bool scan_if_condition() {
+	eat_space();
+
+	int c = peek_char();
+	if(!isalpha(c) && c != '_') {
+		if(c != '\n' && c != EOF && c != '\\') {
+			read_char(); // Position the cursor better for debug output
+		}
+		yyerror("Found unexpected character in #if, while expecting a condition.");
+		scan_if_end();
+		return false;
+	}
+
+	string condition = eat_word();
+	if(condition == "defined") {
+		eat_space();
+		string def = eat_word();
+		if(def.empty()) {
+			yyerror("In #if directive, \"defined\" must be followed by an identifier.");
+		}
+
+		if(defines.find(def) == defines.end()) {
+			return false;
+		} else {
+			return true;
+		}
+	} else {
+		yyerror("Treesap hasn't implemented the condition \"" + condition + "\".");
+		scan_if_end();
+		return false;
+	}
+}
+
+static bool scan_if_logic(bool current) {
+	int c = peek_char();
+	switch(c) {
+		case '|':
+			read_char(); // Eat first '|'
+			if(peek_char() != '|') {
+				yyerror("Bad logic operator in #if.");
+				scan_if_end();
+				return false;
+			}
+			read_char(); // Eat second '|'
+
+			if(current) { return true; }
+			else { return scan_if_condition(); }
+		case '&':
+			read_char(); // Eat first '&'
+			if(peek_char() != '&') {
+				yyerror("Bad logic operator in #if.");
+				scan_if_end();
+				return false;
+			}
+			read_char(); // Eat second '&'
+
+			if(current) { return scan_if_condition(); }
+			else { return false; }
+		case ' ':
+		case '\t':
+			eat_space();
+			return scan_if_logic(current);
+		case '\n':
+			return current;
+			break;
+		case EOF:
+			return current;
+			break;
+		case '\\':
+			read_char();
+			c = peek_char();
+			if(c == '\\') {
+				while(c != '\n') {
+					read_char();
+					c = peek_char();
+				}
+				return current;
+			} else if(c == '\n') {
+				read_char();
+				return scan_if_logic(current);
+			}
+
+			// else fallthrough
+
+		default:
+			yyerror("Found unexpected character in #if directive.");
+			scan_if_end();
+			return false;
+			break;
+	}	
+}
+
+static void scan_if_end() {
+	int c = peek_char();
+	switch(c) {
+		case '\n':
+			return;
+		case EOF:
+			return;
+		case '\\':
+			read_char();
+			c = peek_char();
+			if(c == '\\') {
+				while(c != '\n') {
+					read_char();
+					c = peek_char();
+				}
+				return;
+			} else if(c == '\n') {
+				read_char();
+				scan_if_end();
+				return;
+			}
+		default:
+			read_char();
+			scan_if_end();
+			return;
+	}
+}
+
+static bool scan_if() {
+	bool yes = scan_if_condition();
+	return scan_if_logic(yes);
+}
+
 static void scan_define(const string& identifier) {
 	Define def;
 	def.identifier = identifier;
+	def.location = Location(inputs.front());
+
+	eat_space();
 
 	string replace;
 	int c = read_char();
@@ -616,8 +870,8 @@ static string scan_block_comment() {
 	// occurring at the start of the comment, not at the end--somewhat
 	// more convenient for the user.
 	string result;
-	int line = files.front()->line_number;
-	int col = files.front()->col_number;
+	int line = inputs.front()->line_number;
+	int col = inputs.front()->col_number;
 
 	int c = read_char(line, col);
 	while(c != EOF) {
@@ -631,8 +885,8 @@ static string scan_block_comment() {
 		read_char(line, col); // consume '/' following the '*'
 	}
 
-	files.front()->line_number = line;
-	files.front()->col_number = line;
+	inputs.front()->line_number = line;
+	inputs.front()->col_number = line;
 
 	return result;
 }
@@ -644,8 +898,8 @@ static string scan_string_literal(char quote_mark) {
 	// occurring at the start of the string, not at the end--somewhat
 	// more convenient for the user.
 	string result;
-	int line = files.front()->line_number;
-	int col = files.front()->col_number;
+	int line = inputs.front()->line_number;
+	int col = inputs.front()->col_number;
 
 	int c = read_char(line, col);
 	while(c != quote_mark && c != EOF) {
@@ -669,8 +923,8 @@ static string scan_string_literal(char quote_mark) {
 		yyerror("String const is missing a terminating (\") character."); 
 	}
 
-	files.front()->line_number = line;
-	files.front()->col_number = line;
+	inputs.front()->line_number = line;
+	inputs.front()->col_number = line;
 
 	return result;
 }
@@ -678,8 +932,8 @@ static string scan_string_literal(char quote_mark) {
 static bool accept_include(char end_mark) {
 	// Get the string between the quotes
 	string filename;
-	int line = files.front()->line_number;
-	int col = files.front()->col_number;
+	int line = inputs.front()->line_number;
+	int col = inputs.front()->col_number;
 
 	int c = read_char(line, col);
 	while(c != end_mark && c != EOF) {
@@ -698,17 +952,25 @@ static bool accept_include(char end_mark) {
 		return false;
 	}
 
+	string fileref;
 	vector<string> dirs;
+
 	if(end_mark == '\"') {
 		yyin = fopen(filename.c_str(), "r");
-		if(yyin) { goto eatline; }
+		if(yyin) {
+			fileref = filename;
+			goto eatline;
+		}
 	}
 
-	dirs = get_include_dirs();
+	dirs = get_compiler_includes();
 	for(auto it = dirs.begin(); it != dirs.end(); ++it) {
 		string filepath = (*it) + filename;
 		yyin = fopen(filepath.c_str(), "r");
-		if(yyin) { goto eatline; }
+		if(yyin) {
+			fileref = filepath;
+			goto eatline;
+		}
 	}
 
 	if(!yyin) {
@@ -717,8 +979,8 @@ static bool accept_include(char end_mark) {
 	}
 
   eatline:
-	files.front()->line_number = line;
-	files.front()->col_number = col;
+	inputs.front()->line_number = line;
+	inputs.front()->col_number = col;
 
 	c = peek_char();
 	while(c != EOF && c != '\n') {
@@ -739,6 +1001,22 @@ static bool accept_include(char end_mark) {
 	}
 
   stop:
+  	auto prev_include = files.find(fileref);
+  	if(prev_include != files.end()) {
+  		if(prev_include->second->type != FTInput) {
+  			yyerror("Name conflict with included file.");
+  			return false;
+  		}
+
+  		Input* input = (Input*)(prev_include->second);
+  		inputs.push_front(input);
+  		input->times_included++;
+  	} else {
+  		Input* input = new Input(fileref);
+		inputs.push_front(input);
+		files.emplace(input->name, input);  		
+  	}
+
 	// Switch to the new buffer
 	yypush_buffer_state(yy_new_buffer(yyin, YY_BUF_SIZE));
 	return true;
@@ -751,9 +1029,11 @@ static ostream& indent(ostream& out, unsigned int indent_level) {
 	return out;
 }
 
-int init_lexer(const string & filename) {
+Module* init_lexer(const string & filename) {
 	error_count = 0;
 	warning_count = 0;
+
+	current_module = new Module();
 
 	defines.clear();
 	vector<Define> predefines = get_compiler_defines();
@@ -761,23 +1041,26 @@ int init_lexer(const string & filename) {
 		defines.emplace(it->identifier, (*it));
 	}
 
-	files.clear();
-	files.push_front(new InputFile(filename));
-	yyout = fopen("/dev/null", "w");
+	inputs.clear();
+	Input* input = new Input(filename);
+	inputs.push_front(input);
+	files.emplace(filename, input);
+
+	//yyout = fopen("/dev/null", "w");
 	yyin = fopen(filename.c_str(), "r");
-	if(!yyin) { return 1; }
-	return 0;
+	if(!yyin) { return NULL; }
+	return current_module;
 }
 
 int lexer_error_count() { return error_count; }
 int lexer_warning_count() { return warning_count; }
 void lexer_error(const string & msg)
 {
-	InputFile* info = files.front();
+	Input* info = inputs.front();
 
 	cerr << "Error";
-	if(info->filename.empty()) {
-		cerr << " in " << info->filename;
+	if(!info->name.empty()) {
+		cerr << " in " << info->name;
 	}
 	cerr << " at line " << info->line_number << ", column " << info->col_number
 	     << ":\n" << info->current_line << "\n";
@@ -790,15 +1073,19 @@ void lexer_error(const string & msg)
 }
 void lexer_warning(const string & msg)
 {
-	InputFile* info = files.front();
+	Input* info = inputs.front();
 
 	cerr << "\nWarning";
-	if(info->filename.empty()) {
-		cerr << " in " << info->filename;
+	if(!info->name.empty()) {
+		cerr << " in " << info->name;
 	}
 	cerr << " at line " << info->line_number << ", column " << info->col_number
 	     << ":\n" << info->current_line << "\n";
 	indent(cerr, info->col_number - 1) << "^\n" << msg << "\n\n";
 
 	warning_count++;
+}
+
+Input::Input(const string& name) : File(name, FTInput), line_number(0), col_number(0), times_included(1) {
+	comments.push_back(string());
 }

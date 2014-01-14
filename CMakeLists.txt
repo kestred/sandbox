@@ -44,9 +44,9 @@ find_package(BISON REQUIRED)
 ## Define source files
 set(PARSER_SOURCES
 	src/main.cxx
+	src/parser/cpp.cxx
 	src/parser/lexer.cxx
-	src/parser/parser.cxx
-	src/parser/env.cxx)
+	src/parser/parser.cxx)
 
 include_directories(src)
 add_executable(treesap-test ${PARSER_SOURCES})

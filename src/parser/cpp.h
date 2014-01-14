@@ -1,16 +1,37 @@
 // Filename: cpp.h
 #include <string>        // std::string
+#include <vector>        // std::vector
 #include <unordered_map> // std::unordered_map
 
-
-
-/* Type Declarations */
-struct SymbolTable;
+//Forward Declarations
+struct Define;
 struct Namespace;
 
+
+/* Utility Functions */
+std::vector<std::string> get_compiler_includes();
+std::vector<Define> get_compiler_defines();
+
+
 /* Type Definitions */
+enum FileType {
+	FTInput, // Files that are given as an input source
+	FTInternal, // Files defined internally, typically for compiler-specific behavior
+};
+
+struct File {
+	File(const std::string& filename);
+	File(const std::string& filename, FileType);
+
+	FileType type;
+	std::string name;
+};
+
 struct Location {
-	std::string filename;
+	Location();
+	Location(File*);
+
+	File* file;
 	int first_line, first_column;
 	int last_line, last_column;
 };
@@ -32,6 +53,7 @@ struct Symbol {
 //     The parser also keeps a SymbolTable around while parsing.
 struct SymbolTable {
 	std::unordered_map<std::string, Symbol> symbols;
+	std::unordered_map<std::string, Namespace*> namespaces;
 };
 
 // A Namespace is a named SymbolTable with all of its symbols being scoped
@@ -40,9 +62,17 @@ struct Namespace : SymbolTable {
 	std::string name;
 };
 
+struct Define {
+	std::string identifier;
+	std::string replace_text;
+	Location location;
+};
+
 // A Module is an upper level representation of the state of parsed symbols.
 //     Typically there will be a single Module, representing the global space.
 struct Module {
 	SymbolTable table;
+	std::unordered_map<std::string, File*> files;
+	std::unordered_map<std::string, Define> defines;
 };
 

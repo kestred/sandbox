@@ -61,7 +61,9 @@
 	#define yyerror parser_error
 	#define yywarning parser_warning
 
-#line 65 "../src/parser/parser.cxx" /* glr.c:207  */
+	static Module* module = NULL;
+
+#line 67 "../src/parser/parser.cxx" /* glr.c:207  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -94,7 +96,7 @@ static YYLTYPE yyloc_default
 
 /* Copy the second part of user declarations.  */
 
-#line 98 "../src/parser/parser.cxx" /* glr.c:230  */
+#line 100 "../src/parser/parser.cxx" /* glr.c:230  */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -261,13 +263,13 @@ static const unsigned char yytranslate[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const unsigned char yyrline[] =
 {
-       0,    75,    75,    76,    77,    81,    82,    86,    87,    88,
-      89,    90,    91,    94,    98,   103,   104,   108,   109,   113,
-     114,   115,   119,   120,   124,   125,   129,   130,   134,   135,
-     138,   139,   140,   144,   145,   146,   150,   151,   152,   153,
-     157,   158,   162,   163,   164,   165,   169,   170,   174,   175,
-     176,   180,   181,   188,   189,   190,   191,   192,   193,   194,
-     195,   199,   200,   210
+       0,    77,    77,    78,    79,    83,    84,    88,    89,    90,
+      91,    92,    93,    96,   100,   105,   106,   110,   111,   115,
+     116,   117,   121,   122,   126,   127,   131,   132,   136,   137,
+     140,   141,   142,   146,   147,   148,   152,   153,   154,   155,
+     159,   160,   164,   165,   166,   167,   171,   172,   176,   177,
+     178,   182,   183,   190,   191,   192,   193,   194,   195,   196,
+     197,   201,   202,   212
 };
 #endif
 
@@ -995,7 +997,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
   switch (yyn)
     {
       
-#line 999 "../src/parser/parser.cxx" /* glr.c:783  */
+#line 1001 "../src/parser/parser.cxx" /* glr.c:783  */
       default: break;
     }
 
@@ -2765,19 +2767,17 @@ yypdumpstack (yyGLRStack* yystackp)
 
 
 
-#line 214 "../src/parser/parser.yxx" /* glr.c:2551  */
+#line 216 "../src/parser/parser.yxx" /* glr.c:2551  */
 
 
 /* ---- User Subroutines ---- */
-int run_parser(const std::string & filename) {
-	if(init_lexer(filename) != 0) { return 1; }
-	return yyparse();
+Module* run_parser(const std::string & filename) {
+	module = init_lexer(filename);
+	if(!module) { return NULL; }
+	if(yyparse() != 0 || parser_error_count() > 0) { return NULL; }
+	return module;
 }
 int parser_error_count() { return lexer_error_count(); }
 int parser_warning_count() { return lexer_warning_count(); }
 void parser_error(const string & msg) { lexer_error(msg); }
 void parser_warning(const string & msg) { lexer_warning(msg); }
-
-InputFile::InputFile(string name) : filename(name), line_number(0), col_number(0) {
-	comments.push_back(string());
-}

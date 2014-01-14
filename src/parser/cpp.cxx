@@ -1,8 +1,17 @@
 #include <stdio.h> // FILE, popen, pclose, fgets, feof
 #include <sys/stat.h>  // stat
-#include "lexer.h"
-#include "env.h"
+#include "cpp.h"
 using namespace std;
+
+
+File::File(const string& filename) : File(filename, FTInternal) {}
+File::File(const string& filename, FileType ft) : name(filename), type(ft) {}
+
+Location::Location() : Location(NULL) {}
+Location::Location(File* f) : file(f),
+	first_line(0), first_column(0),
+	last_line(0), last_column(0) {}
+
 
 static vector<string> include_dirs;
 static vector<Define> compiler_defines;
@@ -27,7 +36,7 @@ static string exec(string cmd) {
 	return result;
 }
 
-static void env_init() {
+static void get_gcc_env() {
 	if(target.empty()) {
 		target = exec("gcc -v 2>&1 | grep Target | cut -f 2 --delimiter=\" \"");
 	}
@@ -36,9 +45,9 @@ static void env_init() {
 	}
 }
 
-vector<string> get_include_dirs() {
+vector<string> get_compiler_includes() {
 	if(include_dirs.empty()) {
-		env_init();
+		get_gcc_env();
 
 		string dirpath;
 		struct stat st;
@@ -80,9 +89,11 @@ vector<string> get_include_dirs() {
 
 vector<Define> get_compiler_defines() {
 	if(compiler_defines.empty()) {
-		env_init();
+		get_gcc_env();
 
 		Define def;
+		def.location = Location(new File("__gcc_builtin__"));
+
 		def.identifier = "__GNUC__";
 		def.replace_text = version[0];
 		compiler_defines.push_back(def);

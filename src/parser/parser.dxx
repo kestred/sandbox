@@ -76,7 +76,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 23 "../src/parser/parser.yxx" /* glr.c:2555  */
+#line 25 "../src/parser/parser.yxx" /* glr.c:2555  */
 
 	int integer;
 	bool boolean;

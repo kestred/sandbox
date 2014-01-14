@@ -9,6 +9,8 @@
 	#define yylex run_lexer
 	#define yyerror parser_error
 	#define yywarning parser_warning
+
+	static Module* module = NULL;
 %}
 
 /* Set Parser Options */
@@ -214,15 +216,13 @@ empty
 %%
 
 /* ---- User Subroutines ---- */
-int run_parser(const std::string & filename) {
-	if(init_lexer(filename) != 0) { return 1; }
-	return yyparse();
+Module* run_parser(const std::string & filename) {
+	module = init_lexer(filename);
+	if(!module) { return NULL; }
+	if(yyparse() != 0 || parser_error_count() > 0) { return NULL; }
+	return module;
 }
 int parser_error_count() { return lexer_error_count(); }
 int parser_warning_count() { return lexer_warning_count(); }
 void parser_error(const string & msg) { lexer_error(msg); }
 void parser_warning(const string & msg) { lexer_warning(msg); }
-
-InputFile::InputFile(string name) : filename(name), line_number(0), col_number(0) {
-	comments.push_back(string());
-}
