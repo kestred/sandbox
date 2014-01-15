@@ -100,6 +100,7 @@
 %x undef
 %x elseif
 %x endif
+%x warning
 
 /* Regex Definitions */
 IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
@@ -219,6 +220,11 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	}
 }
 
+"#"[ \t]*"warning"[ \t]+ {
+	accept();
+	yy_push_state(warning);
+}
+
 "#" {
 	// Fail on all other preprocessor ops
 	accept();
@@ -231,7 +237,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		c = peek_char();
 	}
 }
-q
+
 <pragma,include,ifndef,ifdef,define,undef>[ \t]* {
 	accept(); // eat whitespace everywhere
 }
@@ -450,9 +456,15 @@ q
 	accept();
 }
 
-<pragma,include,ifndef,ifdef,define,endif>. {
+<warning>.* {
 	accept();
-	yyerror("Unhandled characters following pre-processor directive.");
+	yywarning(yytext);
+	yy_pop_state();
+}
+
+<pragma,include,ifndef,ifdef,define,endif,warning>. {
+	accept();
+	yyerror("Treesap failed to handled characters following pre-processor directive.");
 	yyterminate();
 }
 
