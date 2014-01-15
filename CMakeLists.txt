@@ -46,7 +46,9 @@ set(PARSER_SOURCES
 	src/main.cxx
 	src/parser/cpp.cxx
 	src/parser/lexer.cxx
-	src/parser/parser.cxx)
+	src/parser/parser.cxx
+	src/parser/preprocess/prelexer.cxx
+	src/parser/preprocess/preparser.cxx)
 
 include_directories(src)
-add_executable(treesap-test ${PARSER_SOURCES})
+add_executable(treesap ${PARSER_SOURCES})

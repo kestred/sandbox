@@ -5,11 +5,6 @@
 	#include "lexer.h"
 	#include "parser.h"
 	using namespace std;
-
-	#define yylex run_lexer
-	#define yyerror parser_error
-	#define yywarning parser_warning
-
 	static Module* module = NULL;
 %}
 
@@ -19,6 +14,7 @@
 %locations     // enable location tracking; we use this to pair comments with tokens
 
 //%define api.namespace {treesap}
+%define api.prefix {cpp_yy}
 %define api.token.prefix {TOKEN_} // prefix tokens with TOKEN_ to avoid name conflicts
 
 /* Define our YYSTYPE */
@@ -219,10 +215,8 @@ empty
 Module* run_parser(const std::string & filename) {
 	module = init_lexer(filename);
 	if(!module) { return NULL; }
-	if(yyparse() != 0 || parser_error_count() > 0) { return NULL; }
+	if(yyparse() != 0 || cpp_yyerrors() > 0) { return NULL; }
 	return module;
 }
-int parser_error_count() { return lexer_error_count(); }
-int parser_warning_count() { return lexer_warning_count(); }
-void parser_error(const string & msg) { lexer_error(msg); }
-void parser_warning(const string & msg) { lexer_warning(msg); }
+int parser_errors() { return cpp_yyerrors(); }
+int parser_warnings() { return cpp_yywarnings(); }

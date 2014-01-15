@@ -1,0 +1,174 @@
+/* Filename: parser.yxx */
+
+%{
+	#include "prelexer.h"
+	#include "preparser.h"
+
+	#include "parser/cpp.h"
+	using namespace std;
+
+	#define yylex ppr_yylex
+	#define yylval ppr_yylval
+
+	static Module* current_module;
+	#define macros (current_module->macros)
+
+	static void preparser_error(const string & msg);
+	static void preparser_warning(const string & msg);
+%}
+
+/* Set Parser Options */
+%error-verbose // has bison output verbose errors
+
+//%define api.namespace {treesap}
+%define api.prefix {ppr_yy}
+%define api.token.prefix {PRETOKEN_} // prefix tokens with PRETOKEN_ to avoid name conflicts
+
+/* Define our YYSTYPE */
+%union {
+	int integer;
+	bool boolean;
+	char character;
+	double floating;
+	std::string* string;
+}
+
+/* Lexing Symbols */
+%token END 0 "end of file" // error messages refer to "end of file" intead of $end
+
+/* Literal Tokens */
+%token <integer>   INTEGER
+%token <floating>  FLOAT
+%token <character> CHAR
+%token <boolean>   BOOLEAN
+
+/* Semantic Tokens */
+%token <string> IDENTIFIER
+
+/* Keyword Tokens */
+%token KW_DEFINED "defined"
+
+/* Operator Tokens */
+%token OP_AND "&&"
+%token OP_OR  "||"
+%token OP_EQ  "=="
+%token OP_NEQ "!="
+%token OP_GRE ">="
+%token OP_LTE "<="
+%token OP_LT  "<"
+%token OP_GR  ">"
+%token OP_NOT "!"
+%token OP_SUB "-"
+%token OP_ADD "+"
+
+%type <boolean> expr_condition
+%type <boolean> condition
+%type <boolean> cond_defined
+%type <boolean> cond_compare
+
+%type <floating> expr_equation
+%type <floating> number
+
+%precedence "!"
+%precedence "&&"
+%precedence "||"
+
+%%
+
+grammar
+	: if_directive
+	;
+
+if_directive
+	: expr_condition
+	;
+
+expr_condition
+	: condition
+	| expr_condition "||" condition
+	{
+		if($1) { $$ = true; }
+		else { $$ = $3; }
+	}
+	| expr_condition "&&" condition
+	{
+		if($1) { $$ = $3; }
+		else { $$ = false; }
+	}
+	;
+
+condition
+	: cond_defined
+	| cond_compare
+	| "!" condition { $$ = !$2; }
+	| '(' expr_condition ')' { $$ = $2; }
+	;
+
+cond_compare
+	: expr_equation "==" expr_equation
+	{
+		$$ = ($1 == $3);
+	}
+	| expr_equation "!=" expr_equation
+	{
+		$$ = ($1 != $3);
+	}
+	| expr_equation "<=" expr_equation
+	{
+		$$ = ($1 <= $3);
+	}
+	| expr_equation ">=" expr_equation
+	{
+		$$ = ($1 >= $3);
+	}
+	| expr_equation "<" expr_equation
+	{
+		$$ = ($1 < $3);
+	}
+	| expr_equation ">" expr_equation
+	{
+		$$ = ($1 > $3);
+	}
+	;
+
+cond_defined
+	: "defined" IDENTIFIER
+	{
+		if(macros.find(*$2) == macros.end()) {
+			$$ = false;
+		} else {
+			$$ = true;
+		}
+		delete $2;
+	}
+	;
+
+expr_equation
+	: number
+	| expr_equation OP_SUB number { $$ = $1 - $3; }
+	| expr_equation OP_ADD number { $$ = $1 + $3; }
+	| '(' expr_equation ')' { $$ = $2; }
+	;
+
+number
+	: IDENTIFIER
+	{
+		$$ = atof($1->c_str());
+		delete $1;
+	}
+	| INTEGER { $$ = $1; }
+	| FLOAT
+	| CHAR { $$ = $1; }
+	| BOOLEAN { $$ = $1; }
+	;
+
+%%
+
+/* ---- User Subroutines ---- */
+bool parse_if_directive(Module * module, const std::string & input) {
+	init_prelexer(input);
+
+	current_module = module;
+	if(yyparse() != 0) { return false; }
+	return true;
+}

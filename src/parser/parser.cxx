@@ -46,8 +46,19 @@
 
 
 
+/* Substitute the type names.  */
+#define YYSTYPE CPP_YYSTYPE
+#define YYLTYPE CPP_YYLTYPE
+/* Substitute the variable and function names.  */
+#define yyparse cpp_yyparse
+#define yylex   cpp_yylex
+#define yyerror cpp_yyerror
+#define yydebug cpp_yydebug
 
-
+#define yylval  cpp_yylval
+#define yychar  cpp_yychar
+#define yynerrs cpp_yynerrs
+#define yylloc  cpp_yylloc
 
 /* First part of user declarations.  */
 #line 3 "../src/parser/parser.yxx" /* glr.c:207  */
@@ -56,14 +67,9 @@
 	#include "lexer.h"
 	#include "parser.h"
 	using namespace std;
-
-	#define yylex run_lexer
-	#define yyerror parser_error
-	#define yywarning parser_warning
-
 	static Module* module = NULL;
 
-#line 67 "../src/parser/parser.cxx" /* glr.c:207  */
+#line 73 "../src/parser/parser.cxx" /* glr.c:207  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -89,14 +95,14 @@
    value is undefined, this behavior is technically correct.  */
 static YYSTYPE yyval_default;
 static YYLTYPE yyloc_default
-# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
+# if defined CPP_YYLTYPE_IS_TRIVIAL && CPP_YYLTYPE_IS_TRIVIAL
   = { 1, 1, 1, 1 }
 # endif
 ;
 
 /* Copy the second part of user declarations.  */
 
-#line 100 "../src/parser/parser.cxx" /* glr.c:230  */
+#line 106 "../src/parser/parser.cxx" /* glr.c:230  */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -259,21 +265,21 @@ static const unsigned char yytranslate[] =
       15,    16,    17,    18,    19,    20,    21,    22,    23,    24
 };
 
-#if YYDEBUG
+#if CPP_YYDEBUG
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const unsigned char yyrline[] =
 {
-       0,    77,    77,    78,    79,    83,    84,    88,    89,    90,
-      91,    92,    93,    96,   100,   105,   106,   110,   111,   115,
-     116,   117,   121,   122,   126,   127,   131,   132,   136,   137,
-     140,   141,   142,   146,   147,   148,   152,   153,   154,   155,
-     159,   160,   164,   165,   166,   167,   171,   172,   176,   177,
-     178,   182,   183,   190,   191,   192,   193,   194,   195,   196,
-     197,   201,   202,   212
+       0,    73,    73,    74,    75,    79,    80,    84,    85,    86,
+      87,    88,    89,    92,    96,   101,   102,   106,   107,   111,
+     112,   113,   117,   118,   122,   123,   127,   128,   132,   133,
+     136,   137,   138,   142,   143,   144,   148,   149,   150,   151,
+     155,   156,   160,   161,   162,   163,   167,   168,   172,   173,
+     174,   178,   179,   186,   187,   188,   189,   190,   191,   192,
+     193,   197,   198,   208
 };
 #endif
 
-#if YYDEBUG || YYERROR_VERBOSE || 1
+#if CPP_YYDEBUG || YYERROR_VERBOSE || 1
 /* YYTNAME[SYMBOL-NUM] -- String name of the symbol SYMBOL-NUM.
    First, the terminals, then, starting at YYNTOKENS, nonterminals.  */
 static const char *const yytname[] =
@@ -560,7 +566,7 @@ typedef enum { yyok, yyaccept, yyabort, yyerr } YYRESULTTAG;
       return yychk_flag;                        \
   } while (0)
 
-#if YYDEBUG
+#if CPP_YYDEBUG
 
 # ifndef YYFPRINTF
 #  define YYFPRINTF fprintf
@@ -572,7 +578,7 @@ typedef enum { yyok, yyaccept, yyabort, yyerr } YYRESULTTAG;
    we won't break user code: when these are the locations we know.  */
 
 #ifndef YY_LOCATION_PRINT
-# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
+# if defined CPP_YYLTYPE_IS_TRIVIAL && CPP_YYLTYPE_IS_TRIVIAL
 
 /* Print *YYLOCP on YYO.  Private, do not rely on its existence. */
 
@@ -670,12 +676,12 @@ static void yypstack (struct yyGLRStack* yystackp, size_t yyk)
 static void yypdumpstack (struct yyGLRStack* yystackp)
   YY_ATTRIBUTE_UNUSED;
 
-#else /* !YYDEBUG */
+#else /* !CPP_YYDEBUG */
 
 # define YYDPRINTF(Args)
 # define YY_SYMBOL_PRINT(Title, Type, Value, Location)
 
-#endif /* !YYDEBUG */
+#endif /* !CPP_YYDEBUG */
 
 /* YYINITDEPTH -- initial size of the parser's stacks.  */
 #ifndef YYINITDEPTH
@@ -898,7 +904,7 @@ yyMemoryExhausted (yyGLRStack* yystackp)
   YYLONGJMP (yystackp->yyexception_buffer, 2);
 }
 
-#if YYDEBUG || YYERROR_VERBOSE
+#if CPP_YYDEBUG || YYERROR_VERBOSE
 /** A printable representation of TOKEN.  */
 static inline const char*
 yytokenName (yySymbol yytoken)
@@ -921,7 +927,7 @@ yyfillin (yyGLRStackItem *yyvsp, int yylow0, int yylow1)
   yyGLRState *s = yyvsp[yylow0].yystate.yypred;
   for (i = yylow0-1; i >= yylow1; i -= 1)
     {
-#if YYDEBUG
+#if CPP_YYDEBUG
       yyvsp[i].yystate.yylrState = s->yylrState;
 #endif
       yyvsp[i].yystate.yyresolved = s->yyresolved;
@@ -997,7 +1003,7 @@ yyuserAction (yyRuleNum yyn, size_t yyrhslen, yyGLRStackItem* yyvsp,
   switch (yyn)
     {
       
-#line 1001 "../src/parser/parser.cxx" /* glr.c:783  */
+#line 1007 "../src/parser/parser.cxx" /* glr.c:783  */
       default: break;
     }
 
@@ -1060,7 +1066,7 @@ yydestroyGLRState (char const *yymsg, yyGLRState *yys)
                 &yys->yysemantics.yysval, &yys->yyloc);
   else
     {
-#if YYDEBUG
+#if CPP_YYDEBUG
       if (yydebug)
         {
           if (yys->yysemantics.yyfirstVal)
@@ -1445,7 +1451,7 @@ yyglrShiftDefer (yyGLRStack* yystackp, size_t yyk, yyStateNum yylrState,
   yyaddDeferredAction (yystackp, yyk, yynewState, yyrhs, yyrule);
 }
 
-#if !YYDEBUG
+#if !CPP_YYDEBUG
 # define YY_REDUCE_PRINT(Args)
 #else
 # define YY_REDUCE_PRINT(Args)          \
@@ -1819,7 +1825,7 @@ yyresolveAction (yySemanticOption* yyopt, yyGLRStack* yystackp,
   return yyflag;
 }
 
-#if YYDEBUG
+#if CPP_YYDEBUG
 static void
 yyreportTree (yySemanticOption* yyx, int yyindent)
 {
@@ -1874,7 +1880,7 @@ yyreportAmbiguity (yySemanticOption* yyx0,
   YYUSE (yyx0);
   YYUSE (yyx1);
 
-#if YYDEBUG
+#if CPP_YYDEBUG
   YYFPRINTF (stderr, "Ambiguity detected.\n");
   YYFPRINTF (stderr, "Option 1,\n");
   yyreportTree (yyx0, 2);
@@ -2686,7 +2692,7 @@ yyparse (void)
 }
 
 /* DEBUGGING ONLY */
-#if YYDEBUG
+#if CPP_YYDEBUG
 static void
 yy_yypstack (yyGLRState* yys)
 {
@@ -2765,19 +2771,25 @@ yypdumpstack (yyGLRStack* yystackp)
 #undef yynerrs
 #undef yylloc
 
+/* Substitute the variable and function names.  */
+#define yyparse cpp_yyparse
+#define yylex   cpp_yylex
+#define yyerror cpp_yyerror
+#define yylval  cpp_yylval
+#define yychar  cpp_yychar
+#define yydebug cpp_yydebug
+#define yynerrs cpp_yynerrs
+#define yylloc  cpp_yylloc
 
-
-#line 216 "../src/parser/parser.yxx" /* glr.c:2551  */
+#line 212 "../src/parser/parser.yxx" /* glr.c:2551  */
 
 
 /* ---- User Subroutines ---- */
 Module* run_parser(const std::string & filename) {
 	module = init_lexer(filename);
 	if(!module) { return NULL; }
-	if(yyparse() != 0 || parser_error_count() > 0) { return NULL; }
+	if(yyparse() != 0 || cpp_yyerrors() > 0) { return NULL; }
 	return module;
 }
-int parser_error_count() { return lexer_error_count(); }
-int parser_warning_count() { return lexer_warning_count(); }
-void parser_error(const string & msg) { lexer_error(msg); }
-void parser_warning(const string & msg) { lexer_warning(msg); }
+int parser_errors() { return cpp_yyerrors(); }
+int parser_warnings() { return cpp_yywarnings(); }

@@ -4,13 +4,13 @@
 #include <unordered_map> // std::unordered_map
 
 //Forward Declarations
-struct Define;
+struct Macro;
 struct Namespace;
 
 
 /* Utility Functions */
 std::vector<std::string> get_compiler_includes();
-std::vector<Define> get_compiler_defines();
+std::vector<Macro> get_compiler_defines();
 
 
 /* Type Definitions */
@@ -62,10 +62,13 @@ struct Namespace : SymbolTable {
 	std::string name;
 };
 
-struct Define {
+struct Macro {
 	std::string identifier;
 	std::string replace_text;
 	Location location;
+
+	bool is_function;
+	std::vector<std::string> args;
 };
 
 // A Module is an upper level representation of the state of parsed symbols.
@@ -73,6 +76,6 @@ struct Define {
 struct Module {
 	SymbolTable table;
 	std::unordered_map<std::string, File*> files;
-	std::unordered_map<std::string, Define> defines;
+	std::unordered_map<std::string, Macro> macros;
 };
 

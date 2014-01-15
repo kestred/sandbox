@@ -14,7 +14,7 @@ Location::Location(File* f) : file(f),
 
 
 static vector<string> include_dirs;
-static vector<Define> compiler_defines;
+static vector<Macro> compiler_defines;
 static string version;
 static string target;
 
@@ -87,11 +87,11 @@ vector<string> get_compiler_includes() {
 	return include_dirs;
 }
 
-vector<Define> get_compiler_defines() {
+vector<Macro> get_compiler_defines() {
 	if(compiler_defines.empty()) {
 		get_gcc_env();
 
-		Define def;
+		Macro def;
 		def.location = Location(new File("__gcc_builtin__"));
 
 		def.identifier = "__GNUC__";

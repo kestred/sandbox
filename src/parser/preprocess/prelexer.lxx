@@ -1,0 +1,149 @@
+/* Filename: prelexer.lxx */
+
+%{
+	#include "prelexer.h"
+	#include "preparser.h"
+	#include "preparser.dxx"
+
+	#include "parser/cpp.h"
+	#include <iostream>      // std::cerr, std::ostream
+
+	#define yylval ppr_yylval
+	#define YY_DECL int ppr_yylex(void)
+
+	using namespace std;
+
+	static string current_input;
+%}
+
+/* Flex Options */
+%option warn
+
+/* Regex Definitions */
+IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
+BOOLEAN_LITERAL true|false
+OCTAL_LITERAL   0
+DECIMAL_LITERAL [1-9]+[0-9]*L?
+FLOAT_LITERAL   (([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?
+
+/*"/*
+// These regexs are correct to the specification, but we're using simplified
+//     versions until someone feels the need to implement them.
+
+HEXNUM_LITERAL  (0x[0-9a-fA-F]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+BINARY_LITERAL  (0[bB][01]+([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+DECIMAL_LITERAL ([1-9]+[0-9]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+FLOATING_POINT  ((([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?[lLfF]?)
+OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+*/
+
+%%
+
+[ \t\v\r\f] {
+	// Eat whitespace.
+}
+
+"defined" {
+	return PRETOKEN_KW_DEFINED;
+}
+
+"&&" {
+	return PRETOKEN_OP_AND;
+}
+
+"||" {
+	return PRETOKEN_OP_OR;
+}
+
+"==" {
+	return PRETOKEN_OP_EQ;
+}
+
+"!=" {
+	return PRETOKEN_OP_NEQ;
+}
+
+">=" {
+	return PRETOKEN_OP_GRE;
+}
+
+"<=" {
+	return PRETOKEN_OP_LTE;
+}
+
+">" {
+	return PRETOKEN_OP_GR;
+}
+
+"<" {
+	return PRETOKEN_OP_LT;
+}
+
+"!" {
+	return PRETOKEN_OP_NOT;
+}
+
+"+" {
+	return PRETOKEN_OP_ADD;
+}
+
+"-" {
+	return PRETOKEN_OP_SUB;
+}
+
+{BOOLEAN_LITERAL} {
+	// Boolean literal
+	if(strcmp(yytext, "true") == 0) {
+		yylval.boolean = true;
+	} else {
+		yylval.boolean = false;
+	}
+	return PRETOKEN_BOOLEAN;
+}
+
+{OCTAL_LITERAL} {
+	// Octal literal (currently we just accept 0)
+	yylval.integer = 0;
+	return PRETOKEN_INTEGER;
+}
+
+{DECIMAL_LITERAL} {
+	// Decimal literal
+	yylval.integer = atoi(yytext);
+	return PRETOKEN_INTEGER;
+}
+
+{FLOAT_LITERAL} {
+	// Floating-point literals
+	yylval.floating = atof(yytext);
+	return PRETOKEN_FLOAT;
+}
+
+{IDENTIFIER} {
+	yylval.string = new string(yytext);
+	return PRETOKEN_IDENTIFIER;
+}
+
+. {
+	// Send any other printable character as itself.
+	return yytext[0];
+}
+
+%%
+
+int ppr_yywrap(void)
+{
+	return 1;
+}
+
+void ppr_yyerror(const char* msg)
+{
+	cerr << "\nError in input:\n#if "
+	     << current_input << "\n"
+	     << "Error: " << msg << "\n";
+}
+
+void init_prelexer(const string & input) {
+	current_input = input;
+	yy_scan_string(current_input.c_str());
+}

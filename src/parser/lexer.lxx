@@ -6,17 +6,19 @@
 	#include "parser.dxx"
 
 	#include "cpp.h"
+	#include "preprocess/preparser.h"
 
 	#include <cctype>        // isxdigit
 	#include <iostream>      // std::cerr, std::ostream
 	#include <deque>         // std::deque
 
-	#define yyerror lexer_error
-	#define yywarning lexer_warning
-
-	#define YY_DECL int run_lexer(void)
-
+	#define yylval cpp_yylval
+	#define yylloc cpp_yylloc
+	#define yyerror cpp_yyerror
+	#define yywarning cpp_yywarning
+	#define YY_DECL int cpp_yylex(void)
 	using namespace std;
+
 
 	/* Struct Definitions */
 	// An Input holds extra per-file information while lexing and parsing
@@ -37,15 +39,17 @@
 	static int is_conditional_source;
 	static deque<Input*> inputs;
 	static Module* current_module = NULL;
-	#define defines (current_module->defines)
+	#define macros (current_module->macros)
 	#define files (current_module->files)
 
 	#define echo() \
 		cout << "Token(" << inputs.front()->name << "): " << yytext << "\n"
+	#define echo_location()\
+		cout << "(in file " << inputs.front()->name << " at line " << inputs.front()->line_number << ").\n";
 
 	/* Function Declarations */
 	// emit outputs the specified token from the lexer with location information
-	#define emit(token)                                        echo();\
+	#define emit(token)                                        \
 		yylloc.last_line = inputs.front()->line_number;        \
 		yylloc.last_column = inputs.front()->col_number;       \
 		if(!inputs.front()->comments.back().empty()) {         \
@@ -76,11 +80,8 @@
 	static char read_char_const(int & line, int & col, bool auto_escape = false);
 
 	// todo: doc
-	static bool scan_if();
-	static bool scan_if_condition(); // used by scan_if
-	static bool scan_if_logic(bool); // used by scan_if
-	static void scan_if_end();       // used by scan_if
 	static void scan_define(const string& identifier);
+	static string scan_if();
 	static string scan_block_comment();
 	static string scan_string_literal(char quote_mark = '"');
 %}
@@ -97,17 +98,14 @@
 %x ifndef
 %x define
 %x undef
+%x elseif
 %x endif
-
-%x ifcond
-%x ifident
-%x iflogic
 
 /* Regex Definitions */
 IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
 BOOLEAN_LITERAL true|false
 OCTAL_LITERAL   0
-DECIMAL_LITERAL [1-9]+[0-9]*
+DECIMAL_LITERAL [1-9]+[0-9]*L?
 FLOAT_LITERAL   (([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?
 
 /*"/*
@@ -150,7 +148,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yyless(2);
 }
 
-[ \t\v\r\f] {
+[ \t\v\r\f]+ {
 	// Eat whitespace.
 	accept();
 }
@@ -158,48 +156,47 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 "#"[ \t]*"pragma"[ \t]+ {
 	// Preprocessor #pragma directive
 	accept();
-	BEGIN(pragma);
+	yy_push_state(pragma);
 }
 
 "#"[ \t]*"include"[ \t]+ {
 	// Preprocessor #include directive
 	accept();
-	BEGIN(include);
+	yy_push_state(include);
 }
 
 "#"[ \t]*"if"[ \t]+ {
 	accept();
 
 	is_conditional_source++;
-	if(!scan_if()) {
-		BEGIN(endif);
+	string condition = scan_if();
+	if(!parse_if_directive(current_module, condition)) {
+		yy_push_state(elseif);
 	}
-
-	cout << "#if\n";
 }
 
 "#"[ \t]*"ifdef"[ \t]+ {
 	// Preprocessor #ifdef directive
 	accept();
-	BEGIN(ifdef);
+	yy_push_state(ifdef);
 }
 
 "#"[ \t]*"ifndef"[ \t]+ {
 	// Preprocessor #ifndef directive
 	accept();
-	BEGIN(ifndef);
+	yy_push_state(ifndef);
 }
 
 "#"[ \t]*"define"[ \t]+ {
 	// Preprocessor #define directive
 	accept();
-	BEGIN(define);
+	yy_push_state(define);
 }
 
 "#"[ \t]*"undef"[ \t]+ {
 	// Preprocessor #undef directive
 	accept();
-	BEGIN(undef);
+	yy_push_state(undef);
 }
 
 "#"[ \t]*"else".* {
@@ -207,7 +204,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	if(!is_conditional_source) {
 		yyerror("Found #else without previous #if.");
 	} else {
-		BEGIN(endif);
+		yy_push_state(endif);
 	}
 }
 
@@ -217,8 +214,8 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	if(!is_conditional_source) {
 		yyerror("Found #endif without previous #if.");
 	} else {
-		cout << "#endif\n";
 		is_conditional_source--;
+		yy_pop_state();
 	}
 }
 
@@ -234,7 +231,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		c = peek_char();
 	}
 }
-
+q
 <pragma,include,ifndef,ifdef,define,undef>[ \t]* {
 	accept(); // eat whitespace everywhere
 }
@@ -244,7 +241,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	if(inputs.front()->times_included > 1) {
 		inputs.pop_front();
 	}
-	BEGIN(INITIAL);
+	yy_pop_state();
 }
 
 <pragma>[^ \t\n]+.* {
@@ -256,20 +253,20 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	msg += "\".";
 	yyerror(msg);
 
-	BEGIN(INITIAL);
+	yy_pop_state();
 }
 
 <include>["] {
 	// Reads a quoted (") include (& following junk)
 	accept();
 	if(!accept_include('"')) { yyterminate(); }
-	else { BEGIN(INITIAL); }
+	else { yy_pop_state(); }
 }
 <include>[<] {
 	// Reads a braced (<>) include (& following junk)
 	accept();
 	if(!accept_include('>')) { yyterminate(); }
-	else { BEGIN(INITIAL); }
+	else { yy_pop_state(); }
 }
 
 <include>[^"< \t\n]+.* {
@@ -282,18 +279,18 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	msg += "\" in #include directive.";
 	yyerror(msg);
 
-	BEGIN(INITIAL);
+	yy_pop_state();
 }
 
 <ifdef>{IDENTIFIER} {
 	accept();
+	yy_pop_state();
 
 	is_conditional_source++;
-	if(defines.find(yytext) == defines.end()) {
-		BEGIN(endif);
+	if(macros.find(yytext) == macros.end()) {
+		yy_push_state(elseif);
 	} else {
-		cout << "#ifdef " << yytext << "\n";
-		BEGIN(INITIAL);
+		yy_push_state(INITIAL);
 	}
 
 	// Consume the rest of the line, except the newline (\n) character
@@ -306,6 +303,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 <ifdef>. {
 	accept();
+	yy_pop_state();
 
 	string msg;
 	msg += "Found unexpected \"";
@@ -313,18 +311,18 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	msg += "\" after #ifdef directive.";
 	yyerror(msg);
 
-	BEGIN(endif);
+	yy_push_state(endif);
 }
 
 <ifndef>{IDENTIFIER} {
 	accept();
+	yy_pop_state();
 
 	is_conditional_source++;
-	if(defines.find(yytext) == defines.end()) {
-		cout << "#ifndef " << yytext << "\n";
-		BEGIN(INITIAL);
+	if(macros.find(yytext) == macros.end()) {
+		yy_push_state(INITIAL);
 	} else {
-		BEGIN(endif);
+		yy_push_state(elseif);
 	}
 
 	// Consume the rest of the line, except the newline (\n) character
@@ -337,6 +335,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 <ifndef>. {
 	accept();
+	yy_pop_state();
 
 	string msg;
 	msg += "Found unexpected \"";
@@ -344,18 +343,18 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	msg += "\" in #ifndef directive.";
 	yyerror(msg);
 
-	BEGIN(endif);
+	yy_push_state(endif);
 }
 
 <define>{IDENTIFIER} {
 	accept();
 	scan_define(yytext);
-	BEGIN(INITIAL);
+	yy_pop_state();
 }
 
 <undef>{IDENTIFIER} {
 	accept();
-	defines.erase(yytext);
+	macros.erase(yytext);
 
 	// Consume the rest of the line, except the newline (\n) character
 	int c = peek_char();
@@ -364,7 +363,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		c = peek_char();
 	}
 
-	BEGIN(INITIAL);
+	yy_pop_state();
 }
 
 <undef>. {
@@ -376,18 +375,55 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	msg += "\" in #undef directive.";
 	yyerror(msg);
 
-	BEGIN(endif);
+	// Consume the rest of the line, except the newline (\n) character
+	int c = peek_char();
+	while(c!= '\n' && c != EOF) {
+		read_char();
+		c = peek_char();
+	}
+
+	yy_pop_state();
+}
+
+<elseif>"#"[ \t]*"if".* {
+	// If we find (if|ifdef|ifndef), increment our depth by 1 and find #end
+	accept();
+	is_conditional_source++;
+	yy_push_state(endif);
+}
+
+<elseif>"#"[ \t]*"else"[\ t]+ {
+	// If we find #else while looking for #else, tokenize the else code
+	yy_pop_state();
+	yy_push_state(INITIAL);
+}
+
+<elseif>"#"[ \t]*"elif"[ \t]+ {
+	// If we find #elif while looking for #else, test the #if
+	accept();
+
+	string condition = scan_if();
+	if(parse_if_directive(current_module, condition)) {
+		yy_pop_state();
+		yy_push_state(INITIAL);
+	}
 }
 
 <endif>"#"[ \t]*"if".* {
 	// If we find (if|ifdef|ifndef), increment our depth by 1
 	accept();
 	is_conditional_source++;
+	yy_push_state(endif);
 }
 
 <endif>"#"[ \t]*"else"[\ t]+ {
-	// If we find #else while looking for #endif, tokenize the else code
-	if(is_conditional_source) { BEGIN(INITIAL); }
+	// Consume any else
+	accept();
+}
+
+<endif>"#"[ \t]*"elif"[ \t]+ {
+	// Consume any elif
+	accept();
 }
 
 <endif>"#"[ \t]*"endif".* {
@@ -397,15 +433,17 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	} else {
 		is_conditional_source--;
 	}
-	BEGIN(INITIAL);
+	yy_pop_state();
 }
 
-<endif>\n.* {
+<elseif,endif>\n.* {
 	accept();
 	// Increment the line count
 	inputs.front()->current_line = yytext+1;
 	inputs.front()->line_number++;
 	inputs.front()->col_number = 0;
+
+	yyless(1);
 }
 
 <endif>. {
@@ -691,20 +729,6 @@ static char read_char_const(int & line, int & col, bool auto_escape) {
 	}
 }
 
-// for scan_if
-static string eat_word() {
-	string word;
-
-	int c = peek_char();
-	while(isalpha(c) || c == '_') {
-		word += read_char();
-		c = peek_char();
-	}
-
-	return word;
-}
-
-// for scan_if
 static void eat_space() {
 	int c = peek_char();
 	while(isblank(c)) {
@@ -713,154 +737,84 @@ static void eat_space() {
 	}
 }
 
-static bool scan_if_condition() {
-	eat_space();
-
-	int c = peek_char();
-	if(!isalpha(c) && c != '_') {
-		if(c != '\n' && c != EOF && c != '\\') {
-			read_char(); // Position the cursor better for debug output
-		}
-		yyerror("Found unexpected character in #if, while expecting a condition.");
-		scan_if_end();
-		return false;
-	}
-
-	string condition = eat_word();
-	if(condition == "defined") {
-		eat_space();
-		string def = eat_word();
-		if(def.empty()) {
-			yyerror("In #if directive, \"defined\" must be followed by an identifier.");
-		}
-
-		if(defines.find(def) == defines.end()) {
-			return false;
-		} else {
-			return true;
-		}
-	} else {
-		yyerror("Treesap hasn't implemented the condition \"" + condition + "\".");
-		scan_if_end();
-		return false;
-	}
-}
-
-static bool scan_if_logic(bool current) {
-	int c = peek_char();
-	switch(c) {
-		case '|':
-			read_char(); // Eat first '|'
-			if(peek_char() != '|') {
-				yyerror("Bad logic operator in #if.");
-				scan_if_end();
-				return false;
-			}
-			read_char(); // Eat second '|'
-
-			if(current) { return true; }
-			else { return scan_if_condition(); }
-		case '&':
-			read_char(); // Eat first '&'
-			if(peek_char() != '&') {
-				yyerror("Bad logic operator in #if.");
-				scan_if_end();
-				return false;
-			}
-			read_char(); // Eat second '&'
-
-			if(current) { return scan_if_condition(); }
-			else { return false; }
-		case ' ':
-		case '\t':
-			eat_space();
-			return scan_if_logic(current);
-		case '\n':
-			return current;
-			break;
-		case EOF:
-			return current;
-			break;
-		case '\\':
-			read_char();
-			c = peek_char();
-			if(c == '\\') {
-				while(c != '\n') {
-					read_char();
-					c = peek_char();
-				}
-				return current;
-			} else if(c == '\n') {
-				read_char();
-				return scan_if_logic(current);
-			}
-
-			// else fallthrough
-
-		default:
-			yyerror("Found unexpected character in #if directive.");
-			scan_if_end();
-			return false;
-			break;
-	}	
-}
-
-static void scan_if_end() {
-	int c = peek_char();
-	switch(c) {
-		case '\n':
-			return;
-		case EOF:
-			return;
-		case '\\':
-			read_char();
-			c = peek_char();
-			if(c == '\\') {
-				while(c != '\n') {
-					read_char();
-					c = peek_char();
-				}
-				return;
-			} else if(c == '\n') {
-				read_char();
-				scan_if_end();
-				return;
-			}
-		default:
-			read_char();
-			scan_if_end();
-			return;
-	}
-}
-
-static bool scan_if() {
-	bool yes = scan_if_condition();
-	return scan_if_logic(yes);
-}
-
 static void scan_define(const string& identifier) {
-	Define def;
+	Macro def;
 	def.identifier = identifier;
 	def.location = Location(inputs.front());
 
+	int c = peek_char();
+	if(c == '(') {
+		read_char();
+		def.is_function = true;
+
+		// Read function macro
+		string arg;
+		c = read_char();
+		while(c != EOF && c != ')') {
+			if(c == ',') {
+				if(arg.empty()) {
+					yywarning("Found extra ',' character in macro definition.");
+				}
+
+				def.args.push_back(arg);
+				arg = "";
+			} else if(c == '\n') {
+				yyerror("Found newline in function macro definition.");
+				unput(c);
+				return;
+			} else if(isalnum(c) || c == '_') {
+				arg += c;
+			} else if(!isblank(c)) {
+				string msg;
+				msg += "Found unexpeced character '";
+				msg += c;
+				msg += "' in argument for macro definition.";
+				yyerror(msg);
+			}
+			c = read_char();
+		}
+
+		if(c == EOF) {
+			yyerror("Unexpected EOF in function macro definition.");
+			unput(c);
+			return;
+		}
+	}
+
 	eat_space();
 
+	// Read value for macro
 	string replace;
-	int c = read_char();
+	c = peek_char();
 	while(c != EOF && c != '\n') {
+		read_char();
 		int p = peek_char();
 		if(c == '\\' && p == '\n') {
-			read_char();
+			replace += read_char();
 		} else {
 			replace += c;
 		}
 
-		c = read_char();
+		c = peek_char();
 	}
-	unput(c);
 
 	def.replace_text = replace;
-	defines.emplace(identifier, def);
+	macros.emplace(identifier, def);
+}
+
+static string scan_if() {
+	string result;
+	int c = read_char();
+	while(c != EOF && c != '\n') {
+		if(c == '\\' && peek_char() == '\n') {
+			c = read_char();
+		}
+
+		result += c;
+		c = read_char();
+	}
+
+	return result;
 }
 
 static string scan_block_comment() {
@@ -1035,10 +989,10 @@ Module* init_lexer(const string & filename) {
 
 	current_module = new Module();
 
-	defines.clear();
-	vector<Define> predefines = get_compiler_defines();
+	macros.clear();
+	vector<Macro> predefines = get_compiler_defines();
 	for(auto it = predefines.begin(); it != predefines.end(); ++it) {
-		defines.emplace(it->identifier, (*it));
+		macros.emplace(it->identifier, (*it));
 	}
 
 	inputs.clear();
@@ -1046,15 +1000,15 @@ Module* init_lexer(const string & filename) {
 	inputs.push_front(input);
 	files.emplace(filename, input);
 
-	//yyout = fopen("/dev/null", "w");
+	yyout = fopen("/dev/null", "w");
 	yyin = fopen(filename.c_str(), "r");
 	if(!yyin) { return NULL; }
 	return current_module;
 }
 
-int lexer_error_count() { return error_count; }
-int lexer_warning_count() { return warning_count; }
-void lexer_error(const string & msg)
+int cpp_yyerrors() { return error_count; }
+int cpp_yywarnings() { return warning_count; }
+void cpp_yyerror(const string & msg)
 {
 	Input* info = inputs.front();
 
@@ -1071,7 +1025,7 @@ void lexer_error(const string & msg)
 
 	error_count++;
 }
-void lexer_warning(const string & msg)
+void cpp_yywarning(const string & msg)
 {
 	Input* info = inputs.front();
 
@@ -1086,6 +1040,6 @@ void lexer_warning(const string & msg)
 	warning_count++;
 }
 
-Input::Input(const string& name) : File(name, FTInput), line_number(0), col_number(0), times_included(1) {
+Input::Input(const string& name) : File(name, FTInput), line_number(1), col_number(0), times_included(1) {
 	comments.push_back(string());
 }

@@ -6,9 +6,9 @@
 struct Module;
 
 Module* init_lexer(const std::string& filename);
-int run_lexer();
+int cpp_yylex();
 
-int lexer_error_count();
-int lexer_warning_count();
-void lexer_error(const std::string & msg);
-void lexer_warning(const std::string & msg);
+int cpp_yyerrors();
+int cpp_yywarnings();
+void cpp_yyerror(const std::string & msg);
+void cpp_yywarning(const std::string & msg);

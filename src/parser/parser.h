@@ -8,10 +8,8 @@ struct Module;
 struct File;
 
 Module* run_parser(const std::string & filename);
-int parser_error_count();
-int parser_warning_count();
-void parser_error(const std::string & msg);
-void parser_warning(const std::string & msg);
+int parser_errors();
+int parser_warnings();
 
 struct TokenLocation
 {
@@ -23,5 +21,5 @@ struct TokenLocation
 	int last_line;
 	int last_column;
 };
-#define YYLTYPE_IS_DECLARED
-#define YYLTYPE TokenLocation
+#define CPP_YYLTYPE_IS_DECLARED
+#define CPP_YYLTYPE TokenLocation
