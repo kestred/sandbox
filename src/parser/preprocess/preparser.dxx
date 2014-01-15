@@ -59,18 +59,19 @@ extern int ppr_yydebug;
     PRETOKEN_CHAR = 260,
     PRETOKEN_BOOLEAN = 261,
     PRETOKEN_IDENTIFIER = 262,
-    PRETOKEN_KW_DEFINED = 263,
-    PRETOKEN_OP_AND = 264,
-    PRETOKEN_OP_OR = 265,
-    PRETOKEN_OP_EQ = 266,
-    PRETOKEN_OP_NEQ = 267,
-    PRETOKEN_OP_GRE = 268,
-    PRETOKEN_OP_LTE = 269,
-    PRETOKEN_OP_LT = 270,
-    PRETOKEN_OP_GR = 271,
-    PRETOKEN_OP_NOT = 272,
-    PRETOKEN_OP_SUB = 273,
-    PRETOKEN_OP_ADD = 274
+    PRETOKEN_MACRO = 263,
+    PRETOKEN_KW_DEFINED = 264,
+    PRETOKEN_OP_AND = 265,
+    PRETOKEN_OP_OR = 266,
+    PRETOKEN_OP_EQ = 267,
+    PRETOKEN_OP_NEQ = 268,
+    PRETOKEN_OP_GRE = 269,
+    PRETOKEN_OP_LTE = 270,
+    PRETOKEN_OP_LT = 271,
+    PRETOKEN_OP_GR = 272,
+    PRETOKEN_OP_NOT = 273,
+    PRETOKEN_OP_SUB = 274,
+    PRETOKEN_OP_ADD = 275
   };
 #endif
 
@@ -86,8 +87,9 @@ union PPR_YYSTYPE
 	char character;
 	double floating;
 	std::string* string;
+	MacroCall* macro;
 
-#line 91 "../src/parser/preprocess/preparser.dxx" /* yacc.c:1909  */
+#line 93 "../src/parser/preprocess/preparser.dxx" /* yacc.c:1909  */
 };
 # define PPR_YYSTYPE_IS_TRIVIAL 1
 # define PPR_YYSTYPE_IS_DECLARED 1

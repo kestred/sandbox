@@ -709,12 +709,12 @@ char *cpp_yytext;
 		int line_number; // current line of the input
 		int col_number; // current col of the input
 		int times_included; // number of times the file has been included
+		int condition_depth; // depth of #if statements
 	};
 
 	/* Lexer State */
 	static int error_count;
 	static int warning_count;
-	static int is_conditional_source;
 	static deque<Input*> inputs;
 	static Module* current_module = NULL;
 	#define macros (current_module->macros)
@@ -1136,7 +1136,7 @@ YY_RULE_SETUP
 {
 	accept();
 
-	is_conditional_source++;
+	inputs.front()->condition_depth++;
 	string condition = scan_if();
 	if(!parse_if_directive(current_module, condition)) {
 		yy_push_state(elseif);
@@ -1184,7 +1184,7 @@ YY_RULE_SETUP
 #line 202 "../src/parser/lexer.lxx"
 {
 	accept();
-	if(!is_conditional_source) {
+	if(!inputs.front()->condition_depth) {
 		yyerror("Found #else without previous #if.");
 	} else {
 		yy_push_state(endif);
@@ -1197,10 +1197,10 @@ YY_RULE_SETUP
 {
 	// Preprocessor #endif directive
 	accept();
-	if(!is_conditional_source) {
+	if(!inputs.front()->condition_depth) {
 		yyerror("Found #endif without previous #if.");
 	} else {
-		is_conditional_source--;
+		inputs.front()->condition_depth--;
 		yy_pop_state();
 	}
 }
@@ -1302,7 +1302,7 @@ YY_RULE_SETUP
 	accept();
 	yy_pop_state();
 
-	is_conditional_source++;
+	inputs.front()->condition_depth++;
 	if(macros.find(cpp_yytext) == macros.end()) {
 		yy_push_state(elseif);
 	} else {
@@ -1340,7 +1340,7 @@ YY_RULE_SETUP
 	accept();
 	yy_pop_state();
 
-	is_conditional_source++;
+	inputs.front()->condition_depth++;
 	if(macros.find(cpp_yytext) == macros.end()) {
 		yy_push_state(INITIAL);
 	} else {
@@ -1425,7 +1425,7 @@ YY_RULE_SETUP
 {
 	// If we find (if|ifdef|ifndef), increment our depth by 1 and find #end
 	accept();
-	is_conditional_source++;
+	inputs.front()->condition_depth++;
 	yy_push_state(endif);
 }
 	YY_BREAK
@@ -1458,7 +1458,7 @@ YY_RULE_SETUP
 {
 	// If we find (if|ifdef|ifndef), increment our depth by 1
 	accept();
-	is_conditional_source++;
+	inputs.front()->condition_depth++;
 	yy_push_state(endif);
 }
 	YY_BREAK
@@ -1483,10 +1483,10 @@ YY_RULE_SETUP
 #line 429 "../src/parser/lexer.lxx"
 {
 	accept();
-	if(is_conditional_source == 0) {
+	if(inputs.front()->condition_depth == 0) {
 		yyerror("Found #endif with no matching #if/#ifdef/#ifndef.");
 	} else {
-		is_conditional_source--;
+		inputs.front()->condition_depth--;
 	}
 	yy_pop_state();
 }
@@ -1741,6 +1741,12 @@ case YY_STATE_EOF(elseif):
 case YY_STATE_EOF(endif):
 #line 599 "../src/parser/lexer.lxx"
 {
+	// Check for unclosed conditionals
+	while(inputs.front()->condition_depth > 0) {
+		yyerror("Missing #endif in current file.");
+		inputs.front()->condition_depth--;
+	}
+
 	// Stop reading our current file
 	cpp_yypop_buffer_state();
 	inputs.pop_front();
@@ -1764,10 +1770,10 @@ case YY_STATE_EOF(endif):
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 621 "../src/parser/lexer.lxx"
+#line 627 "../src/parser/lexer.lxx"
 ECHO;
 	YY_BREAK
-#line 1771 "../src/parser/lexer.cxx"
+#line 1777 "../src/parser/lexer.cxx"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -2804,7 +2810,7 @@ void cpp_yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 621 "../src/parser/lexer.lxx"
+#line 627 "../src/parser/lexer.lxx"
 
 
 
@@ -3208,7 +3214,8 @@ void cpp_yyerror(const string & msg)
 	     << ":\n" << info->current_line << "\n";
 
 	int ident = info->col_number - 1 < 0 ? 0 : info->col_number - 1;
-	indent(cerr, info->col_number - 1) << "^\n";
+	if(ident > 10) { ident = 10; }
+	indent(cerr, ident) << "^\n";
 	cerr << msg << "\n\n";
 
 	error_count++;
@@ -3223,7 +3230,11 @@ void cpp_yywarning(const string & msg)
 	}
 	cerr << " at line " << info->line_number << ", column " << info->col_number
 	     << ":\n" << info->current_line << "\n";
-	indent(cerr, info->col_number - 1) << "^\n" << msg << "\n\n";
+
+	int ident = info->col_number - 1 < 0 ? 0 : info->col_number - 1;
+	if(ident > 10) { ident = 10; }
+	indent(cerr, ident) << "^\n";
+	cerr << msg << "\n\n";
 
 	warning_count++;
 }

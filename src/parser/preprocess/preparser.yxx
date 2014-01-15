@@ -31,6 +31,7 @@
 	char character;
 	double floating;
 	std::string* string;
+	MacroCall* macro;
 }
 
 /* Lexing Symbols */
@@ -44,6 +45,7 @@
 
 /* Semantic Tokens */
 %token <string> IDENTIFIER
+%token <string> MACRO
 
 /* Keyword Tokens */
 %token KW_DEFINED "defined"

@@ -9,6 +9,7 @@
 	#include <iostream>      // std::cerr, std::ostream
 
 	#define yylval ppr_yylval
+	#define yyerror ppr_yyerror
 	#define YY_DECL int ppr_yylex(void)
 
 	using namespace std;
@@ -117,6 +118,10 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	// Floating-point literals
 	yylval.floating = atof(yytext);
 	return PRETOKEN_FLOAT;
+}
+
+{IDENTIFIER}[ \t]*\([^\)]*\) {
+	yyerror("TODO: Add Treesap support for function-type macros.");
 }
 
 {IDENTIFIER} {
