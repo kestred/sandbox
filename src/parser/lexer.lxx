@@ -49,8 +49,9 @@
 	static Module* current_module = NULL;
 	#define macros (current_module->macros)
 	#define files (current_module->files)
-	static MacroCall* current_macro;
+	static MacroCall current_macro;
 	static string current_value;
+	static unordered_map<string, string> prev_include_dir;
 
 	#define echo() \
 		cout << "Token(" << inputs.front()->name << "): " << yytext << "\n"
@@ -74,7 +75,7 @@
 
 	// accept_include is an alternate accepts that handles the #include directive;
 	//     returns if there was an error with the include.
-	static bool accept_include(char end_mark);
+	static bool accept_include(char end_mark, bool next = false);
 
 	// peek_char returns the character that will be returned in
 	//     the next call to read_char.
@@ -107,6 +108,7 @@
 /* Lexer States */
 %x pragma
 %x include
+%x include_next
 %x ifdef
 %x ifndef
 %x define
@@ -182,6 +184,12 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	// Preprocessor #include directive
 	accept();
 	yy_push_state(include);
+}
+
+"#"[ \t]*"include_next"[ \t]+ {
+	// Preprocessor #include directive
+	accept();
+	yy_push_state(include_next);
 }
 
 "#"[ \t]*"if"[ \t]+ {
@@ -286,6 +294,13 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yy_pop_state();
 }
 
+<pragma>"GCC system_header".* {
+	// We're going to handle this header by ignoring it, until we actually have
+	// to implement it (see http://gcc.gnu.org/onlinedocs/cpp/System-Headers.html).
+	accept();
+	yy_pop_state();
+}
+
 <pragma>[^ \t\n]+.* {
 	accept();
 
@@ -311,7 +326,21 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	else { yy_pop_state(); }
 }
 
-<include>[^"< \t\n]+.* {
+<include_next>["] {
+	// Reads a quoted (") include (& following junk)
+	accept();
+	if(!accept_include('"', true)) { yyterminate(); }
+	else { yy_pop_state(); }
+}
+<include_next>[<] {
+	// Reads a braced (<>) include (& following junk)
+	accept();
+	if(!accept_include('>', true)) { yyterminate(); }
+	else { yy_pop_state(); }
+}
+
+
+<include,include_next>[^"< \t\n]+.* {
 	// Accepts any character except spaces, <, or "
 	accept();
 
@@ -451,7 +480,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	}
 }
 
-<elseif>"#"[ \t]*"endif".* {
+<elseif>"#"[ \t]*"endif"[ \t]* {
 	accept();
 
 	if(inputs.front()->condition_depth == 0) {
@@ -470,17 +499,17 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yy_push_state(endif);
 }
 
-<endif>"#"[ \t]*"else".* {
+<endif>"#"[ \t]*"else"[ \t]* {
 	// Consume any else
 	accept();
 }
 
-<endif>"#"[ \t]*"elif"[ \t]+.* {
+<endif>"#"[ \t]*"elif"[ \t]+ {
 	// Consume any elif
 	accept();
 }
 
-<endif>"#"[ \t]*"endif".* {
+<endif>"#"[ \t]*"endif"[ \t]* {
 	accept();
 	if(inputs.front()->condition_depth == 0) {
 		yyerror("Found #endif with no matching #if/#ifdef/#ifndef.");
@@ -683,18 +712,16 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		Macro macro = macro_it->second;
 		if(macro.is_function) {
 			yy_push_state(macro_start);
-		} else if(inputs.front()->name.substr(0, 7) == "<macro>") {
-			yyerror("Treesap can't handle nested function-macros.");
-		} else {
-			if(!macro.replace_text.empty()) {
-				Input* input = new Input("<macro> " + macro.identifier);
-				inputs.push_front(input);
+			current_macro.identifier = identifier;
+			current_macro.arg_values.clear();
+		} else if(!macro.replace_text.empty()) {
+			Input* input = new Input("<macro> " + macro.identifier);
+			inputs.push_front(input);
 
-				input->is_macro = true;
-				input->macro_value = macro.replace_text;
-				FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
-				yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
-			}
+			input->is_macro = true;
+			input->macro_value = macro.replace_text;
+			FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
+			yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
 		}
 	}
 
@@ -718,7 +745,6 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 			yyerror("8+ unclosed #if directives in file.");
 			break;
 		}
-		cerr << "Depth: " << inputs.front()->condition_depth << "\n";
 		yyerror("Missing #endif in current file.");
 		inputs.front()->condition_depth--;
 	}
@@ -770,17 +796,17 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 <macro_args>"," {
 	// Eat argument
 	accept();
-	current_macro->arg_values.push_back(current_value);
+	current_macro.arg_values.push_back(current_value);
 	current_value.clear();
 }
 
 <macro_args>")" {
 	accept();
-	current_macro->arg_values.push_back(current_value);
+	current_macro.arg_values.push_back(current_value);
 	current_value.clear();
 
-	Macro* macro = &macros.find(current_macro->identifier)->second;
-	size_t num_values = current_macro->arg_values.size();
+	Macro* macro = &macros.find(current_macro.identifier)->second;
+	size_t num_values = current_macro.arg_values.size();
 	size_t num_params = macro->args.size();
 	if(num_params != num_values) {
 		string msg("Incorrect number of arguments for macro \"" + macro->identifier + "\".");
@@ -788,7 +814,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	} else { 
 		string new_input = macro->replace_text;
 		for(int i = 0; i < macro->args.size(); ++i) {
-			new_input = replace_substr(new_input, macro->args[i], current_macro->arg_values[i]);
+			new_input = replace_substr(new_input, macro->args[i], current_macro.arg_values[i]);
 		}
 
 		if(!new_input.empty()) {
@@ -801,6 +827,8 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 			yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
 		}
 	}
+	current_macro.identifier.clear();
+	current_macro.arg_values.clear();
 	yy_pop_state(); // pop macro_args
 }
 
@@ -956,7 +984,7 @@ static void scan_define(const string& identifier) {
 				def.args.push_back(arg);
 				arg = "";
 			} else if(c == ')') {
-				if(arg.empty()) {
+				if(arg.empty() && def.args.size() > 0) {
 					yywarning("Found extra ',' character in macro definition.");
 				}
 
@@ -1087,7 +1115,7 @@ static string scan_string_literal(char quote_mark) {
 	return result;
 }
 
-static bool accept_include(char end_mark) {
+static bool accept_include(char end_mark, bool next) {
 	// Get the string between the quotes
 	string filename;
 	int line = inputs.front()->line_number;
@@ -1101,7 +1129,7 @@ static bool accept_include(char end_mark) {
 
 	if(c == EOF) {
 		string msg = "#include filename missing a terminating (";
-		yyerror(msg + "\" character.");
+		yyerror(msg + "\") character.");
 		return false;
 	}
 
@@ -1110,22 +1138,40 @@ static bool accept_include(char end_mark) {
 		return false;
 	}
 
+	string prevdir;
+	bool found_prev = false;
+	if(next && prev_include_dir.find(filename) != prev_include_dir.end()) {
+		prevdir = prev_include_dir.find(filename)->second;
+	}
+	if(prevdir == "") { found_prev = true; }
+
 	string fileref;
 	vector<string> dirs;
-
-	if(end_mark == '\"') {
+	if(end_mark == '\"' && (!next || found_prev)) {
 		yyin = fopen(filename.c_str(), "r");
 		if(yyin) {
+			prev_include_dir.emplace(filename, ".");
 			fileref = filename;
 			goto eatline;
 		}
 	}
 
+	if(prevdir == ".") { found_prev = true; }
 	dirs = get_compiler_includes();
 	for(auto it = dirs.begin(); it != dirs.end(); ++it) {
+		if(next) {
+			if(!found_prev) {
+				if(prevdir == (*it)) {
+					found_prev = true;
+				}
+				continue;
+			}
+		}
+
 		string filepath = (*it) + filename;
 		yyin = fopen(filepath.c_str(), "r");
 		if(yyin) {
+			prev_include_dir.emplace(filename, *it);
 			fileref = filepath;
 			goto eatline;
 		}
@@ -1159,6 +1205,7 @@ static bool accept_include(char end_mark) {
 	}
 
   stop:
+  	cout << "Included: " << fileref << ".\n";
   	auto prev_include = files.find(fileref);
   	if(prev_include != files.end()) {
   		if(prev_include->second->type != FTInput) {

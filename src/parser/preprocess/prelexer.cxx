@@ -383,8 +383,8 @@ static void yy_fatal_error (yyconst char msg[]  );
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
 
-#define YY_NUM_RULES 32
-#define YY_END_OF_BUFFER 33
+#define YY_NUM_RULES 33
+#define YY_END_OF_BUFFER 34
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -392,16 +392,16 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static yyconst flex_int16_t yy_accept[72] =
+static yyconst flex_int16_t yy_accept[77] =
     {   0,
-        0,    0,   27,   27,    0,    0,   33,   26,    1,   32,
-       17,   26,   18,   19,   26,   26,   21,   22,   16,   26,
-       15,   25,   25,   25,   25,   26,   31,   27,   30,   29,
-       28,    5,    5,   10,    7,   23,    3,    2,   23,    0,
-       22,   22,   22,   14,   12,    9,   11,   13,    0,   24,
-       25,   25,   25,   25,    8,   27,    4,    0,    2,   25,
-       25,   25,    0,   23,   25,   25,   20,   25,   25,    6,
-        0
+        0,    0,    0,    0,   28,   28,    0,    0,   34,   25,
+        1,   33,   17,   25,   18,   19,   25,   25,   21,   22,
+       16,   25,   15,   24,   24,   24,   24,   25,   27,   27,
+       26,   32,   28,   31,   30,   29,    5,    5,   10,    7,
+       23,    3,    2,   23,    0,   22,   22,   22,   14,   12,
+        9,   11,   13,   24,   24,   24,   24,    8,    0,   26,
+       28,    4,    0,    2,   24,   24,   24,    0,   23,   24,
+       24,   20,   24,   24,    6,    0
     } ;
 
 static yyconst flex_int32_t yy_ec[256] =
@@ -438,88 +438,80 @@ static yyconst flex_int32_t yy_ec[256] =
 
 static yyconst flex_int32_t yy_meta[35] =
     {   0,
-        1,    2,    3,    1,    1,    1,    2,    1,    1,    1,
-        1,    1,    1,    1,    2,    2,    1,    1,    1,    2,
-        2,    2,    2,    2,    2,    2,    2,    2,    2,    2,
-        2,    2,    2,    1
+        1,    1,    2,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    3,    3,    1,    1,    1,    3,
+        3,    3,    3,    3,    3,    3,    3,    3,    3,    3,
+        3,    3,    3,    1
     } ;
 
-static yyconst flex_int16_t yy_base[76] =
+static yyconst flex_int16_t yy_base[82] =
     {   0,
-        0,    0,   33,   35,   36,   39,   93,  172,  172,  172,
-       72,   80,  172,  172,   34,   38,   38,   42,   42,   66,
-       43,   61,   63,   64,   65,   46,  172,   76,  172,  172,
-      172,  172,   55,  172,  172,   58,  172,    0,   60,   76,
-       81,   85,  172,  172,  172,  172,  172,  172,   75,  172,
-       97,  103,  104,  106,  172,   54,  172,  102,    0,  113,
-      114,  117,  107,  110,  126,  128,  129,  136,  139,  142,
-      172,  163,  166,   38,  169
+        0,    0,   33,   35,   41,   43,   38,   47,  131,  132,
+      132,  132,  112,  123,  132,  132,   42,   39,   46,   50,
+       50,  110,   51,    0,  102,  103,   95,   90,  132,   53,
+      132,  132,  121,  132,  132,  132,  132,  108,  132,  132,
+       58,  132,    0,   60,   71,   75,   79,  132,  132,  132,
+      132,  132,  132,    0,   95,   91,   69,  132,   75,  132,
+       97,  132,   88,    0,   69,   62,   64,   90,   92,   51,
+       53,    0,   46,   40,    0,  132,  108,  111,  114,   36,
+      117
     } ;
 
-static yyconst flex_int16_t yy_def[76] =
+static yyconst flex_int16_t yy_def[82] =
     {   0,
-       71,    1,   72,   72,   73,   73,   71,   71,   71,   71,
-       71,   71,   71,   71,   71,   71,   71,   71,   71,   71,
-       71,   74,   74,   74,   74,   71,   71,   71,   71,   71,
-       71,   71,   71,   71,   71,   71,   71,   75,   71,   71,
-       71,   71,   71,   71,   71,   71,   71,   71,   71,   71,
-       74,   74,   74,   74,   71,   71,   71,   71,   75,   74,
-       74,   74,   71,   71,   74,   74,   74,   74,   74,   74,
-        0,   71,   71,   71,   71
+       76,    1,   77,   77,   78,   78,   79,   79,   76,   76,
+       76,   76,   76,   76,   76,   76,   76,   76,   76,   76,
+       76,   76,   76,   80,   80,   80,   80,   76,   76,   76,
+       76,   76,   76,   76,   76,   76,   76,   76,   76,   76,
+       76,   76,   81,   76,   76,   76,   76,   76,   76,   76,
+       76,   76,   76,   80,   80,   80,   80,   76,   76,   76,
+       76,   76,   76,   81,   80,   80,   80,   76,   76,   80,
+       80,   80,   80,   80,   80,    0,   76,   76,   76,   76,
+       76
     } ;
 
-static yyconst flex_int16_t yy_nxt[207] =
+static yyconst flex_int16_t yy_nxt[167] =
     {   0,
-        8,    9,   10,    9,   11,   12,    8,    8,    8,   13,
-        8,   14,   15,   16,   17,   18,   19,   20,   21,   22,
-       22,   22,   22,   23,   22,   24,   22,   22,   22,   22,
-       22,   25,   22,   26,   28,   29,   28,   29,   10,   51,
-       30,   10,   30,   31,   33,   31,   37,   33,   36,   36,
-       39,   38,   40,   40,   39,   56,   41,   42,   44,   45,
-       47,   48,   49,   43,   49,   49,   49,   50,   57,   50,
-       50,   50,   36,   36,   36,   36,   49,   56,   58,   55,
-       58,   50,   58,   46,   58,   35,   53,   52,   39,   34,
-       40,   40,   71,   39,   54,   41,   41,   39,   49,   41,
+       10,   11,   12,   11,   13,   14,   10,   10,   10,   15,
+       10,   16,   17,   18,   19,   20,   21,   22,   23,   24,
+       24,   24,   24,   25,   24,   26,   24,   24,   24,   24,
+       24,   27,   24,   28,   30,   12,   30,   12,   54,   31,
+       12,   31,   33,   34,   33,   34,   38,   42,   35,   12,
+       35,   36,   43,   36,   59,   38,   41,   41,   44,   60,
+       45,   45,   44,   75,   46,   47,   49,   50,   52,   53,
+       74,   48,   41,   41,   41,   41,   59,   72,   63,   73,
+       63,   60,   63,   44,   63,   45,   45,   44,   72,   46,
+       46,   44,   71,   46,   47,   70,   48,   68,   61,   68,
 
-       42,   71,   43,   50,   49,   49,   43,   49,   71,   50,
-       50,   63,   50,   63,   49,   49,   64,   64,   49,   50,
-       50,   64,   64,   50,   64,   64,   71,   49,   60,   49,
-       49,   61,   50,   71,   50,   50,   71,   49,   62,   65,
-       49,   67,   50,   49,   66,   50,   71,   71,   50,   71,
-       71,   71,   67,   71,   68,   71,   71,   71,   71,   71,
-       69,   71,   70,   27,   27,   27,   32,   32,   32,   59,
-       59,    7,   71,   71,   71,   71,   71,   71,   71,   71,
-       71,   71,   71,   71,   71,   71,   71,   71,   71,   71,
-       71,   71,   71,   71,   71,   71,   71,   71,   71,   71,
-
-       71,   71,   71,   71,   71,   71
+       48,   67,   69,   69,   69,   69,   69,   69,   29,   29,
+       29,   32,   32,   32,   37,   37,   37,   64,   66,   64,
+       65,   62,   61,   58,   57,   56,   55,   51,   40,   39,
+       76,    9,   76,   76,   76,   76,   76,   76,   76,   76,
+       76,   76,   76,   76,   76,   76,   76,   76,   76,   76,
+       76,   76,   76,   76,   76,   76,   76,   76,   76,   76,
+       76,   76,   76,   76,   76,   76
     } ;
 
-static yyconst flex_int16_t yy_chk[207] =
+static yyconst flex_int16_t yy_chk[167] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1,    3,    3,    4,    4,    5,   74,
-        3,    6,    4,    3,    5,    4,   16,    6,   15,   15,
-       17,   16,   17,   17,   18,   56,   18,   18,   19,   19,
-       21,   21,   22,   18,   23,   24,   25,   22,   33,   23,
-       24,   25,   36,   36,   39,   39,   49,   28,   36,   26,
-       39,   49,   36,   20,   39,   12,   24,   23,   40,   11,
-       40,   40,    7,   41,   25,   41,   41,   42,   51,   42,
+        1,    1,    1,    1,    3,    3,    4,    4,   80,    3,
+        7,    4,    5,    5,    6,    6,    7,   18,    5,    8,
+        6,    5,   18,    6,   30,    8,   17,   17,   19,   30,
+       19,   19,   20,   74,   20,   20,   21,   21,   23,   23,
+       73,   20,   41,   41,   44,   44,   59,   71,   41,   70,
+       44,   59,   41,   45,   44,   45,   45,   46,   67,   46,
+       46,   47,   66,   47,   47,   65,   46,   63,   61,   63,
 
-       42,    0,   41,   51,   52,   53,   42,   54,    0,   52,
-       53,   58,   54,   58,   60,   61,   58,   58,   62,   60,
-       61,   63,   63,   62,   64,   64,    0,   65,   52,   66,
-       67,   53,   65,    0,   66,   67,    0,   68,   54,   60,
-       69,   62,   68,   70,   61,   69,    0,    0,   70,    0,
-        0,    0,   66,    0,   65,    0,    0,    0,    0,    0,
-       68,    0,   69,   72,   72,   72,   73,   73,   73,   75,
-       75,   71,   71,   71,   71,   71,   71,   71,   71,   71,
-       71,   71,   71,   71,   71,   71,   71,   71,   71,   71,
-       71,   71,   71,   71,   71,   71,   71,   71,   71,   71,
-
-       71,   71,   71,   71,   71,   71
+       47,   57,   63,   63,   68,   68,   69,   69,   77,   77,
+       77,   78,   78,   78,   79,   79,   79,   81,   56,   81,
+       55,   38,   33,   28,   27,   26,   25,   22,   14,   13,
+        9,   76,   76,   76,   76,   76,   76,   76,   76,   76,
+       76,   76,   76,   76,   76,   76,   76,   76,   76,   76,
+       76,   76,   76,   76,   76,   76,   76,   76,   76,   76,
+       76,   76,   76,   76,   76,   76
     } ;
 
 static yy_state_type yy_last_accepting_state;
@@ -544,6 +536,7 @@ char *ppr_yytext;
 	#include "preparser.dxx"
 
 	#include "parser/cpp.h"
+	#include <stack>    //std::stack
 	#include <iostream> // std::cerr, std::ostream
 	#include <string.h> // strchr
 
@@ -559,16 +552,18 @@ char *ppr_yytext;
 		std::vector<std::string> arg_values;
 	};
 
-	static string current_input;
-	static string current_value;
-	static string macro_input;
-	static MacroCall* current_macro;
+	static stack<string> inputs;
 	static Module* current_module;
 	#define macros (current_module->macros)
+	static MacroCall current_macro;
+	static string current_value;
+	static string* base_input;
+	static bool dont_expand_next;
 
 	static string replace_substr(string orig, string substr, string replace);
 /* Flex Options */
 /* Lexer States */
+
 
 
 /* Regex Definitions */
@@ -582,11 +577,12 @@ DECIMAL_LITERAL ([1-9]+[0-9]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 FLOATING_POINT  ((([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?[lLfF]?)
 OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 */
-#line 586 "../src/parser/preprocess/prelexer.cxx"
+#line 581 "../src/parser/preprocess/prelexer.cxx"
 
 #define INITIAL 0
-#define macro_args 1
-#define block_comment 2
+#define macro_start 1
+#define macro_args 2
+#define block_comment 3
 
 #ifndef YY_NO_UNISTD_H
 /* Special case for "unistd.h", since it is non-ANSI. We include it way
@@ -776,10 +772,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 61 "../src/parser/preprocess/prelexer.lxx"
+#line 64 "../src/parser/preprocess/prelexer.lxx"
 
 
-#line 783 "../src/parser/preprocess/prelexer.cxx"
+#line 779 "../src/parser/preprocess/prelexer.cxx"
 
 	if ( !(yy_init) )
 		{
@@ -832,13 +828,13 @@ yy_match:
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 72 )
+				if ( yy_current_state >= 77 )
 					yy_c = yy_meta[(unsigned int) yy_c];
 				}
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 			++yy_cp;
 			}
-		while ( yy_base[yy_current_state] != 172 );
+		while ( yy_base[yy_current_state] != 132 );
 
 yy_find_action:
 		yy_act = yy_accept[yy_current_state];
@@ -864,41 +860,41 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 63 "../src/parser/preprocess/prelexer.lxx"
+#line 66 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Eat whitespace.
 }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 67 "../src/parser/preprocess/prelexer.lxx"
+#line 70 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Eat comment
 }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 71 "../src/parser/preprocess/prelexer.lxx"
+#line 74 "../src/parser/preprocess/prelexer.lxx"
 {
 	BEGIN(block_comment);
 }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 75 "../src/parser/preprocess/prelexer.lxx"
+#line 78 "../src/parser/preprocess/prelexer.lxx"
 {
 	BEGIN(INITIAL);
 }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 79 "../src/parser/preprocess/prelexer.lxx"
+#line 82 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Eat characters inside block comment
 }
 	YY_BREAK
 case YY_STATE_EOF(block_comment):
-#line 83 "../src/parser/preprocess/prelexer.lxx"
+#line 86 "../src/parser/preprocess/prelexer.lxx"
 {
 	yyerror("Found \"/*\" without closing \"*/\".");
 	yyterminate();
@@ -906,105 +902,106 @@ case YY_STATE_EOF(block_comment):
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 88 "../src/parser/preprocess/prelexer.lxx"
+#line 91 "../src/parser/preprocess/prelexer.lxx"
 {
+	dont_expand_next = true;
 	return PRETOKEN_KW_DEFINED;
 }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 92 "../src/parser/preprocess/prelexer.lxx"
+#line 96 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_AND;
 }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 96 "../src/parser/preprocess/prelexer.lxx"
+#line 100 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_OR;
 }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 100 "../src/parser/preprocess/prelexer.lxx"
+#line 104 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_EQ;
 }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 104 "../src/parser/preprocess/prelexer.lxx"
+#line 108 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_NEQ;
 }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 108 "../src/parser/preprocess/prelexer.lxx"
+#line 112 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_GRE;
 }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 112 "../src/parser/preprocess/prelexer.lxx"
+#line 116 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_LTE;
 }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 116 "../src/parser/preprocess/prelexer.lxx"
+#line 120 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_BITRIGHT;
 }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 120 "../src/parser/preprocess/prelexer.lxx"
+#line 124 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_BITLEFT;
 }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 124 "../src/parser/preprocess/prelexer.lxx"
+#line 128 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_GR;
 }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 128 "../src/parser/preprocess/prelexer.lxx"
+#line 132 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_LT;
 }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 132 "../src/parser/preprocess/prelexer.lxx"
+#line 136 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_NOT;
 }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 136 "../src/parser/preprocess/prelexer.lxx"
+#line 140 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_ADD;
 }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 140 "../src/parser/preprocess/prelexer.lxx"
+#line 144 "../src/parser/preprocess/prelexer.lxx"
 {
 	return PRETOKEN_OP_SUB;
 }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 144 "../src/parser/preprocess/prelexer.lxx"
+#line 148 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Boolean literal
 	if(strcmp(ppr_yytext, "true") == 0) {
@@ -1017,7 +1014,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 154 "../src/parser/preprocess/prelexer.lxx"
+#line 158 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Octal literal (currently we just accept 0)
 	yylval.integer = 0;
@@ -1026,7 +1023,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 160 "../src/parser/preprocess/prelexer.lxx"
+#line 164 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Decimal literal
 	yylval.integer = atoi(ppr_yytext);
@@ -1035,7 +1032,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 166 "../src/parser/preprocess/prelexer.lxx"
+#line 170 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Floating-point literals
 	yylval.floating = atof(ppr_yytext);
@@ -1044,109 +1041,129 @@ YY_RULE_SETUP
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 172 "../src/parser/preprocess/prelexer.lxx"
+#line 176 "../src/parser/preprocess/prelexer.lxx"
 {
-	char* end = strpbrk(ppr_yytext, " \t(");
-	string name(ppr_yytext, end);
-	if(macros.find(name) == macros.end()) {
-		string msg;
-		msg += "No macro was defined with the name \"";
-		msg += ppr_yytext;
-		msg += "\".";
-		yyerror(msg.c_str());
-	} else {
-		current_macro = new MacroCall;
-		current_macro->identifier = name;
-		BEGIN(macro_args);
+	// Check if it is a macro, and if it is, expand it
+	string identifier(ppr_yytext);
+	auto macro_it = macros.find(identifier);
+	if(macro_it !=  macros.end() && !dont_expand_next) {
+		Macro macro = macro_it->second;
+		if(macro.is_function) {
+			BEGIN(macro_start);
+			current_macro.identifier = identifier;
+			current_macro.arg_values.clear();
+		} else if(!macro.replace_text.empty()) {
+			inputs.push(macro.replace_text);
+			FILE* f = fmemopen(&inputs.top()[0], inputs.top().length(), "r");
+			ppr_yypush_buffer_state(yy_new_buffer(f, inputs.top().length() + 1));
+		}
+	}
+
+	// Otherwise return it as an IDENTIFIER
+	else {
+		dont_expand_next = false;
+		yylval.string = new string(ppr_yytext);
+		return PRETOKEN_IDENTIFIER;
 	}
 }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 188 "../src/parser/preprocess/prelexer.lxx"
-{
-	yylval.string = new string(ppr_yytext);
-	return PRETOKEN_IDENTIFIER;
-}
-	YY_BREAK
-case 26:
-YY_RULE_SETUP
-#line 193 "../src/parser/preprocess/prelexer.lxx"
+#line 201 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Send any other printable character as itself.
 	return ppr_yytext[0];
 }
 	YY_BREAK
+case 26:
+YY_RULE_SETUP
+#line 206 "../src/parser/preprocess/prelexer.lxx"
+{
+	// Eat whitespace and find opening paren
+	BEGIN(macro_args);
+}
+	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 198 "../src/parser/preprocess/prelexer.lxx"
+#line 211 "../src/parser/preprocess/prelexer.lxx"
 {
-	// Eat whitespace
+	yyerror("Unexpected character before opening paren '(' of macro-function.");
+	BEGIN(INITIAL);
 }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 202 "../src/parser/preprocess/prelexer.lxx"
+#line 216 "../src/parser/preprocess/prelexer.lxx"
 {
-	// Eat argument
-	current_macro->arg_values.push_back(current_value);
-	current_value.clear();
+	// Eat whitespace
 }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 208 "../src/parser/preprocess/prelexer.lxx"
+#line 220 "../src/parser/preprocess/prelexer.lxx"
 {
-	current_macro->arg_values.push_back(current_value);
+	// Eat argument
+	current_macro.arg_values.push_back(current_value);
 	current_value.clear();
-
-	Macro* macro = &macros.find(current_macro->identifier)->second;
-	size_t num_values = current_macro->arg_values.size();
-	size_t num_params = macro->args.size();
-	if(num_params != num_values) {
-		string msg("Incorrect number of arguments for macro \"" + current_macro->identifier + "\".");
-		yyerror(msg.c_str());
-	} else if(!macro_input.empty()) {
-		yyerror("Can't handle nested function-macros.");
-	} else {
-		string new_input = macro->replace_text;
-		for(int i = 0; i < macro->args.size(); ++i) {
-			new_input = replace_substr(new_input, macro->args[i], current_macro->arg_values[i]);
-		}
-
-		if(!new_input.empty()) {
-			macro_input = new_input;
-			FILE* f = fmemopen(&macro_input[0], macro_input.length(), "r");
-			ppr_yypush_buffer_state(yy_new_buffer(f, macro_input.length() + 1));
-			BEGIN(INITIAL);
-		}
-	}
 }
 	YY_BREAK
 case 30:
-/* rule 30 can match eol */
 YY_RULE_SETUP
-#line 235 "../src/parser/preprocess/prelexer.lxx"
+#line 226 "../src/parser/preprocess/prelexer.lxx"
+{
+	current_macro.arg_values.push_back(current_value);
+	current_value.clear();
+
+	Macro* macro = &macros.find(current_macro.identifier)->second;
+	size_t num_values = current_macro.arg_values.size();
+	size_t num_params = macro->args.size();
+	if(num_params != num_values) {
+		string msg("Incorrect number of arguments for macro \"" + current_macro.identifier + "\".");
+		yyerror(msg.c_str());
+	} else {
+		string new_input = macro->replace_text;
+		for(int i = 0; i < macro->args.size(); ++i) {
+			new_input = replace_substr(new_input, macro->args[i], current_macro.arg_values[i]);
+		}
+
+		if(!new_input.empty()) {
+			inputs.push(new_input);
+			FILE* f = fmemopen(&inputs.top()[0], inputs.top().length(), "r");
+			ppr_yypush_buffer_state(yy_new_buffer(f, inputs.top().length() + 1));
+		}
+	}
+
+	current_macro.identifier.clear();
+	current_macro.arg_values.clear();
+
+	BEGIN(INITIAL);
+}
+	YY_BREAK
+case 31:
+/* rule 31 can match eol */
+YY_RULE_SETUP
+#line 255 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Error on newline
 	yyerror("Unexpected newline in call to function macro.");
 	yyterminate();
 }
 	YY_BREAK
-case 31:
+case 32:
 YY_RULE_SETUP
-#line 241 "../src/parser/preprocess/prelexer.lxx"
+#line 261 "../src/parser/preprocess/prelexer.lxx"
 {
 	current_value += ppr_yytext[0];
 }
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
+case YY_STATE_EOF(macro_start):
 case YY_STATE_EOF(macro_args):
-#line 245 "../src/parser/preprocess/prelexer.lxx"
+#line 265 "../src/parser/preprocess/prelexer.lxx"
 {
 	// Stop reading our current file
 	ppr_yypop_buffer_state();
-	macro_input.clear();
+	inputs.pop();
 
 	// Check if we have a file to return to (after a function-macro)
 	if(!YY_CURRENT_BUFFER) {
@@ -1154,12 +1171,12 @@ case YY_STATE_EOF(macro_args):
 	}
 }
 	YY_BREAK
-case 32:
+case 33:
 YY_RULE_SETUP
-#line 256 "../src/parser/preprocess/prelexer.lxx"
+#line 276 "../src/parser/preprocess/prelexer.lxx"
 ECHO;
 	YY_BREAK
-#line 1163 "../src/parser/preprocess/prelexer.cxx"
+#line 1180 "../src/parser/preprocess/prelexer.cxx"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1449,7 +1466,7 @@ static int yy_get_next_buffer (void)
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
-			if ( yy_current_state >= 72 )
+			if ( yy_current_state >= 77 )
 				yy_c = yy_meta[(unsigned int) yy_c];
 			}
 		yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
@@ -1477,11 +1494,11 @@ static int yy_get_next_buffer (void)
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
-		if ( yy_current_state >= 72 )
+		if ( yy_current_state >= 77 )
 			yy_c = yy_meta[(unsigned int) yy_c];
 		}
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
-	yy_is_jam = (yy_current_state == 71);
+	yy_is_jam = (yy_current_state == 76);
 
 		return yy_is_jam ? 0 : yy_current_state;
 }
@@ -2196,7 +2213,7 @@ void ppr_yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 256 "../src/parser/preprocess/prelexer.lxx"
+#line 276 "../src/parser/preprocess/prelexer.lxx"
 
 
 
@@ -2222,30 +2239,32 @@ static string replace_substr(string orig, string substr, string replace) {
 	return result;
 }
 
-void ppr_yyerror(const char* msg)
-{
-	if(!macro_input.empty()) {
-		cerr << "\nError expanding macro:\n"
-		     << macro_input << "\n"
-		     << "Error: " << msg << "\n";		
-	} else {
-		cerr << "\nError in input:\n#if "
-		     << current_input << "\n"
-		     << "Error: " << msg << "\n";
- 	}
+void ppr_yyerror(const char* msg) {
+	cerr << "\nError in preprocessor input:\n  #if "
+	     << *base_input << "\n";
+	if(inputs.size() > 1) {
+		cout << "at section: " << inputs.top() << "\n";
+	}
+	cout << "Error: " << msg << "\n";
 }
 
-void ppr_yywarning(const char* msg)
-{
-	cerr << "\nWarning in input:\n#if "
-	     << current_input << "\n"
-	     << "Warning: " << msg << "\n";
+void ppr_yywarning(const char* msg) {
+	cerr << "\nWarning in preprocessor input:\n\t#if "
+	     << base_input << "\n";
+	if(inputs.size() > 1) {
+		cout << "at section: " << inputs.top() << "\n";
+	}
+	cout << "Warning: " << msg << "\n";
 }
 
 void init_prelexer(Module * module, const string & input) {
-	current_input = input;
 	current_module = module;
-	ppr_yy_scan_string(current_input.c_str());
+
+	inputs = stack<string>();
+	inputs.push(input);
+	base_input = &inputs.top();
+
+	ppr_yy_scan_string(inputs.top().c_str());
 	ppr_yyout = fopen("/dev/null", "w");
 }
 

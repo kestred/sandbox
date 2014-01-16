@@ -78,13 +78,12 @@ vector<string> get_compiler_includes() {
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
 		}
-		dirpath = "/usr/lib/gcc/" + target + "/" + version + "/include/g++-v" + version[0] + "/";
+		dirpath += "g++-v" + version.substr(0,1) + "/";
 		stat(dirpath.c_str(), &st);
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
 		}
-		dirpath = "/usr/lib/gcc/" + target + "/" + version
-		        + "/include/g++-v" + version[0] + "/" + target + "/";
+		dirpath += target + "/";
 		stat(dirpath.c_str(), &st);
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
@@ -112,7 +111,7 @@ vector<Macro> get_compiler_defines() {
 		Location treesap_builtin(new File("__treesap_builtin__"));
 		compiler_defines.push_back(Macro("__STDC__", "1", treesap_builtin));
 		compiler_defines.push_back(Macro("__STDC_VERSION__", "201112L", treesap_builtin));
-		compiler_defines.push_back(Macro("__cplusplus", "1", treesap_builtin));
+		compiler_defines.push_back(Macro("__cplusplus", "201103L", treesap_builtin));
 		compiler_defines.push_back(Macro("__x86_64__", "1", treesap_builtin));
 
 		/* Handle GCC */
@@ -121,6 +120,10 @@ vector<Macro> get_compiler_defines() {
 		compiler_defines.push_back(Macro("__GNUC_MINOR__", version.substr(2,1), gcc_builtin));
 		compiler_defines.push_back(Macro("__GNUC_PATCHLEVEL__", version.substr(4,1), gcc_builtin));
 		compiler_defines.push_back(Macro("__extension__", gcc_builtin));
+		compiler_defines.push_back(Macro("__STDC_HOSTED__", "1", gcc_builtin));
+		compiler_defines.push_back(Macro("_XOPEN_SOURCE", "700", gcc_builtin));
+		compiler_defines.push_back(Macro("_POSIX_SOURCE", "1", gcc_builtin));
+		compiler_defines.push_back(Macro("_POSIX_C_SOURCE", "200809L", gcc_builtin));
 	}
 
 	return compiler_defines;
