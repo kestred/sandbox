@@ -80,7 +80,7 @@ extern int ppr_yydebug;
 typedef union PPR_YYSTYPE PPR_YYSTYPE;
 union PPR_YYSTYPE
 {
-#line 28 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1909  */
+#line 25 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1909  */
 
 	int integer;
 	bool boolean;

@@ -12,9 +12,6 @@
 
 	static Module* current_module;
 	#define macros (current_module->macros)
-
-	static void preparser_error(const string & msg);
-	static void preparser_warning(const string & msg);
 %}
 
 /* Set Parser Options */

@@ -1987,5 +1987,6 @@ void ppr_yyerror(const char* msg)
 void init_prelexer(const string & input) {
 	current_input = input;
 	ppr_yy_scan_string(current_input.c_str());
+	ppr_yyout = fopen("/dev/null", "w");
 }
 

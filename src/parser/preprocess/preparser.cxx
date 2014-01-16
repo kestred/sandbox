@@ -85,10 +85,7 @@
 	static Module* current_module;
 	#define macros (current_module->macros)
 
-	static void preparser_error(const string & msg);
-	static void preparser_warning(const string & msg);
-
-#line 92 "../src/parser/preprocess/preparser.cxx" /* yacc.c:339  */
+#line 89 "../src/parser/preprocess/preparser.cxx" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -158,7 +155,7 @@ extern int ppr_yydebug;
 typedef union PPR_YYSTYPE PPR_YYSTYPE;
 union PPR_YYSTYPE
 {
-#line 28 "../src/parser/preprocess/preparser.yxx" /* yacc.c:355  */
+#line 25 "../src/parser/preprocess/preparser.yxx" /* yacc.c:355  */
 
 	int integer;
 	bool boolean;
@@ -167,7 +164,7 @@ union PPR_YYSTYPE
 	std::string* string;
 	MacroCall* macro;
 
-#line 171 "../src/parser/preprocess/preparser.cxx" /* yacc.c:355  */
+#line 168 "../src/parser/preprocess/preparser.cxx" /* yacc.c:355  */
 };
 # define PPR_YYSTYPE_IS_TRIVIAL 1
 # define PPR_YYSTYPE_IS_DECLARED 1
@@ -182,7 +179,7 @@ int ppr_yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 186 "../src/parser/preprocess/preparser.cxx" /* yacc.c:358  */
+#line 183 "../src/parser/preprocess/preparser.cxx" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -481,9 +478,9 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    81,    81,    85,    89,    90,    95,   103,   104,   105,
-     106,   110,   114,   118,   122,   126,   130,   137,   149,   150,
-     151,   152,   156,   161,   162,   163,   164
+       0,    78,    78,    82,    86,    87,    92,   100,   101,   102,
+     103,   107,   111,   115,   119,   123,   127,   134,   146,   147,
+     148,   149,   153,   158,   159,   160,   161
 };
 #endif
 
@@ -1283,85 +1280,85 @@ yyreduce:
   switch (yyn)
     {
         case 5:
-#line 91 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 88 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		if((yyvsp[-2].boolean)) { (yyval.boolean) = true; }
 		else { (yyval.boolean) = (yyvsp[0].boolean); }
 	}
-#line 1292 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1289 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 96 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 93 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		if((yyvsp[-2].boolean)) { (yyval.boolean) = (yyvsp[0].boolean); }
 		else { (yyval.boolean) = false; }
 	}
-#line 1301 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1298 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 105 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 102 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     { (yyval.boolean) = !(yyvsp[0].boolean); }
-#line 1307 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1304 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 106 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 103 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     { (yyval.boolean) = (yyvsp[-1].boolean); }
-#line 1313 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1310 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 111 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 108 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		(yyval.boolean) = ((yyvsp[-2].floating) == (yyvsp[0].floating));
 	}
-#line 1321 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1318 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 115 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 112 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		(yyval.boolean) = ((yyvsp[-2].floating) != (yyvsp[0].floating));
 	}
-#line 1329 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1326 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 119 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 116 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		(yyval.boolean) = ((yyvsp[-2].floating) <= (yyvsp[0].floating));
 	}
-#line 1337 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1334 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 123 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 120 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		(yyval.boolean) = ((yyvsp[-2].floating) >= (yyvsp[0].floating));
 	}
-#line 1345 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1342 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 127 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 124 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		(yyval.boolean) = ((yyvsp[-2].floating) < (yyvsp[0].floating));
 	}
-#line 1353 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1350 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 131 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 128 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		(yyval.boolean) = ((yyvsp[-2].floating) > (yyvsp[0].floating));
 	}
-#line 1361 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1358 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 138 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 135 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		if(macros.find(*(yyvsp[0].string)) == macros.end()) {
 			(yyval.boolean) = false;
@@ -1370,56 +1367,56 @@ yyreduce:
 		}
 		delete (yyvsp[0].string);
 	}
-#line 1374 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1371 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 150 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 147 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     { (yyval.floating) = (yyvsp[-2].floating) - (yyvsp[0].floating); }
-#line 1380 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1377 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 151 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 148 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     { (yyval.floating) = (yyvsp[-2].floating) + (yyvsp[0].floating); }
-#line 1386 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1383 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 152 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 149 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     { (yyval.floating) = (yyvsp[-1].floating); }
-#line 1392 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1389 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 157 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 154 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     {
 		(yyval.floating) = atof((yyvsp[0].string)->c_str());
 		delete (yyvsp[0].string);
 	}
-#line 1401 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1398 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 161 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 158 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     { (yyval.floating) = (yyvsp[0].integer); }
-#line 1407 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1404 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 163 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 160 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     { (yyval.floating) = (yyvsp[0].character); }
-#line 1413 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1410 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 164 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
+#line 161 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1646  */
     { (yyval.floating) = (yyvsp[0].boolean); }
-#line 1419 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1416 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
     break;
 
 
-#line 1423 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
+#line 1420 "../src/parser/preprocess/preparser.cxx" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1647,7 +1644,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 167 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1906  */
+#line 164 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1906  */
 
 
 /* ---- User Subroutines ---- */

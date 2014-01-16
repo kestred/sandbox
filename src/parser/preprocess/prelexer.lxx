@@ -151,4 +151,5 @@ void ppr_yyerror(const char* msg)
 void init_prelexer(const string & input) {
 	current_input = input;
 	yy_scan_string(current_input.c_str());
+	yyout = fopen("/dev/null", "w");
 }
