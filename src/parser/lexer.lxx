@@ -173,6 +173,8 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	string condition = scan_if();
 	if(!parse_if_directive(current_module, condition)) {
 		yy_push_state(elseif);
+	} else {
+		yy_push_state(INITIAL);
 	}
 }
 
@@ -205,6 +207,17 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	if(!inputs.front()->condition_depth) {
 		yyerror("Found #else without previous #if.");
 	} else {
+		yy_pop_state();
+		yy_push_state(endif);
+	}
+}
+
+"#"[ \t]*"elif".* {
+	accept();
+	if(!inputs.front()->condition_depth) {
+		yyerror("Found #elif without previous #if.");
+	} else {
+		yy_pop_state();
 		yy_push_state(endif);
 	}
 }
@@ -398,7 +411,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yy_push_state(endif);
 }
 
-<elseif>"#"[ \t]*"else"[\ t]+ {
+<elseif>"#"[ \t]*"else"[\ t]* {
 	// If we find #else while looking for #else, tokenize the else code
 	yy_pop_state();
 	yy_push_state(INITIAL);
@@ -415,6 +428,18 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	}
 }
 
+<elseif>"#"[ \t]*"endif".* {
+	accept();
+
+	if(inputs.front()->condition_depth == 0) {
+		yyerror("Found #endif with no matching #if/#ifdef/#ifndef.");
+	} else {
+		inputs.front()->condition_depth--;
+	}
+	yy_pop_state();
+
+}
+
 <endif>"#"[ \t]*"if".* {
 	// If we find (if|ifdef|ifndef), increment our depth by 1
 	accept();
@@ -422,12 +447,12 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yy_push_state(endif);
 }
 
-<endif>"#"[ \t]*"else"[\ t]+ {
+<endif>"#"[ \t]*"else".* {
 	// Consume any else
 	accept();
 }
 
-<endif>"#"[ \t]*"elif"[ \t]+ {
+<endif>"#"[ \t]*"elif"[ \t]+.* {
 	// Consume any elif
 	accept();
 }
@@ -444,6 +469,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 <elseif,endif>\n.* {
 	accept();
+
 	// Increment the line count
 	inputs.front()->current_line = yytext+1;
 	inputs.front()->line_number++;
@@ -452,7 +478,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yyless(1);
 }
 
-<endif>. {
+<elseif,endif>. {
 	accept();
 }
 
@@ -462,7 +488,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yy_pop_state();
 }
 
-<pragma,include,ifndef,ifdef,define,endif,warning>. {
+<pragma,include,ifndef,ifdef,define,elseif,endif,warning>. {
 	accept();
 	yyerror("Treesap failed to handled characters following pre-processor directive.");
 	yyterminate();
