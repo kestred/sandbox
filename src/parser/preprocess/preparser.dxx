@@ -59,19 +59,20 @@ extern int ppr_yydebug;
     PRETOKEN_CHAR = 260,
     PRETOKEN_BOOLEAN = 261,
     PRETOKEN_IDENTIFIER = 262,
-    PRETOKEN_MACRO = 263,
-    PRETOKEN_KW_DEFINED = 264,
-    PRETOKEN_OP_AND = 265,
-    PRETOKEN_OP_OR = 266,
-    PRETOKEN_OP_EQ = 267,
-    PRETOKEN_OP_NEQ = 268,
-    PRETOKEN_OP_GRE = 269,
-    PRETOKEN_OP_LTE = 270,
-    PRETOKEN_OP_LT = 271,
-    PRETOKEN_OP_GR = 272,
-    PRETOKEN_OP_NOT = 273,
-    PRETOKEN_OP_SUB = 274,
-    PRETOKEN_OP_ADD = 275
+    PRETOKEN_KW_DEFINED = 263,
+    PRETOKEN_OP_AND = 264,
+    PRETOKEN_OP_OR = 265,
+    PRETOKEN_OP_EQ = 266,
+    PRETOKEN_OP_NEQ = 267,
+    PRETOKEN_OP_GRE = 268,
+    PRETOKEN_OP_LTE = 269,
+    PRETOKEN_OP_LT = 270,
+    PRETOKEN_OP_GR = 271,
+    PRETOKEN_OP_NOT = 272,
+    PRETOKEN_OP_SUB = 273,
+    PRETOKEN_OP_ADD = 274,
+    PRETOKEN_OP_BITLEFT = 275,
+    PRETOKEN_OP_BITRIGHT = 276
   };
 #endif
 
@@ -80,14 +81,13 @@ extern int ppr_yydebug;
 typedef union PPR_YYSTYPE PPR_YYSTYPE;
 union PPR_YYSTYPE
 {
-#line 25 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1909  */
+#line 26 "../src/parser/preprocess/preparser.yxx" /* yacc.c:1909  */
 
 	int integer;
 	bool boolean;
 	char character;
 	double floating;
 	std::string* string;
-	MacroCall* macro;
 
 #line 93 "../src/parser/preprocess/preparser.dxx" /* yacc.c:1909  */
 };

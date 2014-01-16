@@ -7,8 +7,3 @@
 struct Module;
 
 bool parse_if_directive(Module *, const std::string & input);
-
-struct MacroCall {
-	std::string macro;
-	std::vector<std::string> arg_values;
-};

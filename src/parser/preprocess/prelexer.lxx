@@ -6,19 +6,39 @@
 	#include "preparser.dxx"
 
 	#include "parser/cpp.h"
-	#include <iostream>      // std::cerr, std::ostream
+	#include <iostream> // std::cerr, std::ostream
+	#include <string.h> // strchr
 
 	#define yylval ppr_yylval
 	#define yyerror ppr_yyerror
+	#define yywarning ppr_yywarning
 	#define YY_DECL int ppr_yylex(void)
 
 	using namespace std;
 
+	struct MacroCall {
+		std::string identifier;
+		std::vector<std::string> arg_values;
+	};
+
 	static string current_input;
+	static string current_value;
+	static string macro_input;
+	static MacroCall* current_macro;
+	static Module* current_module;
+	#define macros (current_module->macros)
+
+	static string replace_substr(string orig, string substr, string replace);
 %}
 
 /* Flex Options */
+%option stack
 %option warn
+%option noyywrap
+
+/* Lexer States */
+%x macro_args
+%x block_comment
 
 /* Regex Definitions */
 IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
@@ -42,6 +62,27 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 [ \t\v\r\f] {
 	// Eat whitespace.
+}
+
+"//".* {
+	// Eat comment
+}
+
+"/*" {
+	BEGIN(block_comment);
+}
+
+<block_comment>"*/" {
+	BEGIN(INITIAL);
+}
+
+<block_comment>. {
+	// Eat characters inside block comment
+}
+
+<block_comment><<EOF>> {
+	yyerror("Found \"/*\" without closing \"*/\".");
+	yyterminate();
 }
 
 "defined" {
@@ -70,6 +111,14 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 "<=" {
 	return PRETOKEN_OP_LTE;
+}
+
+">>" {
+	return PRETOKEN_OP_BITRIGHT;
+}
+
+"<<" {
+	return PRETOKEN_OP_BITLEFT;
 }
 
 ">" {
@@ -120,8 +169,20 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	return PRETOKEN_FLOAT;
 }
 
-{IDENTIFIER}[ \t]*\([^\)]*\) {
-	yyerror("TODO: Add Treesap support for function-type macros.");
+{IDENTIFIER}[ \t]*\( {
+	char* end = strpbrk(yytext, " \t(");
+	string name(yytext, end);
+	if(macros.find(name) == macros.end()) {
+		string msg;
+		msg += "No macro was defined with the name \"";
+		msg += yytext;
+		msg += "\".";
+		yyerror(msg.c_str());
+	} else {
+		current_macro = new MacroCall;
+		current_macro->identifier = name;
+		BEGIN(macro_args);
+	}
 }
 
 {IDENTIFIER} {
@@ -134,22 +195,111 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	return yytext[0];
 }
 
+<macro_args>[ \t]* {
+	// Eat whitespace
+}
+
+<macro_args>"," {
+	// Eat argument
+	current_macro->arg_values.push_back(current_value);
+	current_value.clear();
+}
+
+<macro_args>")" {
+	current_macro->arg_values.push_back(current_value);
+	current_value.clear();
+
+	Macro* macro = &macros.find(current_macro->identifier)->second;
+	size_t num_values = current_macro->arg_values.size();
+	size_t num_params = macro->args.size();
+	if(num_params != num_values) {
+		string msg("Incorrect number of arguments for macro \"" + current_macro->identifier + "\".");
+		yyerror(msg.c_str());
+	} else if(!macro_input.empty()) {
+		yyerror("Can't handle nested function-macros.");
+	} else {
+		string new_input = macro->replace_text;
+		for(int i = 0; i < macro->args.size(); ++i) {
+			new_input = replace_substr(new_input, macro->args[i], current_macro->arg_values[i]);
+		}
+
+		if(!new_input.empty()) {
+			macro_input = new_input;
+			FILE* f = fmemopen(&macro_input[0], macro_input.length(), "r");
+			yypush_buffer_state(yy_new_buffer(f, macro_input.length() + 1));
+			BEGIN(INITIAL);
+		}
+	}
+}
+
+<macro_args>"\n" {
+	// Error on newline
+	yyerror("Unexpected newline in call to function macro.");
+	yyterminate();
+}
+
+<macro_args>. {
+	current_value += yytext[0];
+}
+
+<<EOF>> {
+	// Stop reading our current file
+	yypop_buffer_state();
+	macro_input.clear();
+
+	// Check if we have a file to return to (after a function-macro)
+	if(!YY_CURRENT_BUFFER) {
+		yyterminate();
+	}
+}
+
 %%
 
-int ppr_yywrap(void)
-{
-	return 1;
+static string replace_substr(string orig, string substr, string replace) {
+	string result;
+	size_t find = 0;
+	size_t end = orig.find(substr, find);
+	while(true) {
+		result += orig.substr(0, end);
+		result += replace;
+		find = result.length();
+		result += orig.substr(end + substr.length());
+
+		end = result.find(substr, find);
+		if(end == string::npos) {
+			break;
+		} else {
+			orig = result;
+			result = "";
+		}
+		result = "";
+	}
+	return result;
 }
 
 void ppr_yyerror(const char* msg)
 {
-	cerr << "\nError in input:\n#if "
-	     << current_input << "\n"
-	     << "Error: " << msg << "\n";
+	if(!macro_input.empty()) {
+		cerr << "\nError expanding macro:\n"
+		     << macro_input << "\n"
+		     << "Error: " << msg << "\n";		
+	} else {
+		cerr << "\nError in input:\n#if "
+		     << current_input << "\n"
+		     << "Error: " << msg << "\n";
+ 	}
 }
 
-void init_prelexer(const string & input) {
+void ppr_yywarning(const char* msg)
+{
+	cerr << "\nWarning in input:\n#if "
+	     << current_input << "\n"
+	     << "Warning: " << msg << "\n";
+}
+
+void init_prelexer(Module * module, const string & input) {
 	current_input = input;
+	current_module = module;
 	yy_scan_string(current_input.c_str());
 	yyout = fopen("/dev/null", "w");
 }

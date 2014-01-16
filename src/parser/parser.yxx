@@ -4,7 +4,12 @@
 	#include "cpp.h"
 	#include "lexer.h"
 	#include "parser.h"
+
+	#define yyerror cpp_yyerror
+	#define yywarning cpp_yywarning
+
 	using namespace std;
+
 	static Module* module = NULL;
 %}
 
@@ -55,8 +60,10 @@
 
 // Fundamental-type keywords
 %token KW_INT      "int"
+%token KW_CHAR     "char"
 %token KW_DOUBLE   "double"
 %token KW_UNSIGNED "unsigned"
+%token KW_SIGNED   "signed"
 %token KW_LONG     "long"
 %token KW_SHORT    "short"
 
@@ -86,6 +93,7 @@ declaration
 	| class_decl ';'
 	| struct_decl ';'
 	| enum_decl ';'
+	| typedef_decl ';'
 	| variable_decl ';'
 	;
 
@@ -144,6 +152,10 @@ struct_decl
 	| "struct" IDENTIFIER '{' class_body '}'
 	;
 
+typedef_decl
+	: "typedef" type_name variable_spec
+	;
+
 namespace_decl
 	: "namespace" '{' '}'
 	| "namespace" '{' declarations '}'
@@ -184,13 +196,17 @@ type_name
 //     check to make sure the user isn't insane.
 integer_type
 	: "short"
+	| "char"
 	| "long"
 	| "int"
 	| "unsigned"
-	| "short" integer_type
-	| "long" integer_type
-	| "int" integer_type
-	| "unsigned" integer_type
+	| "signed"
+	| integer_type "char"
+	| integer_type "short"
+	| integer_type "long"
+	| integer_type "int"
+	| integer_type "unsigned"
+	| integer_type "signed"
 	;
 
 scoped_name

@@ -32,6 +32,14 @@
 		int col_number; // current col of the input
 		int times_included; // number of times the file has been included
 		int condition_depth; // depth of #if statements
+
+		bool is_macro;
+		string macro_value;
+	};
+
+	struct MacroCall {
+		std::string identifier;
+		std::vector<std::string> arg_values;
 	};
 
 	/* Lexer State */
@@ -41,6 +49,8 @@
 	static Module* current_module = NULL;
 	#define macros (current_module->macros)
 	#define files (current_module->files)
+	static MacroCall* current_macro;
+	static string current_value;
 
 	#define echo() \
 		cout << "Token(" << inputs.front()->name << "): " << yytext << "\n"
@@ -84,6 +94,9 @@
 	static string scan_if();
 	static string scan_block_comment();
 	static string scan_string_literal(char quote_mark = '"');
+
+	// todo: doc
+	static string replace_substr(string orig, string substr, string replace);
 %}
 
 /* Flex Options */
@@ -100,7 +113,12 @@
 %x undef
 %x elseif
 %x endif
-%x warning
+
+%x ppr_warning
+%x ppr_error
+
+%x macro_start
+%x macro_args
 
 /* Regex Definitions */
 IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
@@ -235,7 +253,12 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 "#"[ \t]*"warning"[ \t]+ {
 	accept();
-	yy_push_state(warning);
+	yy_push_state(ppr_warning);
+}
+
+"#"[ \t]*"error"[ \t]+ {
+	accept();
+	yy_push_state(ppr_error);
 }
 
 "#" {
@@ -482,13 +505,21 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	accept();
 }
 
-<warning>.* {
+<ppr_warning>.* {
 	accept();
+	inputs.front()->current_line = string("#warning ") + yytext;
 	yywarning(yytext);
 	yy_pop_state();
 }
 
-<pragma,include,ifndef,ifdef,define,elseif,endif,warning>. {
+<ppr_error>.* {
+	accept();
+	inputs.front()->current_line = string("#error ") + yytext;
+	yyerror(yytext);
+	yy_pop_state();
+}
+
+<pragma,include,ifndef,ifdef,define,elseif,endif,ppr_warning,ppr_error>. {
 	accept();
 	yyerror("Treesap failed to handled characters following pre-processor directive.");
 	yyterminate();
@@ -537,6 +568,26 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 "int" {
 	accept();
 	emit(TOKEN_KW_INT);
+}
+
+"short" {
+	accept();
+	emit(TOKEN_KW_SHORT);
+}
+
+"long" {
+	accept();
+	emit(TOKEN_KW_LONG);
+}
+
+"char" {
+	accept();
+	emit(TOKEN_KW_CHAR);
+}
+
+"signed" {
+	accept();
+	emit(TOKEN_KW_SIGNED);
 }
 
 "unsigned" {
@@ -624,8 +675,34 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 {IDENTIFIER} {
 	accept();
-	yylval.string = new string(yytext);
-	emit(TOKEN_IDENTIFIER);
+
+	// Check if its a macro, and if it is, expand it
+	string identifier(yytext);
+	auto macro_it = macros.find(identifier);
+	if(macro_it !=  macros.end()) {
+		Macro macro = macro_it->second;
+		if(macro.is_function) {
+			yy_push_state(macro_start);
+		} else if(inputs.front()->name.substr(0, 7) == "<macro>") {
+			yyerror("Treesap can't handle nested function-macros.");
+		} else {
+			if(!macro.replace_text.empty()) {
+				Input* input = new Input("<macro> " + macro.identifier);
+				inputs.push_front(input);
+
+				input->is_macro = true;
+				input->macro_value = macro.replace_text;
+				FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
+				yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
+			}
+		}
+	}
+
+	// Otherwise return it as an IDENTIFIER
+	else {
+		yylval.string = new string(yytext);
+		emit(TOKEN_IDENTIFIER);
+	}
 }
 
 . {
@@ -637,12 +714,22 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 <<EOF>> {
 	// Check for unclosed conditionals
 	while(inputs.front()->condition_depth > 0) {
+		if(inputs.front()->condition_depth > 8) {
+			yyerror("8+ unclosed #if directives in file.");
+			break;
+		}
+		cerr << "Depth: " << inputs.front()->condition_depth << "\n";
 		yyerror("Missing #endif in current file.");
 		inputs.front()->condition_depth--;
 	}
 
 	// Stop reading our current file
 	yypop_buffer_state();
+
+	// Check if we need to cleanup after a macro
+	if(inputs.front()->is_macro) {
+		delete inputs.front();		
+	}
 	inputs.pop_front();
 
 	// Check if we have a file to return to (for example, after an #include)
@@ -661,6 +748,74 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yypush_buffer_state(yy_new_buffer(yyin, YY_BUF_SIZE));
 	}
 }
+
+<macro_start>[ \t]*"(" {
+	// Eat whitespace and find opening paren
+	accept();
+	yy_pop_state(); // pop <macro_start>
+	yy_push_state(macro_args); // push <macro_args>
+}
+
+<macro_start>. {
+	accept();
+	yyerror("Unexpected character before opening paren '(' of macro-function.");
+	yy_pop_state(); // pop <macro_start>
+}
+
+<macro_args>[ \t]* {
+	// Eat whitespace
+	accept();
+}
+
+<macro_args>"," {
+	// Eat argument
+	accept();
+	current_macro->arg_values.push_back(current_value);
+	current_value.clear();
+}
+
+<macro_args>")" {
+	accept();
+	current_macro->arg_values.push_back(current_value);
+	current_value.clear();
+
+	Macro* macro = &macros.find(current_macro->identifier)->second;
+	size_t num_values = current_macro->arg_values.size();
+	size_t num_params = macro->args.size();
+	if(num_params != num_values) {
+		string msg("Incorrect number of arguments for macro \"" + macro->identifier + "\".");
+		yyerror(msg);
+	} else { 
+		string new_input = macro->replace_text;
+		for(int i = 0; i < macro->args.size(); ++i) {
+			new_input = replace_substr(new_input, macro->args[i], current_macro->arg_values[i]);
+		}
+
+		if(!new_input.empty()) {
+	  		Input* input = new Input("<macro> " + macro->identifier);
+			inputs.push_front(input);
+
+			input->is_macro = true;
+			input->macro_value = new_input;
+			FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
+			yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
+		}
+	}
+	yy_pop_state(); // pop macro_args
+}
+
+<macro_args>"\n" {
+	// Error on newline
+	accept();
+	yyerror("Unexpected newline in call to function macro.");
+	yyterminate();
+}
+
+<macro_args>. {
+	accept();
+	current_value += yytext[0];
+}
+	
 
 %%
 
@@ -782,9 +937,7 @@ static void eat_space() {
 }
 
 static void scan_define(const string& identifier) {
-	Macro def;
-	def.identifier = identifier;
-	def.location = Location(inputs.front());
+	Macro def(identifier, Location(inputs.front()));
 
 	int c = peek_char();
 	if(c == '(') {
@@ -794,7 +947,7 @@ static void scan_define(const string& identifier) {
 		// Read function macro
 		string arg;
 		c = read_char();
-		while(c != EOF && c != ')') {
+		while(c != EOF) {
 			if(c == ',') {
 				if(arg.empty()) {
 					yywarning("Found extra ',' character in macro definition.");
@@ -802,6 +955,13 @@ static void scan_define(const string& identifier) {
 
 				def.args.push_back(arg);
 				arg = "";
+			} else if(c == ')') {
+				if(arg.empty()) {
+					yywarning("Found extra ',' character in macro definition.");
+				}
+
+				def.args.push_back(arg);
+				break;
 			} else if(c == '\n') {
 				yyerror("Found newline in function macro definition.");
 				unput(c);
@@ -1027,6 +1187,28 @@ static ostream& indent(ostream& out, unsigned int indent_level) {
 	return out;
 }
 
+static string replace_substr(string orig, string substr, string replace) {
+	string result;
+	size_t find = 0;
+	size_t end = orig.find(substr, find);
+	while(true) {
+		result += orig.substr(0, end);
+		result += replace;
+		find = result.length();
+		result += orig.substr(end + substr.length());
+
+		end = result.find(substr, find);
+		if(end == string::npos) {
+			break;
+		} else {
+			orig = result;
+			result = "";
+		}
+		result = "";
+	}
+	return result;
+}
+
 Module* init_lexer(const string & filename) {
 	error_count = 0;
 	warning_count = 0;
@@ -1064,7 +1246,7 @@ void cpp_yyerror(const string & msg)
 	     << ":\n" << info->current_line << "\n";
 
 	int ident = info->col_number - 1 < 0 ? 0 : info->col_number - 1;
-	if(ident > 10) { ident = 10; }
+	if(ident > 100) { ident = 100; }
 	indent(cerr, ident) << "^\n";
 	cerr << msg << "\n\n";
 
@@ -1082,13 +1264,14 @@ void cpp_yywarning(const string & msg)
 	     << ":\n" << info->current_line << "\n";
 
 	int ident = info->col_number - 1 < 0 ? 0 : info->col_number - 1;
-	if(ident > 10) { ident = 10; }
+	if(ident > 100) { ident = 100; }
 	indent(cerr, ident) << "^\n";
 	cerr << msg << "\n\n";
 
 	warning_count++;
 }
 
-Input::Input(const string& name) : File(name, FTInput), line_number(1), col_number(0), times_included(1) {
+Input::Input(const string& name) : File(name, FTInput),
+	line_number(1), col_number(0), times_included(1), condition_depth(0), is_macro(0) {
 	comments.push_back(string());
 }

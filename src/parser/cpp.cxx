@@ -4,14 +4,18 @@
 using namespace std;
 
 
-File::File(const string& filename) : File(filename, FTInternal) {}
-File::File(const string& filename, FileType ft) : name(filename), type(ft) {}
+File::File(const string & filename) : File(filename, FTInternal) {}
+File::File(const string & filename, FileType ft) : name(filename), type(ft) {}
 
 Location::Location() : Location(NULL) {}
-Location::Location(File* f) : file(f),
+Location::Location(File * f) : file(f),
 	first_line(0), first_column(0),
 	last_line(0), last_column(0) {}
 
+Macro::Macro(const string & name) : Macro(name, Location()) {}
+Macro::Macro(const string & name, Location loc) : Macro(name, "", loc) {}
+Macro::Macro(const string & name, const string & text, Location loc) :
+	identifier(name), replace_text(text), location(loc), is_function(false) {}
 
 static vector<string> include_dirs;
 static vector<Macro> compiler_defines;
@@ -36,12 +40,19 @@ static string exec(string cmd) {
 	return result;
 }
 
+static inline string trim(const string & str) {
+	string s = str;
+	s.erase(0, s.find_first_not_of(" \t\n"));
+	s.erase(s.find_first_of(" \t\n"));
+	return s;
+}
+
 static void get_gcc_env() {
 	if(target.empty()) {
-		target = exec("gcc -v 2>&1 | grep Target | cut -f 2 --delimiter=\" \"");
+		target = trim(exec("gcc -v 2>&1 | grep Target | cut -f 2 --delimiter=\" \""));
 	}
 	if(version.empty()) {
-		version = exec("gcc -v 2>&1 | grep \"gcc version\" | cut -f 3 --delimiter=\" \"");
+		version = trim(exec("gcc -v 2>&1 | grep \"gcc version\" | cut -f 3 --delimiter=\" \""));
 	}
 }
 
@@ -72,6 +83,12 @@ vector<string> get_compiler_includes() {
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
 		}
+		dirpath = "/usr/lib/gcc/" + target + "/" + version
+		        + "/include/g++-v" + version[0] + "/" + target + "/";
+		stat(dirpath.c_str(), &st);
+		if(S_ISDIR(st.st_mode)) {
+			include_dirs.push_back(dirpath);
+		}
 		dirpath = "/usr/" + target + "/include/";
 		stat(dirpath.c_str(), &st);
 		if(S_ISDIR(st.st_mode)) {
@@ -91,24 +108,19 @@ vector<Macro> get_compiler_defines() {
 	if(compiler_defines.empty()) {
 		get_gcc_env();
 
-		Macro def;
-		def.location = Location(new File("__gcc_builtin__"));
+		/* Conform to ISO C and C++11 standard */
+		Location treesap_builtin(new File("__treesap_builtin__"));
+		compiler_defines.push_back(Macro("__STDC__", "1", treesap_builtin));
+		compiler_defines.push_back(Macro("__STDC_VERSION__", "201112L", treesap_builtin));
+		compiler_defines.push_back(Macro("__cplusplus", "1", treesap_builtin));
+		compiler_defines.push_back(Macro("__x86_64__", "1", treesap_builtin));
 
-		def.identifier = "__GNUC__";
-		def.replace_text = version[0];
-		compiler_defines.push_back(def);
-
-		def.identifier = "__GNUC_MINOR__";
-		def.replace_text = version[2];
-		compiler_defines.push_back(def);
-
-		def.identifier = "__GNUC_PATCHLEVEL__";
-		def.replace_text = version[4];
-		compiler_defines.push_back(def);
-
-		def.identifier = "__cplusplus";
-		def.replace_text = "";
-		compiler_defines.push_back(def);
+		/* Handle GCC */
+		Location gcc_builtin(new File("__gcc_builtin__"));
+		compiler_defines.push_back(Macro("__GNUC__", version.substr(0,1), gcc_builtin));
+		compiler_defines.push_back(Macro("__GNUC_MINOR__", version.substr(2,1), gcc_builtin));
+		compiler_defines.push_back(Macro("__GNUC_PATCHLEVEL__", version.substr(4,1), gcc_builtin));
+		compiler_defines.push_back(Macro("__extension__", gcc_builtin));
 	}
 
 	return compiler_defines;

@@ -63,6 +63,10 @@ struct Namespace : SymbolTable {
 };
 
 struct Macro {
+	Macro(const std::string & identifier);
+	Macro(const std::string & identifier, Location);
+	Macro(const std::string & name, const std::string & text, Location);
+
 	std::string identifier;
 	std::string replace_text;
 	Location location;

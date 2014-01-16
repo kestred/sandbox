@@ -17,7 +17,7 @@ int main(int argc, const char *argv[])
 
 	for(auto it = module->macros.begin(); it != module->macros.end(); ++it) {
 		Macro def = it->second;
-		cout << "\n Name: " << def.identifier << "\n";
-		cout << "Value:\n" << def.replace_text << "\n";
+		//cout << "\n Name: " << def.identifier << "\n";
+		//cout << "Value:\n" << def.replace_text << "\n";
 	}
 }
