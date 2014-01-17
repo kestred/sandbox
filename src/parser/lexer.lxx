@@ -6,6 +6,7 @@
 	#include "parser.dxx"
 
 	#include "cpp.h"
+	#include "strutils.h"
 	#include "preprocess/preparser.h"
 
 	#include <cctype>        // isxdigit
@@ -39,7 +40,7 @@
 
 	struct MacroCall {
 		std::string identifier;
-		std::vector<std::string> arg_values;
+		std::vector<std::string> values;
 	};
 
 	/* Lexer State */
@@ -55,8 +56,6 @@
 
 	#define echo() \
 		cout << "Token(" << inputs.front()->name << "): " << yytext << "\n"
-	#define echo_location()\
-		cout << "(in file " << inputs.front()->name << " at line " << inputs.front()->line_number << ").\n";
 
 	/* Function Declarations */
 	// emit outputs the specified token from the lexer with location information
@@ -97,7 +96,7 @@
 	static string scan_string_literal(char quote_mark = '"');
 
 	// todo: doc
-	static string replace_substr(string orig, string substr, string replace);
+	static string expand_macro(Macro& macro, MacroCall& call);
 %}
 
 /* Flex Options */
@@ -624,6 +623,26 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	emit(TOKEN_KW_UNSIGNED);
 }
 
+"decltype" {
+	accept();
+	emit(TOKEN_KW_DECLTYPE);
+}
+
+"sizeof" {
+	accept();
+	emit(TOKEN_KW_SIZEOF);
+}
+
+"__attribute__" {
+	accept();
+	emit(TOKEN_KW_ATTRIBUTE);
+}
+
+"__visibility__" {
+	accept();
+	emit(TOKEN_ATTR_VISIBILITY);
+}
+
 "::" {
 	// Scoping operator
 	accept();
@@ -713,9 +732,9 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		if(macro.is_function) {
 			yy_push_state(macro_start);
 			current_macro.identifier = identifier;
-			current_macro.arg_values.clear();
+			current_macro.values.clear();
 		} else if(!macro.replace_text.empty()) {
-			Input* input = new Input("<macro> " + macro.identifier);
+			Input* input = new Input(macro.identifier);
 			inputs.push_front(input);
 
 			input->is_macro = true;
@@ -796,39 +815,29 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 <macro_args>"," {
 	// Eat argument
 	accept();
-	current_macro.arg_values.push_back(current_value);
+	current_macro.values.push_back(current_value);
 	current_value.clear();
 }
 
 <macro_args>")" {
 	accept();
-	current_macro.arg_values.push_back(current_value);
+	current_macro.values.push_back(current_value);
 	current_value.clear();
 
-	Macro* macro = &macros.find(current_macro.identifier)->second;
-	size_t num_values = current_macro.arg_values.size();
-	size_t num_params = macro->args.size();
-	if(num_params != num_values) {
-		string msg("Incorrect number of arguments for macro \"" + macro->identifier + "\".");
-		yyerror(msg);
-	} else { 
-		string new_input = macro->replace_text;
-		for(int i = 0; i < macro->args.size(); ++i) {
-			new_input = replace_substr(new_input, macro->args[i], current_macro.arg_values[i]);
-		}
+	Macro& macro = macros.find(current_macro.identifier)->second;
+	string new_input = expand_macro(macro, current_macro);
+	if(!new_input.empty()) {
+		Input* input = new Input(macro.identifier);
+		inputs.push_front(input);
 
-		if(!new_input.empty()) {
-	  		Input* input = new Input("<macro> " + macro->identifier);
-			inputs.push_front(input);
-
-			input->is_macro = true;
-			input->macro_value = new_input;
-			FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
-			yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
-		}
+		input->is_macro = true;
+		input->macro_value = new_input;
+		FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
+		yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
 	}
+
 	current_macro.identifier.clear();
-	current_macro.arg_values.clear();
+	current_macro.values.clear();
 	yy_pop_state(); // pop macro_args
 }
 
@@ -1205,7 +1214,6 @@ static bool accept_include(char end_mark, bool next) {
 	}
 
   stop:
-  	cout << "Included: " << fileref << ".\n";
   	auto prev_include = files.find(fileref);
   	if(prev_include != files.end()) {
   		if(prev_include->second->type != FTInput) {
@@ -1227,33 +1235,95 @@ static bool accept_include(char end_mark, bool next) {
 	return true;
 }
 
-static ostream& indent(ostream& out, unsigned int indent_level) {
-	for(unsigned int i = 0; i < indent_level; i++) {
-		out << ' ';
+static vector<string> split_string_literals(const string & base) {
+	vector<string> parts;
+
+	int start = 0;
+	bool literal = false;
+	for(unsigned int i = 0; i < base.length(); ++i) {
+		if(base[i] == '"') {
+			if(literal) { i++; }
+			literal = !literal;
+
+			parts.push_back(base.substr(start, i - start));
+			start = i;
+		}
 	}
+
+	parts.push_back(base.substr(start));
+
+	return parts;
+}
+
+static string expand_arg(const string & segment, const string & name, const string & value) {
+	string result = "";
+
+	// If value is "#v" handle stringification
+	size_t where = segment.find("#" + name);
+	if(where != string::npos) {
+		string escaped = stringify(trim(value, " \t"));
+		string replaced = replace_substr(segment, "#" + name, escaped);
+		vector<string> parts = split_string_literals(replaced);
+		for(auto it = parts.begin(); it != parts.end(); ++it) {
+			if((*it)[0] == '"') {
+				result += *it;
+				continue; // Don't replace anything in string literals
+			}
+
+			result += replace_substr(*it, name, value);
+		}
+	}
+
+	// Otherwise do a normal replace
+	else {
+		result = replace_substr(segment, name, value);
+	}
+
+	return result;
+}
+
+static string expand_macro(Macro& macro, MacroCall& call) {
+	size_t num_args = macro.args.size();
+	if(num_args != call.values.size()) {
+		string msg("Incorrect number of arguments for macro \"" + macro.identifier + "\".");
+		yyerror(msg);
+		return "";
+	}
+
+	string result;
+	vector<string> parts = split_string_literals(macro.replace_text);
+	for(auto it = parts.begin(); it != parts.end(); ++it) {
+		// Don't replace anything in string literals
+		if((*it)[0] == '"') {
+			result += *it;
+			continue;
+		}
+
+		// Otherwise replace the args found in each segment
+		for(unsigned int i = 0; i < num_args; ++i) {
+			result += expand_arg(*it, macro.args[i], call.values[i]);
+		}
+	}
+
+	return result;
+}
+
+static ostream& echo_location(ostream& out, Input* info) {
+	if(info->is_macro) {
+		out << "in [Macro]" << info->name;
+	} else if(!info->name.empty()) {
+		out << "in " << info->name;
+	}
+	out << " at line " << info->line_number << ", column " << info->col_number;
 	return out;
 }
 
-static string replace_substr(string orig, string substr, string replace) {
-	string result;
-	size_t find = 0;
-	size_t end = orig.find(substr, find);
-	while(true) {
-		result += orig.substr(0, end);
-		result += replace;
-		find = result.length();
-		result += orig.substr(end + substr.length());
 
-		end = result.find(substr, find);
-		if(end == string::npos) {
-			break;
-		} else {
-			orig = result;
-			result = "";
-		}
-		result = "";
+static ostream& indent(ostream& out, unsigned int indent_level, char c = ' ') {
+	for(unsigned int i = 0; i < indent_level; i++) {
+		out << c;
 	}
-	return result;
+	return out;
 }
 
 Module* init_lexer(const string & filename) {
@@ -1285,17 +1355,38 @@ void cpp_yyerror(const string & msg)
 {
 	Input* info = inputs.front();
 
-	cerr << "Error";
-	if(!info->name.empty()) {
-		cerr << " in " << info->name;
-	}
-	cerr << " at line " << info->line_number << ", column " << info->col_number
-	     << ":\n" << info->current_line << "\n";
+	// Output warning with location
+	cerr << "\nError ";
+	echo_location(cerr, info) << ":\n";
 
+	// Output current line
+	if(info->is_macro) {
+		cerr << info->macro_value << "\n";
+	} else {
+		cerr << info->current_line << "\n";
+	}
+
+	// Output carot (^) pointing to value in current line
 	int ident = info->col_number - 1 < 0 ? 0 : info->col_number - 1;
 	if(ident > 100) { ident = 100; }
-	indent(cerr, ident) << "^\n";
-	cerr << msg << "\n\n";
+	indent(cerr, ident, '.') << "^\n";
+
+	// Output error message
+	cerr << msg << "\n";
+
+	// If we're a macro, we want to know where the macro is being used.
+	if(info->is_macro) {
+		auto it = ++inputs.begin();
+		while(it != inputs.end()) {
+			cerr << "Used ";
+			echo_location(cerr, *it) << "\n";
+			if(!(*it)->is_macro) {
+				break;
+			}
+			it++;
+		}
+	}
+	cerr << "\n";
 
 	error_count++;
 }
@@ -1303,17 +1394,38 @@ void cpp_yywarning(const string & msg)
 {
 	Input* info = inputs.front();
 
-	cerr << "\nWarning";
-	if(!info->name.empty()) {
-		cerr << " in " << info->name;
-	}
-	cerr << " at line " << info->line_number << ", column " << info->col_number
-	     << ":\n" << info->current_line << "\n";
+	// Output warning with location
+	cerr << "\nWarning ";
+	echo_location(cerr, info) << ":\n";
 
+	// Output current line
+	if(info->is_macro) {
+		cerr << info->macro_value << "\n";
+	} else {
+		cerr << info->current_line << "\n";
+	}
+
+	// Output carot (^) pointing to value in current line
 	int ident = info->col_number - 1 < 0 ? 0 : info->col_number - 1;
 	if(ident > 100) { ident = 100; }
 	indent(cerr, ident) << "^\n";
-	cerr << msg << "\n\n";
+
+	// Output error message
+	cerr << msg << "\n";
+
+	// If we're a macro, we want to know where the macro is being used.
+	if(info->is_macro) {
+		auto it = ++inputs.begin();
+		while(it != inputs.end()) {
+			cerr << "Used ";
+			echo_location(cerr, *it) << "\n";
+			if(!(*it)->is_macro) {
+				break;
+			}
+			it++;
+		}
+	}
+	cerr << "\n";
 
 	warning_count++;
 }

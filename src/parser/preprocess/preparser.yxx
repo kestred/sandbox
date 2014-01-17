@@ -162,6 +162,15 @@ cond_defined
 		}
 		delete $2;
 	}
+	| "defined" '(' IDENTIFIER ')'
+	{
+		if(macros.find(*$3) == macros.end()) {
+			$$ = false;
+		} else {
+			$$ = true;
+		}
+		delete $3;
+	}
 	;
 
 expr_equation

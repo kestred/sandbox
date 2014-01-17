@@ -67,10 +67,17 @@
 %token KW_LONG     "long"
 %token KW_SHORT    "short"
 
-/* Operator Tokens */
-%token OP_CONS "::"
+// Compiler directives
+%token KW_ATTRIBUTE "__attribute__"
+%token ATTR_VISIBILITY "__visibility__"
 
-// We're naming this ops by their symbol, because they're overload
+// Keyword-operators
+%token KW_SIZEOF   "sizeof"
+%token KW_DECLTYPE "decltype"
+
+/* Operator Tokens */
+// We're naming most ops by their symbol, because they're overload
+%token OP_CONS "::"
 %token OP_AND  "&"
 %token OP_STAR "*"
 
@@ -157,15 +164,15 @@ typedef_decl
 	;
 
 namespace_decl
-	: "namespace" '{' '}'
-	| "namespace" '{' declarations '}'
-	| "namespace" IDENTIFIER '{' '}'
-	| "namespace" IDENTIFIER '{' declarations '}'
+	: "namespace" attribute_directive '{' '}'
+	| "namespace" attribute_directive '{' declarations '}'
+	| "namespace" IDENTIFIER attribute_directive '{' '}'
+	| "namespace" IDENTIFIER attribute_directive '{' declarations '}'
 	;
 
 method_decl
-	: type_name variable_spec '(' ')' method_body
-	| type_name variable_spec '(' method_params ')' method_body
+	: type_name variable_spec '(' ')' method_body attribute_directive
+	| type_name variable_spec '(' method_params ')' method_body attribute_directive
 	;
 
 method_params
@@ -173,6 +180,20 @@ method_params
 	| type_name variable_spec
 	| method_params ',' type_name
 	| method_params ',' type_name variable_spec
+	;
+
+attribute_directive
+	: empty
+	| "__attribute__" '(' '(' attribute_list ')' ')'
+	;
+
+attribute_list
+	: compiler_attribute 
+	| attribute_list ',' compiler_attribute
+	;
+
+compiler_attribute
+	: "__visibility__" '(' STRING ')'
 	;
 
 method_body
@@ -189,6 +210,7 @@ variable_spec
 type_name
 	: integer_type
 	| scoped_name
+	| "decltype" '(' IDENTIFIER ')'
 	;
 
 

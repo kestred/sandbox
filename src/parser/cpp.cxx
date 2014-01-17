@@ -1,6 +1,7 @@
 #include <stdio.h> // FILE, popen, pclose, fgets, feof
 #include <sys/stat.h>  // stat
 #include "cpp.h"
+#include "strutils.h"
 using namespace std;
 
 
@@ -38,13 +39,6 @@ static string exec(string cmd) {
 
 	pclose(pipe);
 	return result;
-}
-
-static inline string trim(const string & str) {
-	string s = str;
-	s.erase(0, s.find_first_not_of(" \t\n"));
-	s.erase(s.find_first_of(" \t\n"));
-	return s;
 }
 
 static void get_gcc_env() {
@@ -120,6 +114,7 @@ vector<Macro> get_compiler_defines() {
 		compiler_defines.push_back(Macro("__GNUC_MINOR__", version.substr(2,1), gcc_builtin));
 		compiler_defines.push_back(Macro("__GNUC_PATCHLEVEL__", version.substr(4,1), gcc_builtin));
 		compiler_defines.push_back(Macro("__extension__", gcc_builtin));
+		compiler_defines.push_back(Macro("__EXCEPTIONS", "1", gcc_builtin));
 		compiler_defines.push_back(Macro("__STDC_HOSTED__", "1", gcc_builtin));
 		compiler_defines.push_back(Macro("_XOPEN_SOURCE", "700", gcc_builtin));
 		compiler_defines.push_back(Macro("_POSIX_SOURCE", "1", gcc_builtin));

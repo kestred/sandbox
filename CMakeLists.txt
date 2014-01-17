@@ -44,6 +44,7 @@ find_package(BISON REQUIRED)
 ## Define source files
 set(PARSER_SOURCES
 	src/main.cxx
+	src/strutils.cxx
 	src/parser/cpp.cxx
 	src/parser/lexer.cxx
 	src/parser/parser.cxx
