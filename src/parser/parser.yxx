@@ -46,6 +46,7 @@
 
 /* Keyword Tokens */
 %token KW_NAMESPACE "namespace"
+%token KW_CONST     "const"
 
 // Access specifiers
 %token KW_PUBLIC    "public"
@@ -68,22 +69,48 @@
 %token KW_SIGNED   "signed"
 %token KW_LONG     "long"
 %token KW_SHORT    "short"
+%token KW_BOOL     "bool"
 
 // Compiler directives
 %token KW_ATTRIBUTE "__attribute__"
 %token ATTR_VISIBILITY "__visibility__"
+%token ATTR_NORETURN "__noreturn__"
 
 // Keyword-operators
 %token KW_SIZEOF   "sizeof"
 %token KW_DECLTYPE "decltype"
 
 /* Operator Tokens */
+%token OP_ASSIGN  "="
+%token OP_EQUALS  "=="
+
 // We're naming most ops by their symbol, because they're overload
 %token OP_CONS    "::"
+%token OP_ANDAND  "&&"
 %token OP_AND     "&"
+%token OP_BARBAR  "||"
+%token OP_BAR     "|"
 %token OP_STAR    "*"
 %token OP_ANGLE_L "<"
 %token OP_ANGLE_R ">"
+
+/* Precedence */
+%left ','
+%right "throw"
+%right "?:" "=" "+=" "-=" "*=" "/=" "%=" "<<=" ">>=" "&=" "^=" "|="
+%left "||"
+%left "&&"
+%left "|"
+%left "^"
+%left "&"
+%left "==" "!="
+%left "<" "<=" ">" ">="
+%left "<<" ">>"
+%right "+" "-"
+%right "*" "/" "%"
+%right "!" "~"  '(' ')' "new" "new[]" "delete" "delete[]" "sizeof"
+%left "()" '[' ']' '.' "->"
+%left "::"
 
 %%
 
@@ -108,11 +135,47 @@ declaration
 	;
 
 statements
-	:
+	: statement
+	| statements statement
 	;
 
 statement
-	:
+	: value_statement ';'
+	;
+
+value_statement
+	: qualified_name
+	| raw_value
+	| boolean_value
+	| cast_value
+	| type_initializer
+	| '(' value_statement ')'
+	;
+
+boolean_value
+	: value_statement "==" value_statement
+	| value_statement "!=" value_statement
+	| value_statement "<=" value_statement
+	| value_statement ">=" value_statement
+	| value_statement "<" value_statement
+	| value_statement ">" value_statement
+	| value_statement "||" value_statement
+	| value_statement "&&" value_statement
+	| "!" value_statement
+	;
+
+type_initializer
+	: type_name '(' argument_list ')'
+	| "new" type_name '(' argument_list ')'
+	;
+
+cast_value
+	: '(' type_name variable_prefix ')' value_statement
+	;
+
+argument_list
+	: value_statement
+	| argument_list ',' value_statement
 	;
 
 class_body
@@ -132,8 +195,13 @@ access_specifier
 	;
 
 enumeration
+	: enum_element
+	| enumeration ',' enum_element
+	;
+
+enum_element
 	: IDENTIFIER
-	| enumeration ',' IDENTIFIER
+	| IDENTIFIER "=" value_statement
 	;
 
 variable_decl
@@ -149,6 +217,7 @@ variable_init
 enum_decl
 	: "enum" IDENTIFIER '{' '}'
 	| "enum" IDENTIFIER '{' enumeration '}'
+	| "enum" '{' enumeration '}'
 	;
 
 template_decl
@@ -161,14 +230,28 @@ template_type_list
 	;
 
 template_type
+	: template_type_identifier
+	| template_type_identifier "=" template_instance_type
+	;
+
+template_type_identifier
 	: "class"
 	| "typename"
 	| "class" IDENTIFIER
 	| "typename" IDENTIFIER
 	;
 
+template_instance_type
+	: type_qualified_name "<" type_list ">"
+	| type_qualified_name "<" raw_value_list ">"
+	;
+
 template_spec
 	: "template" "<" ">"
+	;
+
+template_spec_with_instance_type
+	: "template" "<" type_list ">"
 	;
 
 class_decl
@@ -180,7 +263,8 @@ class_decl
 class_identifier
 	: "class" IDENTIFIER
 	| template_decl "class" IDENTIFIER
-	| template_spec "class" IDENTIFIER "<" type_list ">"
+	| template_spec "class" template_instance_type
+	| template_spec_with_instance_type "class" IDENTIFIER
 	;
 
 struct_decl
@@ -192,7 +276,8 @@ struct_decl
 struct_identifier
 	: "struct" IDENTIFIER
 	| template_decl "struct" IDENTIFIER
-	| template_spec "struct" IDENTIFIER "<" type_list ">"
+	| template_spec "struct" template_instance_type
+	| template_spec_with_instance_type "struct" IDENTIFIER
 	;
 
 typedef_decl
@@ -212,10 +297,17 @@ method_decl
 	;
 
 method_params
-	: type_name
-	| type_name variable_spec
-	| method_params ',' type_name
-	| method_params ',' type_name variable_spec
+	: method_param
+	| method_params ',' method_param
+	;
+
+method_param
+	: type_name variable_with_optional_name
+	;
+
+variable_with_optional_name
+	: variable_prefix
+	| variable_spec
 	;
 
 attribute_directive
@@ -230,6 +322,7 @@ attribute_list
 
 compiler_attribute
 	: "__visibility__" '(' STRING ')'
+	| "__noreturn__"
 	;
 
 method_body
@@ -238,20 +331,52 @@ method_body
 	;
 
 variable_spec
-	: IDENTIFIER
-	| "&" IDENTIFIER
-	| "*" variable_spec
+	: variable_prefix IDENTIFIER
+	;
+
+variable_prefix
+	: empty
+	| "&"
+	| "*" variable_prefix
 	;
 
 type_name
 	: integer_type
+	| "bool"
 	| qualified_name
+	| type_qualified_name
+	| template_instance_type
 	| "decltype" '(' IDENTIFIER ')'
+	| type_const_name
+	;
+
+type_qualified_name
+	: qualified_name
+	| "typename" qualified_name
+	;
+
+type_const_name
+	: "const" integer_type
+	| "const" type_qualified_name
+	| "const" template_instance_type
 	;
 
 type_list
 	: type_name
 	| type_list ',' type_name
+	;
+
+raw_value_list
+	: raw_value
+	| raw_value ',' raw_value_list
+	;
+
+raw_value
+	: BOOLEAN
+	| INTEGER
+	| FLOAT
+	| CHAR
+	| STRING { delete $1; }
 	;
 
 // For this rule, we'll allow almost everything in the grammar, but manually

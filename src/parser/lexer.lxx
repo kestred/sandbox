@@ -603,6 +603,11 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	emit(TOKEN_KW_TYPEDEF);
 }
 
+"const" {
+	accept();
+	emit(TOKEN_KW_CONST);
+}
+
 "int" {
 	accept();
 	emit(TOKEN_KW_INT);
@@ -621,6 +626,11 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 "char" {
 	accept();
 	emit(TOKEN_KW_CHAR);
+}
+
+"bool" {
+	accept();
+	emit(TOKEN_KW_BOOL);
 }
 
 "signed" {
@@ -653,15 +663,35 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	emit(TOKEN_ATTR_VISIBILITY);
 }
 
+"__noreturn__" {
+	accept();
+	emit(TOKEN_ATTR_NORETURN);
+}
+
 "::" {
 	// Scoping operator
 	accept();
 	emit(TOKEN_OP_CONS);
 }
 
+"&&" {
+	accept();
+	emit(TOKEN_OP_ANDAND);
+}
+
 "&" {
 	accept();
 	emit(TOKEN_OP_AND);
+}
+
+"||" {
+	accept();
+	emit(TOKEN_OP_BARBAR);
+}
+
+"|" {
+	accept();
+	emit(TOKEN_OP_BAR);
 }
 
 "*" {
@@ -677,6 +707,16 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 ">" {
 	accept();
 	emit(TOKEN_OP_ANGLE_R);
+}
+
+"=" {
+	accept();
+	emit(TOKEN_OP_ASSIGN);
+}
+
+"==" {
+	accept();
+	emit(TOKEN_OP_EQUALS);
 }
 
 "/*" {
