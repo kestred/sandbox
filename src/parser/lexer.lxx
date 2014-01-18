@@ -588,6 +588,16 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	emit(TOKEN_KW_STRUCT);
 }
 
+"template" {
+	accept();
+	emit(TOKEN_KW_TEMPLATE);
+}
+
+"typename" {
+	accept();
+	emit(TOKEN_KW_TYPENAME);
+}
+
 "typedef" {
 	accept();
 	emit(TOKEN_KW_TYPEDEF);
@@ -657,6 +667,16 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 "*" {
 	accept();
 	emit(TOKEN_OP_STAR);
+}
+
+"<" {
+	accept();
+	emit(TOKEN_OP_ANGLE_L);
+}
+
+">" {
+	accept();
+	emit(TOKEN_OP_ANGLE_R);
 }
 
 "/*" {

@@ -53,10 +53,12 @@
 %token KW_PRIVATE   "private"
 
 // Type-definitions
-%token KW_ENUM    "enum"
-%token KW_STRUCT  "struct"
-%token KW_CLASS   "class"
-%token KW_TYPEDEF "typedef"
+%token KW_ENUM     "enum"
+%token KW_STRUCT   "struct"
+%token KW_CLASS    "class"
+%token KW_TYPEDEF  "typedef"
+%token KW_TYPENAME "typename"
+%token KW_TEMPLATE "template"
 
 // Fundamental-type keywords
 %token KW_INT      "int"
@@ -77,10 +79,11 @@
 
 /* Operator Tokens */
 // We're naming most ops by their symbol, because they're overload
-%token OP_CONS "::"
-%token OP_AND  "&"
-%token OP_STAR "*"
-
+%token OP_CONS    "::"
+%token OP_AND     "&"
+%token OP_STAR    "*"
+%token OP_ANGLE_L "<"
+%token OP_ANGLE_R ">"
 
 %%
 
@@ -146,17 +149,50 @@ variable_init
 enum_decl
 	: "enum" IDENTIFIER '{' '}'
 	| "enum" IDENTIFIER '{' enumeration '}'
+	;
+
+template_decl
+	: "template" "<" template_type_list ">" 
+	;
+
+template_type_list
+	: template_type
+	| template_type_list ',' template_type
+	;
+
+template_type
+	: "class"
+	| "typename"
+	| "class" IDENTIFIER
+	| "typename" IDENTIFIER
+	;
+
+template_spec
+	: "template" "<" ">"
+	;
 
 class_decl
-	: "class" IDENTIFIER         // declaration
-	| "class" IDENTIFIER '{' '}' // definition
-	| "class" IDENTIFIER '{' class_body '}'
+	: class_identifier         // declaration
+	| class_identifier '{' '}' // definition
+	| class_identifier '{' class_body '}'
+	;
+
+class_identifier
+	: "class" IDENTIFIER
+	| template_decl "class" IDENTIFIER
+	| template_spec "class" IDENTIFIER "<" type_list ">"
 	;
 
 struct_decl
-	: "struct" IDENTIFIER         // declaration
-	| "struct" IDENTIFIER '{' '}' // definition
-	| "struct" IDENTIFIER '{' class_body '}'
+	: struct_identifier         // declaration
+	| struct_identifier '{' '}' // definition
+	| struct_identifier '{' class_body '}'
+	;
+
+struct_identifier
+	: "struct" IDENTIFIER
+	| template_decl "struct" IDENTIFIER
+	| template_spec "struct" IDENTIFIER "<" type_list ">"
 	;
 
 typedef_decl
@@ -209,10 +245,14 @@ variable_spec
 
 type_name
 	: integer_type
-	| scoped_name
+	| qualified_name
 	| "decltype" '(' IDENTIFIER ')'
 	;
 
+type_list
+	: type_name
+	| type_list ',' type_name
+	;
 
 // For this rule, we'll allow almost everything in the grammar, but manually
 //     check to make sure the user isn't insane.
@@ -231,9 +271,9 @@ integer_type
 	| integer_type "signed"
 	;
 
-scoped_name
+qualified_name
 	: IDENTIFIER
-	| scoped_name "::" IDENTIFIER
+	| qualified_name "::" IDENTIFIER
 	;
 
 /*

@@ -68,20 +68,24 @@ extern int cpp_yydebug;
     TOKEN_KW_STRUCT = 269,
     TOKEN_KW_CLASS = 270,
     TOKEN_KW_TYPEDEF = 271,
-    TOKEN_KW_INT = 272,
-    TOKEN_KW_CHAR = 273,
-    TOKEN_KW_DOUBLE = 274,
-    TOKEN_KW_UNSIGNED = 275,
-    TOKEN_KW_SIGNED = 276,
-    TOKEN_KW_LONG = 277,
-    TOKEN_KW_SHORT = 278,
-    TOKEN_KW_ATTRIBUTE = 279,
-    TOKEN_ATTR_VISIBILITY = 280,
-    TOKEN_KW_SIZEOF = 281,
-    TOKEN_KW_DECLTYPE = 282,
-    TOKEN_OP_CONS = 283,
-    TOKEN_OP_AND = 284,
-    TOKEN_OP_STAR = 285
+    TOKEN_KW_TYPENAME = 272,
+    TOKEN_KW_TEMPLATE = 273,
+    TOKEN_KW_INT = 274,
+    TOKEN_KW_CHAR = 275,
+    TOKEN_KW_DOUBLE = 276,
+    TOKEN_KW_UNSIGNED = 277,
+    TOKEN_KW_SIGNED = 278,
+    TOKEN_KW_LONG = 279,
+    TOKEN_KW_SHORT = 280,
+    TOKEN_KW_ATTRIBUTE = 281,
+    TOKEN_ATTR_VISIBILITY = 282,
+    TOKEN_KW_SIZEOF = 283,
+    TOKEN_KW_DECLTYPE = 284,
+    TOKEN_OP_CONS = 285,
+    TOKEN_OP_AND = 286,
+    TOKEN_OP_STAR = 287,
+    TOKEN_OP_ANGLE_L = 288,
+    TOKEN_OP_ANGLE_R = 289
   };
 #endif
 
@@ -98,7 +102,7 @@ union CPP_YYSTYPE
 	double floating;
 	std::string* string;
 
-#line 102 "../src/parser/parser.dxx" /* glr.c:2555  */
+#line 106 "../src/parser/parser.dxx" /* glr.c:2555  */
 };
 # define CPP_YYSTYPE_IS_TRIVIAL 1
 # define CPP_YYSTYPE_IS_DECLARED 1
