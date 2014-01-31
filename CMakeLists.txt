@@ -60,9 +60,9 @@ add_library(treesap
 # Build unittests
 set(CMAKE_TEST_DIR ${CMAKE_SOURCE_DIR}/src/tests)
 
-add_executable(test_simple_struct src/tests/test_simple_struct.cxx)
-target_link_libraries(test_simple_struct treesap)
+add_executable(test_simple_classes src/tests/test_simple_classes.cxx)
+target_link_libraries(test_simple_classes treesap)
 add_test(
-  NAME parse_simple_struct
-  COMMAND test_simple_struct
+  NAME parse_simple_classes
+  COMMAND test_simple_classes
   WORKING_DIRECTORY ${CMAKE_TEST_DIR})

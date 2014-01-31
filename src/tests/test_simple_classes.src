@@ -1,0 +1,9 @@
+// Lets try declaring a struct
+struct A;
+
+// Now lets define an empty struct
+struct B {};
+
+// Lets try with classes
+class C;
+class D {};
