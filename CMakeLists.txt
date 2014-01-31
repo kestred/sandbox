@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 project(Treesap)
+enable_testing()
 
 # Set path to all of our custom modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
@@ -57,5 +58,11 @@ add_library(treesap
   ${UTIL_SOURCES})
 
 # Build unittests
+set(CMAKE_TEST_DIR ${CMAKE_SOURCE_DIR}/src/tests)
+
 add_executable(test_simple_struct src/tests/test_simple_struct.cxx)
 target_link_libraries(test_simple_struct treesap)
+add_test(
+  NAME parse_simple_struct
+  COMMAND test_simple_struct
+  WORKING_DIRECTORY ${CMAKE_TEST_DIR})
