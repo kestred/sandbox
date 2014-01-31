@@ -4,11 +4,11 @@
 	#include "lexer.h"
 	#include "parser.h"
 	#include "parser.dxx"
-	#include "parseObjs.h"
 
-	#include "cpp.h"
+	#include "cpp/cpp.h"
+	#include "cpp/preprocessor/parser.h"
 	#include "strutils.h"
-	#include "preprocess/preparser.h"
+
 
 	#include <cctype>        // isxdigit
 	#include <iostream>      // std::cerr, std::ostream
@@ -26,7 +26,7 @@
 	// An Input holds extra per-file information while lexing and parsing
 	struct Input : File
 	{
-		Input(const string& name = "<???>");
+		Input(const string& name = "<??\?>");
 
 		string current_line; // holds the current line for error reporting
 		list<string> comments;
@@ -68,7 +68,7 @@
 			inputs.front()->comments.push_back("");            \
 		}                                                      \
 		return token
-		
+
 	// accept is called below when receiving a regex from the lexer;
 	//     it increments the current column number, and sets some location information
 	static void accept();
@@ -104,6 +104,7 @@
 %option stack
 %option warn
 %option noyywrap
+%option noyy_top_state
 
 /* Lexer States */
 %x pragma
@@ -129,7 +130,7 @@ OCTAL_LITERAL   0
 DECIMAL_LITERAL [1-9]+[0-9]*L?
 FLOAT_LITERAL   (([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?
 
-/*"/*
+/*
 // These regexs are correct to the specification, but we're using simplified
 //     versions until someone feels the need to implement them.
 
@@ -1277,8 +1278,8 @@ static bool accept_include(char end_mark, bool next) {
   stop:
   	auto prev_include = files.find(fileref);
   	if(prev_include != files.end()) {
-  		if(prev_include->second->type != FTInput) {
-  			yyerror("Name conflict with included file.");
+  		if(prev_include->second->is_internal) {
+  			yyerror("Name conflict with compiler file.");
   			return false;
   		}
 
@@ -1491,7 +1492,7 @@ void cpp_yywarning(const string & msg)
 	warning_count++;
 }
 
-Input::Input(const string& name) : File(name, FTInput),
+Input::Input(const string& name) : File(name),
 	line_number(1), col_number(0), times_included(1), condition_depth(0), is_macro(0) {
 	comments.push_back(string());
 }

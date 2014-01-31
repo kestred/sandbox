@@ -20,17 +20,12 @@ std::vector<Macro> get_compiler_defines();
 
 
 /* Type Definitions */
-enum FileType {
-	FTInput, // Files that are given as an input source
-	FTInternal, // Files defined internally, typically for compiler-specific behavior
-};
-
 struct File {
 	File(const std::string& filename);
-	File(const std::string& filename, FileType);
+	File(const std::string& filename, bool internal);
 
-	FileType type;
 	std::string name;
+	bool is_internal;
 };
 
 struct Location {
@@ -59,29 +54,37 @@ struct Type {
 };
 
 enum SymbolType {
-	SYMBOL_TYPENAME,
-	SYMBOL_VARIABLE,
-	SYMBOL_NAMESPACE
+	TYPENAME_SYMBOL,
+	VARIABLE_SYMBOL,
+	NAMESPACE_SYMBOL
 };
 
 struct Symbol {
 	Symbol(const std::string& name, SymbolType type, Scope* scope);
+	operator std::string();
 
 	std::string name;
 	SymbolType type;
 	Scope* scope;
 };
 
+enum ScopeType {
+	ANONYMOUS_SCOPE,
+	NAMESPACE_SCOPE,
+	FILE_SCOPE
+};
+
 struct Scope {
-	Scope();
-	Scope(Scope* parent);
+	Scope(ScopeType type = ANONYMOUS_SCOPE);
+	Scope(Scope* parent, ScopeType type);
+
+	ScopeType type;
+	Scope* parent;
 
 	std::map<std::string, Symbol> symbols;
 
 	std::map<std::string, Type> types;
 	std::map<std::string, Type*> variables;
-
-	Scope* parent;
 };
 
 struct Macro {

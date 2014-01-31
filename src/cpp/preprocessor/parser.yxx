@@ -1,14 +1,15 @@
 /* Filename: parser.yxx */
 
 %{
-	#include "prelexer.h"
-	#include "preparser.h"
+	#include "lexer.h"
+	#include "parser.h"
 
-	#include "parser/cpp.h"
+	#include "cpp/cpp.h"
+
 	using namespace std;
 
-	#define yylex ppr_yylex
-	#define yylval ppr_yylval
+	#define yylex pprlex
+	#define yylval pprlval
 
 	static bool result;
 	static Module* current_module;
@@ -19,7 +20,7 @@
 %error-verbose // has bison output verbose errors
 
 //%define api.namespace {treesap}
-%define api.prefix {ppr_yy}
+%define api.prefix {ppr}
 %define api.token.prefix {PRETOKEN_} // prefix tokens with PRETOKEN_ to avoid name conflicts
 
 /* Define our YYSTYPE */

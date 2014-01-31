@@ -5,8 +5,9 @@
 using namespace std;
 
 
-File::File(const string & filename) : File(filename, FTInternal) {}
-File::File(const string & filename, FileType ft) : name(filename), type(ft) {}
+File::File(const string & filename) : File(filename, false) {}
+File::File(const string & filename, bool internal) :
+	name(filename), is_internal(internal) {}
 
 Location::Location(File * f) : file(f),
 	first_line(0), first_column(0),
@@ -25,15 +26,16 @@ Location Location::copy()
 
 Type::Type() : definition(NULL) {}
 Type::Type(set<Attribute> attribs, Location declaration) :
-	definition(NULL), attributes(attribs) {
+	attributes(attribs), definition(NULL) {
 	declarations.push_back(declaration);
 }
 
 Symbol::Symbol(const std::string& name, SymbolType type, Scope* scope) :
-	name(name), scope(scope), type(type) {}
+	name(name), type(type), scope(scope) {}
 
-Scope::Scope(Scope* parent) : parent(parent), symbols(), types(), variables() {}
-Scope::Scope() : Scope(NULL) {}
+Scope::Scope(Scope* parent, ScopeType type) :
+	type(type), parent(parent), symbols(), types(), variables() {}
+Scope::Scope(ScopeType type) : Scope(NULL, type) {}
 
 Macro::Macro(const string & name) : Macro(name, Location()) {}
 Macro::Macro(const string & name, Location loc) : Macro(name, "", loc) {}
@@ -124,14 +126,14 @@ vector<Macro> get_compiler_defines() {
 		get_gcc_env();
 
 		/* Conform to ISO C and C++11 standard */
-		Location treesap_builtin(new File("__treesap_builtin__"));
+		Location treesap_builtin(new File("__treesap_builtin__", true));
 		compiler_defines.push_back(Macro("__STDC__", "1", treesap_builtin));
 		compiler_defines.push_back(Macro("__STDC_VERSION__", "201112L", treesap_builtin));
 		compiler_defines.push_back(Macro("__cplusplus", "201103L", treesap_builtin));
 		compiler_defines.push_back(Macro("__x86_64__", "1", treesap_builtin));
 
 		/* Handle GCC */
-		Location gcc_builtin(new File("__gcc_builtin__"));
+		Location gcc_builtin(new File("__gcc_builtin__", true));
 		compiler_defines.push_back(Macro("__GNUC__", version.substr(0,1), gcc_builtin));
 		compiler_defines.push_back(Macro("__GNUC_MINOR__", version.substr(2,1), gcc_builtin));
 		compiler_defines.push_back(Macro("__GNUC_PATCHLEVEL__", version.substr(4,1), gcc_builtin));

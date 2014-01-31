@@ -1,6 +1,6 @@
 // Filename: main.cxx
-#include "parser/cpp.h"
-#include "parser/parser.h"
+#include "cpp/cpp.h"
+#include "cpp/parser/parser.h"
 #include <iostream>
 using namespace std;
 

@@ -6,8 +6,8 @@
 struct Module;
 
 void init_prelexer(Module *, const std::string & input);
-int ppr_yylex(void);
-void ppr_yyerror(const char *msg);
-void ppr_yywarning(const char *msg);
-int ppr_yyerrors(void);
-int ppr_yywarnings(void);
+int pprlex(void);
+void pprerror(const char *msg);
+void pprwarning(const char *msg);
+int pprerrors(void);
+int pprwarnings(void);

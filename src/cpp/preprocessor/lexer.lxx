@@ -1,19 +1,20 @@
 /* Filename: prelexer.lxx */
 
 %{
-	#include "prelexer.h"
-	#include "preparser.h"
-	#include "preparser.dxx"
+	#include "lexer.h"
+	#include "parser.h"
+	#include "parser.dxx"
 
-	#include "parser/cpp.h"
+	#include "cpp/cpp.h"
+
 	#include <stack>    //std::stack
 	#include <iostream> // std::cerr, std::ostream
 	#include <string.h> // strchr
 
-	#define yylval ppr_yylval
-	#define yyerror ppr_yyerror
-	#define yywarning ppr_yywarning
-	#define YY_DECL int ppr_yylex(void)
+	#define yylval pprlval
+	#define yyerror pprerror
+	#define yywarning pprwarning
+	#define YY_DECL int pprlex(void)
 
 	using namespace std;
 
@@ -36,7 +37,11 @@
 /* Flex Options */
 %option stack
 %option warn
+%option nounput
 %option noyywrap
+%option noyy_push_state
+%option noyy_pop_state
+%option noyy_top_state
 
 /* Lexer States */
 %x macro_start
@@ -50,7 +55,7 @@ OCTAL_LITERAL   0
 DECIMAL_LITERAL [1-9]+[0-9]*L?
 FLOAT_LITERAL   (([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?
 
-/*"/*
+/*
 // These regexs are correct to the specification, but we're using simplified
 //     versions until someone feels the need to implement them.
 
@@ -235,7 +240,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yyerror(msg.c_str());
 	} else {
 		string new_input = macro->replace_text;
-		for(int i = 0; i < macro->args.size(); ++i) {
+		for(unsigned int i = 0; i < macro->args.size(); ++i) {
 			new_input = replace_substr(new_input, macro->args[i], current_macro.arg_values[i]);
 		}
 
@@ -297,7 +302,7 @@ static string replace_substr(string orig, string substr, string replace) {
 	return result;
 }
 
-void ppr_yyerror(const char* msg) {
+void pprerror(const char* msg) {
 	cerr << "\nError in preprocessor input:\n  #if "
 	     << *base_input << "\n";
 	if(inputs.size() > 1) {
@@ -306,7 +311,7 @@ void ppr_yyerror(const char* msg) {
 	cout << "Error: " << msg << "\n";
 }
 
-void ppr_yywarning(const char* msg) {
+void pprwarning(const char* msg) {
 	cerr << "\nWarning in preprocessor input:\n\t#if "
 	     << base_input << "\n";
 	if(inputs.size() > 1) {
