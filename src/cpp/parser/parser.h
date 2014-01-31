@@ -8,9 +8,9 @@ struct Module;
 struct File;
 
 Module* run_parser(const std::string & filename);
-int parser_errors();
-int parser_warnings();
+int cpp_errors();
+int cpp_warnings();
 
 struct Location;
-#define CPP_YYLTYPE_IS_DECLARED
-#define CPP_YYLTYPE Location
+#define CPPLTYPE_IS_DECLARED
+#define CPPLTYPE Location

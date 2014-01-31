@@ -14,11 +14,11 @@
 	#include <iostream>      // std::cerr, std::ostream
 	#include <deque>         // std::deque
 
-	#define yylval cpp_yylval
-	#define yylloc cpp_yylloc
-	#define yyerror cpp_yyerror
-	#define yywarning cpp_yywarning
-	#define YY_DECL int cpp_yylex(void)
+	#define yylval cpplval
+	#define yylloc cpplloc
+	#define yyerror cpperror
+	#define yywarning cppwarning
+	#define YY_DECL int cpplex(void)
 	using namespace std;
 
 
@@ -1407,13 +1407,16 @@ Module* init_lexer(const string & filename) {
 
 	yyout = fopen("/dev/null", "w");
 	yyin = fopen(filename.c_str(), "r");
-	if(!yyin) { return NULL; }
+	if(!yyin) {
+		cpperror("Could not open file for reading.");
+		return NULL;
+	}
 	return current_module;
 }
 
-int cpp_yyerrors() { return error_count; }
-int cpp_yywarnings() { return warning_count; }
-void cpp_yyerror(const string & msg)
+int cpp_errors() { return error_count; }
+int cpp_warnings() { return warning_count; }
+void cpperror(const string & msg)
 {
 	Input* info = inputs.front();
 
@@ -1452,7 +1455,7 @@ void cpp_yyerror(const string & msg)
 
 	error_count++;
 }
-void cpp_yywarning(const string & msg)
+void cppwarning(const string & msg)
 {
 	Input* info = inputs.front();
 
