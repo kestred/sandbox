@@ -17,7 +17,6 @@ using std::cerr;
 /* Define testbase globals */
 extern string tb_test_name;
 
-
 /* Define testbase macros */
 // To define a new unittest, define a new function using
 //     UNITTEST(test_name) as the function prototype.
@@ -30,19 +29,31 @@ extern string tb_test_name;
 #define pass() return 0
 #define fail() return 1
 
+
+// Some tools for error message output
+#define line(text) \
+	cerr << "\nError in unittest("     \
+		 << tb_test_name               \
+		 << ") at line " << __LINE__   \
+         << " of file\n\t" << __FILE__ \
+         << "\nLine: " << text         \
+         << "\n"
+
 // The assert macros cause the test to fail if the condition evalues to false;
 //     they must be called from the function body of UNITTEST.
-#define assert(cond, err)           \
-	if(!(cond)) {                   \
-		cerr << "Assertion Error: " \
-		     << err << ".\n";       \
-		fail();                     \
+#define assert(cond, err)               \
+	if(!(cond)) {                       \
+		line("assert("#cond", "#err")") \
+		     << "Assertion Error: "     \
+		     << err << ".\n";           \
+		fail();                         \
 	}
 
-#define assert_equal(a, b)           \
-	if((a) != (b)) {                 \
-		cerr << "Assertion Error: '" \
-		     << (a) << "' != "       \
-		     << (b) << "'.\n";       \
-		fail();                      \
+#define assert_equal(a, b)               \
+	if((a) != (b)) {                     \
+		line("assert_equal("#a", "#b")") \
+		     << "Assertion Error: '"     \
+		     << (a) << "' != "           \
+		     << (b) << "'.\n";           \
+		fail();                          \
 	}
