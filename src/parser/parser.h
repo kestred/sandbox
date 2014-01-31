@@ -11,15 +11,6 @@ Module* run_parser(const std::string & filename);
 int parser_errors();
 int parser_warnings();
 
-struct TokenLocation
-{
-	File* file;
-	std::string* comment;
-
-	int first_line;
-	int first_column;
-	int last_line;
-	int last_column;
-};
+struct Location;
 #define CPP_YYLTYPE_IS_DECLARED
-#define CPP_YYLTYPE TokenLocation
+#define CPP_YYLTYPE Location

@@ -802,6 +802,7 @@ char *cpp_yytext;
 	#include "lexer.h"
 	#include "parser.h"
 	#include "parser.dxx"
+	#include "parseObjs.h"
 
 	#include "cpp.h"
 	#include "strutils.h"
@@ -850,7 +851,7 @@ char *cpp_yytext;
 	#define files (current_module->files)
 	static MacroCall current_macro;
 	static string current_value;
-	static unordered_map<string, string> prev_include_dir;
+	static map<string, string> prev_include_dir;
 
 	#define echo() \
 		cout << "Token(" << inputs.front()->name << "): " << cpp_yytext << "\n"
@@ -921,7 +922,7 @@ DECIMAL_LITERAL ([1-9]+[0-9]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 FLOATING_POINT  ((([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?[lLfF]?)
 OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 */
-#line 925 "../src/parser/lexer.cxx"
+#line 926 "../src/parser/lexer.cxx"
 
 #define INITIAL 0
 #define pragma 1
@@ -1126,10 +1127,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 142 "../src/parser/lexer.lxx"
+#line 143 "../src/parser/lexer.lxx"
 
 
-#line 1133 "../src/parser/lexer.cxx"
+#line 1134 "../src/parser/lexer.cxx"
 
 	if ( !(yy_init) )
 		{
@@ -1215,7 +1216,7 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 144 "../src/parser/lexer.lxx"
+#line 145 "../src/parser/lexer.lxx"
 {
 	// New line.  Save a copy of the line so we can print it out for the
 	// benefit of the user in case we get an error.
@@ -1231,7 +1232,7 @@ YY_RULE_SETUP
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 156 "../src/parser/lexer.lxx"
+#line 157 "../src/parser/lexer.lxx"
 {
 	// An empty line will clear our current comment
 	// This option overrides (\n.*) because it produces a longer output
@@ -1249,7 +1250,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 171 "../src/parser/lexer.lxx"
+#line 172 "../src/parser/lexer.lxx"
 {
 	// Eat whitespace.
 	accept();
@@ -1257,7 +1258,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 176 "../src/parser/lexer.lxx"
+#line 177 "../src/parser/lexer.lxx"
 {
 	// Preprocessor #pragma directive
 	accept();
@@ -1266,7 +1267,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 182 "../src/parser/lexer.lxx"
+#line 183 "../src/parser/lexer.lxx"
 {
 	// Preprocessor #include directive
 	accept();
@@ -1275,7 +1276,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 188 "../src/parser/lexer.lxx"
+#line 189 "../src/parser/lexer.lxx"
 {
 	// Preprocessor #include directive
 	accept();
@@ -1284,7 +1285,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 194 "../src/parser/lexer.lxx"
+#line 195 "../src/parser/lexer.lxx"
 {
 	accept();
 
@@ -1299,7 +1300,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 206 "../src/parser/lexer.lxx"
+#line 207 "../src/parser/lexer.lxx"
 {
 	// Preprocessor #ifdef directive
 	accept();
@@ -1308,7 +1309,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 212 "../src/parser/lexer.lxx"
+#line 213 "../src/parser/lexer.lxx"
 {
 	// Preprocessor #ifndef directive
 	accept();
@@ -1317,7 +1318,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 218 "../src/parser/lexer.lxx"
+#line 219 "../src/parser/lexer.lxx"
 {
 	// Preprocessor #define directive
 	accept();
@@ -1326,7 +1327,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 224 "../src/parser/lexer.lxx"
+#line 225 "../src/parser/lexer.lxx"
 {
 	// Preprocessor #undef directive
 	accept();
@@ -1335,7 +1336,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 230 "../src/parser/lexer.lxx"
+#line 231 "../src/parser/lexer.lxx"
 {
 	accept();
 	if(!inputs.front()->condition_depth) {
@@ -1348,7 +1349,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 240 "../src/parser/lexer.lxx"
+#line 241 "../src/parser/lexer.lxx"
 {
 	accept();
 	if(!inputs.front()->condition_depth) {
@@ -1361,7 +1362,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 250 "../src/parser/lexer.lxx"
+#line 251 "../src/parser/lexer.lxx"
 {
 	// Preprocessor #endif directive
 	accept();
@@ -1375,7 +1376,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 261 "../src/parser/lexer.lxx"
+#line 262 "../src/parser/lexer.lxx"
 {
 	accept();
 	yy_push_state(ppr_warning);
@@ -1383,7 +1384,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 266 "../src/parser/lexer.lxx"
+#line 267 "../src/parser/lexer.lxx"
 {
 	accept();
 	yy_push_state(ppr_error);
@@ -1391,7 +1392,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 271 "../src/parser/lexer.lxx"
+#line 272 "../src/parser/lexer.lxx"
 {
 	// Fail on all other preprocessor ops
 	accept();
@@ -1407,14 +1408,14 @@ YY_RULE_SETUP
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 284 "../src/parser/lexer.lxx"
+#line 285 "../src/parser/lexer.lxx"
 {
 	accept(); // eat whitespace everywhere
 }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 288 "../src/parser/lexer.lxx"
+#line 289 "../src/parser/lexer.lxx"
 {
 	accept();
 	if(inputs.front()->times_included > 1) {
@@ -1425,7 +1426,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 296 "../src/parser/lexer.lxx"
+#line 297 "../src/parser/lexer.lxx"
 {
 	// We're going to handle this header by ignoring it, until we actually have
 	// to implement it (see http://gcc.gnu.org/onlinedocs/cpp/System-Headers.html).
@@ -1435,7 +1436,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 303 "../src/parser/lexer.lxx"
+#line 304 "../src/parser/lexer.lxx"
 {
 	accept();
 
@@ -1450,7 +1451,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 315 "../src/parser/lexer.lxx"
+#line 316 "../src/parser/lexer.lxx"
 {
 	// Reads a quoted (") include (& following junk)
 	accept();
@@ -1460,7 +1461,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 321 "../src/parser/lexer.lxx"
+#line 322 "../src/parser/lexer.lxx"
 {
 	// Reads a braced (<>) include (& following junk)
 	accept();
@@ -1470,7 +1471,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 328 "../src/parser/lexer.lxx"
+#line 329 "../src/parser/lexer.lxx"
 {
 	// Reads a quoted (") include (& following junk)
 	accept();
@@ -1480,7 +1481,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 334 "../src/parser/lexer.lxx"
+#line 335 "../src/parser/lexer.lxx"
 {
 	// Reads a braced (<>) include (& following junk)
 	accept();
@@ -1490,7 +1491,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 342 "../src/parser/lexer.lxx"
+#line 343 "../src/parser/lexer.lxx"
 {
 	// Accepts any character except spaces, <, or "
 	accept();
@@ -1506,7 +1507,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 355 "../src/parser/lexer.lxx"
+#line 356 "../src/parser/lexer.lxx"
 {
 	accept();
 	yy_pop_state();
@@ -1528,7 +1529,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 374 "../src/parser/lexer.lxx"
+#line 375 "../src/parser/lexer.lxx"
 {
 	accept();
 	yy_pop_state();
@@ -1544,7 +1545,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 387 "../src/parser/lexer.lxx"
+#line 388 "../src/parser/lexer.lxx"
 {
 	accept();
 	yy_pop_state();
@@ -1566,7 +1567,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 406 "../src/parser/lexer.lxx"
+#line 407 "../src/parser/lexer.lxx"
 {
 	accept();
 	yy_pop_state();
@@ -1582,7 +1583,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 419 "../src/parser/lexer.lxx"
+#line 420 "../src/parser/lexer.lxx"
 {
 	accept();
 	scan_define(cpp_yytext);
@@ -1591,7 +1592,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 425 "../src/parser/lexer.lxx"
+#line 426 "../src/parser/lexer.lxx"
 {
 	accept();
 	macros.erase(cpp_yytext);
@@ -1608,7 +1609,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 439 "../src/parser/lexer.lxx"
+#line 440 "../src/parser/lexer.lxx"
 {
 	accept();
 
@@ -1630,7 +1631,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 458 "../src/parser/lexer.lxx"
+#line 459 "../src/parser/lexer.lxx"
 {
 	// If we find (if|ifdef|ifndef), increment our depth by 1 and find #end
 	accept();
@@ -1640,7 +1641,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 465 "../src/parser/lexer.lxx"
+#line 466 "../src/parser/lexer.lxx"
 {
 	// If we find #else while looking for #else, tokenize the else code
 	yy_pop_state();
@@ -1649,7 +1650,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 471 "../src/parser/lexer.lxx"
+#line 472 "../src/parser/lexer.lxx"
 {
 	// If we find #elif while looking for #else, test the #if
 	accept();
@@ -1663,7 +1664,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 482 "../src/parser/lexer.lxx"
+#line 483 "../src/parser/lexer.lxx"
 {
 	accept();
 
@@ -1678,7 +1679,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 494 "../src/parser/lexer.lxx"
+#line 495 "../src/parser/lexer.lxx"
 {
 	// If we find (if|ifdef|ifndef), increment our depth by 1
 	accept();
@@ -1688,7 +1689,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 501 "../src/parser/lexer.lxx"
+#line 502 "../src/parser/lexer.lxx"
 {
 	// Consume any else
 	accept();
@@ -1696,7 +1697,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 506 "../src/parser/lexer.lxx"
+#line 507 "../src/parser/lexer.lxx"
 {
 	// Consume any elif
 	accept();
@@ -1704,7 +1705,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 511 "../src/parser/lexer.lxx"
+#line 512 "../src/parser/lexer.lxx"
 {
 	accept();
 	if(inputs.front()->condition_depth == 0) {
@@ -1718,7 +1719,7 @@ YY_RULE_SETUP
 case 42:
 /* rule 42 can match eol */
 YY_RULE_SETUP
-#line 521 "../src/parser/lexer.lxx"
+#line 522 "../src/parser/lexer.lxx"
 {
 	accept();
 
@@ -1732,14 +1733,14 @@ YY_RULE_SETUP
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 532 "../src/parser/lexer.lxx"
+#line 533 "../src/parser/lexer.lxx"
 {
 	accept();
 }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 536 "../src/parser/lexer.lxx"
+#line 537 "../src/parser/lexer.lxx"
 {
 	accept();
 	inputs.front()->current_line = string("#warning ") + cpp_yytext;
@@ -1749,7 +1750,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 543 "../src/parser/lexer.lxx"
+#line 544 "../src/parser/lexer.lxx"
 {
 	accept();
 	inputs.front()->current_line = string("#error ") + cpp_yytext;
@@ -1759,7 +1760,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 550 "../src/parser/lexer.lxx"
+#line 551 "../src/parser/lexer.lxx"
 {
 	accept();
 	yyerror("Treesap failed to handled characters following pre-processor directive.");
@@ -1768,7 +1769,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 556 "../src/parser/lexer.lxx"
+#line 557 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_NAMESPACE);
@@ -1776,7 +1777,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 561 "../src/parser/lexer.lxx"
+#line 562 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_PUBLIC);
@@ -1784,7 +1785,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 566 "../src/parser/lexer.lxx"
+#line 567 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_PRIVATE);
@@ -1792,7 +1793,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 571 "../src/parser/lexer.lxx"
+#line 572 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_PRIVATE);
@@ -1800,7 +1801,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 576 "../src/parser/lexer.lxx"
+#line 577 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_ENUM);
@@ -1808,7 +1809,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 581 "../src/parser/lexer.lxx"
+#line 582 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_CLASS);
@@ -1816,7 +1817,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 586 "../src/parser/lexer.lxx"
+#line 587 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_STRUCT);
@@ -1824,7 +1825,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 591 "../src/parser/lexer.lxx"
+#line 592 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_TEMPLATE);
@@ -1832,7 +1833,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 596 "../src/parser/lexer.lxx"
+#line 597 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_TYPENAME);
@@ -1840,7 +1841,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 601 "../src/parser/lexer.lxx"
+#line 602 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_TYPEDEF);
@@ -1848,7 +1849,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 606 "../src/parser/lexer.lxx"
+#line 607 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_CONST);
@@ -1856,7 +1857,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 611 "../src/parser/lexer.lxx"
+#line 612 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_INT);
@@ -1864,7 +1865,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 616 "../src/parser/lexer.lxx"
+#line 617 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_SHORT);
@@ -1872,7 +1873,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 621 "../src/parser/lexer.lxx"
+#line 622 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_LONG);
@@ -1880,7 +1881,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 626 "../src/parser/lexer.lxx"
+#line 627 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_CHAR);
@@ -1888,7 +1889,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 631 "../src/parser/lexer.lxx"
+#line 632 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_BOOL);
@@ -1896,7 +1897,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 636 "../src/parser/lexer.lxx"
+#line 637 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_SIGNED);
@@ -1904,7 +1905,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 641 "../src/parser/lexer.lxx"
+#line 642 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_UNSIGNED);
@@ -1912,7 +1913,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 646 "../src/parser/lexer.lxx"
+#line 647 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_DECLTYPE);
@@ -1920,7 +1921,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 651 "../src/parser/lexer.lxx"
+#line 652 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_SIZEOF);
@@ -1928,7 +1929,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 656 "../src/parser/lexer.lxx"
+#line 657 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_KW_ATTRIBUTE);
@@ -1936,7 +1937,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 661 "../src/parser/lexer.lxx"
+#line 662 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_ATTR_VISIBILITY);
@@ -1944,7 +1945,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 666 "../src/parser/lexer.lxx"
+#line 667 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_ATTR_NORETURN);
@@ -1952,7 +1953,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 671 "../src/parser/lexer.lxx"
+#line 672 "../src/parser/lexer.lxx"
 {
 	// Scoping operator
 	accept();
@@ -1961,7 +1962,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 677 "../src/parser/lexer.lxx"
+#line 678 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_OP_ANDAND);
@@ -1969,7 +1970,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 682 "../src/parser/lexer.lxx"
+#line 683 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_OP_AND);
@@ -1977,7 +1978,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 687 "../src/parser/lexer.lxx"
+#line 688 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_OP_BARBAR);
@@ -1985,7 +1986,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 692 "../src/parser/lexer.lxx"
+#line 693 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_OP_BAR);
@@ -1993,7 +1994,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 697 "../src/parser/lexer.lxx"
+#line 698 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_OP_STAR);
@@ -2001,7 +2002,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 702 "../src/parser/lexer.lxx"
+#line 703 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_OP_ANGLE_L);
@@ -2009,7 +2010,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 707 "../src/parser/lexer.lxx"
+#line 708 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_OP_ANGLE_R);
@@ -2017,7 +2018,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 712 "../src/parser/lexer.lxx"
+#line 713 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_OP_ASSIGN);
@@ -2025,7 +2026,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 717 "../src/parser/lexer.lxx"
+#line 718 "../src/parser/lexer.lxx"
 {
 	accept();
 	emit(TOKEN_OP_EQUALS);
@@ -2033,7 +2034,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 722 "../src/parser/lexer.lxx"
+#line 723 "../src/parser/lexer.lxx"
 {
 	// Comment block
 	accept();
@@ -2042,7 +2043,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 728 "../src/parser/lexer.lxx"
+#line 729 "../src/parser/lexer.lxx"
 {
 	// C++-style comment
 	accept();
@@ -2051,7 +2052,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 734 "../src/parser/lexer.lxx"
+#line 735 "../src/parser/lexer.lxx"
 {
 	// String literal (")
 	accept();
@@ -2061,7 +2062,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 741 "../src/parser/lexer.lxx"
+#line 742 "../src/parser/lexer.lxx"
 {
 	// Character literal (')
 	accept();
@@ -2075,7 +2076,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 752 "../src/parser/lexer.lxx"
+#line 753 "../src/parser/lexer.lxx"
 {
 	// Boolean literal
 	accept();
@@ -2089,7 +2090,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 85:
 YY_RULE_SETUP
-#line 763 "../src/parser/lexer.lxx"
+#line 764 "../src/parser/lexer.lxx"
 {
 	// Octal literal (currently we just accept 0)
 	accept();
@@ -2099,7 +2100,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
-#line 770 "../src/parser/lexer.lxx"
+#line 771 "../src/parser/lexer.lxx"
 {
 	// Decimal literal
 	accept();
@@ -2109,7 +2110,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 87:
 YY_RULE_SETUP
-#line 777 "../src/parser/lexer.lxx"
+#line 778 "../src/parser/lexer.lxx"
 {
 	// Floating-point literals
 	accept();
@@ -2119,7 +2120,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 88:
 YY_RULE_SETUP
-#line 784 "../src/parser/lexer.lxx"
+#line 785 "../src/parser/lexer.lxx"
 {
 	accept();
 
@@ -2152,7 +2153,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 89:
 YY_RULE_SETUP
-#line 814 "../src/parser/lexer.lxx"
+#line 815 "../src/parser/lexer.lxx"
 {
 	// Send any other printable character as itself.
 	accept();
@@ -2173,7 +2174,7 @@ case YY_STATE_EOF(ppr_warning):
 case YY_STATE_EOF(ppr_error):
 case YY_STATE_EOF(macro_start):
 case YY_STATE_EOF(macro_args):
-#line 820 "../src/parser/lexer.lxx"
+#line 821 "../src/parser/lexer.lxx"
 {
 	// Check for unclosed conditionals
 	while(inputs.front()->condition_depth > 0) {
@@ -2213,7 +2214,7 @@ case YY_STATE_EOF(macro_args):
 	YY_BREAK
 case 90:
 YY_RULE_SETUP
-#line 857 "../src/parser/lexer.lxx"
+#line 858 "../src/parser/lexer.lxx"
 {
 	// Eat whitespace and find opening paren
 	accept();
@@ -2223,7 +2224,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
-#line 864 "../src/parser/lexer.lxx"
+#line 865 "../src/parser/lexer.lxx"
 {
 	accept();
 	yyerror("Unexpected character before opening paren '(' of macro-function.");
@@ -2232,7 +2233,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 92:
 YY_RULE_SETUP
-#line 870 "../src/parser/lexer.lxx"
+#line 871 "../src/parser/lexer.lxx"
 {
 	// Eat whitespace
 	accept();
@@ -2240,7 +2241,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 875 "../src/parser/lexer.lxx"
+#line 876 "../src/parser/lexer.lxx"
 {
 	// Eat argument
 	accept();
@@ -2250,7 +2251,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 882 "../src/parser/lexer.lxx"
+#line 883 "../src/parser/lexer.lxx"
 {
 	accept();
 	current_macro.values.push_back(current_value);
@@ -2276,7 +2277,7 @@ YY_RULE_SETUP
 case 95:
 /* rule 95 can match eol */
 YY_RULE_SETUP
-#line 904 "../src/parser/lexer.lxx"
+#line 905 "../src/parser/lexer.lxx"
 {
 	// Error on newline
 	accept();
@@ -2286,7 +2287,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 96:
 YY_RULE_SETUP
-#line 911 "../src/parser/lexer.lxx"
+#line 912 "../src/parser/lexer.lxx"
 {
 	accept();
 	current_value += cpp_yytext[0];
@@ -2294,10 +2295,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 97:
 YY_RULE_SETUP
-#line 917 "../src/parser/lexer.lxx"
+#line 918 "../src/parser/lexer.lxx"
 ECHO;
 	YY_BREAK
-#line 2301 "../src/parser/lexer.cxx"
+#line 2302 "../src/parser/lexer.cxx"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -3334,7 +3335,7 @@ void cpp_yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 917 "../src/parser/lexer.lxx"
+#line 918 "../src/parser/lexer.lxx"
 
 
 

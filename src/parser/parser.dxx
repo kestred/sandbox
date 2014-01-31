@@ -102,7 +102,7 @@ extern int cpp_yydebug;
 typedef union CPP_YYSTYPE CPP_YYSTYPE;
 union CPP_YYSTYPE
 {
-#line 26 "../src/parser/parser.yxx" /* glr.c:2555  */
+#line 49 "../src/parser/parser.yxx" /* glr.c:2555  */
 
 	int integer;
 	bool boolean;

@@ -8,15 +8,37 @@ using namespace std;
 File::File(const string & filename) : File(filename, FTInternal) {}
 File::File(const string & filename, FileType ft) : name(filename), type(ft) {}
 
-Location::Location() : Location(NULL) {}
 Location::Location(File * f) : file(f),
 	first_line(0), first_column(0),
 	last_line(0), last_column(0) {}
 
+Location Location::copy()
+{
+	Location l(file);
+	l.comment = new string(*comment);
+	l.first_line = first_line;
+	l.last_line = last_line;
+	l.first_column = first_column;
+	l.last_column = last_column;
+	return l;
+}
+
+Type::Type() : definition(NULL) {}
+Type::Type(set<Attribute> attribs, Location declaration) :
+	definition(NULL), attributes(attribs) {
+	declarations.push_back(declaration);
+}
+
+Symbol::Symbol(const std::string& name, SymbolType type, Scope* scope) :
+	name(name), scope(scope), type(type) {}
+
+Scope::Scope(Scope* parent) : parent(parent), symbols(), types(), variables() {}
+Scope::Scope() : Scope(NULL) {}
+
 Macro::Macro(const string & name) : Macro(name, Location()) {}
 Macro::Macro(const string & name, Location loc) : Macro(name, "", loc) {}
 Macro::Macro(const string & name, const string & text, Location loc) :
-	identifier(name), replace_text(text), location(loc), is_function(false) {}
+	identifier(name), replace_text(text), definition(loc), is_function(false) {}
 
 static vector<string> include_dirs;
 static vector<Macro> compiler_defines;

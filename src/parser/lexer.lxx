@@ -4,6 +4,7 @@
 	#include "lexer.h"
 	#include "parser.h"
 	#include "parser.dxx"
+	#include "parseObjs.h"
 
 	#include "cpp.h"
 	#include "strutils.h"
@@ -52,7 +53,7 @@
 	#define files (current_module->files)
 	static MacroCall current_macro;
 	static string current_value;
-	static unordered_map<string, string> prev_include_dir;
+	static map<string, string> prev_include_dir;
 
 	#define echo() \
 		cout << "Token(" << inputs.front()->name << "): " << yytext << "\n"

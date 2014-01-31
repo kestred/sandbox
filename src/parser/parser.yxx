@@ -4,13 +4,36 @@
 	#include "cpp.h"
 	#include "lexer.h"
 	#include "parser.h"
+	#include "parseObjs.h"
 
 	#define yyerror cpp_yyerror
 	#define yywarning cpp_yywarning
 
 	using namespace std;
 
+	static string current_error;
+
 	static Module* module = NULL;
+	static Scope* current_scope = NULL;
+
+	// is_varname_free returns true if a provided identifier is not used as a
+	//     variable or is available to be masked in a provided scope.
+	static bool is_varname_free(const string& name, const Scope* scope);
+
+	// is_existing_typename returns true if a type with a provided name is
+	//     visible from the provided scope. It may be defined in another scope.
+	static bool is_existing_typename(const string& name, const Scope* scope);
+
+	// get_type returns a pointer to the type visible in a provided scope
+	//     with a provided name. Returns NULL if no such type exists.
+	static Type* get_type(const string& name, Scope* scope);
+
+	// print_type_difference returns a human readable debugging string describing the
+	//     differences between a previously defined type and a newly defined type.
+	static string print_type_difference(const Type* defined, const set<Attribute>& defining);
+
+	// print_location returns a human readable string representing the given location.
+	static string print_location(const Location& loc);
 %}
 
 /* Set Parser Options */
@@ -112,6 +135,10 @@
 %left "()" '[' ']' '.' "->"
 %left "::"
 
+/* Non-terminals */
+%type <string> struct_identifier
+
+
 %%
 
 cxx : empty
@@ -140,28 +167,28 @@ statements
 	;
 
 statement
-	: value_statement ';'
+	: expression ';'
 	;
 
-value_statement
+expression
 	: qualified_name
 	| raw_value
 	| boolean_value
 	| cast_value
 	| type_initializer
-	| '(' value_statement ')'
+	| '(' expression ')'
 	;
 
 boolean_value
-	: value_statement "==" value_statement
-	| value_statement "!=" value_statement
-	| value_statement "<=" value_statement
-	| value_statement ">=" value_statement
-	| value_statement "<" value_statement
-	| value_statement ">" value_statement
-	| value_statement "||" value_statement
-	| value_statement "&&" value_statement
-	| "!" value_statement
+	: expression "==" expression
+	| expression "!=" expression
+	| expression "<=" expression
+	| expression ">=" expression
+	| expression "<" expression
+	| expression ">" expression
+	| expression "||" expression
+	| expression "&&" expression
+	| "!" expression
 	;
 
 type_initializer
@@ -170,12 +197,12 @@ type_initializer
 	;
 
 cast_value
-	: '(' type_name variable_prefix ')' value_statement
+	: '(' type_name variable_prefix ')' expression
 	;
 
 argument_list
-	: value_statement
-	| argument_list ',' value_statement
+	: expression
+	| argument_list ',' expression
 	;
 
 class_body
@@ -201,7 +228,7 @@ enumeration
 
 enum_element
 	: IDENTIFIER
-	| IDENTIFIER "=" value_statement
+	| IDENTIFIER "=" expression
 	;
 
 variable_decl
@@ -275,9 +302,37 @@ struct_decl
 
 struct_identifier
 	: "struct" IDENTIFIER
+	{
+		string name = *$2;
+		set<Attribute> attribs({Attribute("subtype", "class")});
+		bool exists = is_existing_typename(name, current_scope);
+		if(exists) {
+			Type* t = get_type(name, current_scope);
+			if(t->attributes != attribs)
+			{
+				current_error = "'struct " + name + '\'' + print_type_difference(t, attribs)
+					+ "\n\tFirst declared: " + print_location(t->declarations.front()) + "\n";
+				YYERROR;
+			}
+		}
+
+		current_scope->types.emplace(name, Type(attribs, yylloc));
+		printf("Foo: %s", $2->c_str());
+
+		$$ = $2;
+	}
 	| template_decl "struct" IDENTIFIER
+	{
+		// TODO
+	}
 	| template_spec "struct" template_instance_type
+	{
+		// TODO
+	}
 	| template_spec_with_instance_type "struct" IDENTIFIER
+	{
+		// TODO
+	}
 	;
 
 typedef_decl
@@ -343,7 +398,6 @@ variable_prefix
 type_name
 	: integer_type
 	| "bool"
-	| qualified_name
 	| type_qualified_name
 	| template_instance_type
 	| "decltype" '(' IDENTIFIER ')'
@@ -376,7 +430,7 @@ raw_value
 	| INTEGER
 	| FLOAT
 	| CHAR
-	| STRING { delete $1; }
+	| STRING
 	;
 
 // For this rule, we'll allow almost everything in the grammar, but manually
@@ -414,12 +468,96 @@ empty
 
 %%
 
-/* ---- User Subroutines ---- */
+/* ---- API Subroutines ---- */
 Module* run_parser(const std::string & filename) {
 	module = init_lexer(filename);
 	if(!module) { return NULL; }
+	current_scope = &module->global;
 	if(yyparse() != 0 || cpp_yyerrors() > 0) { return NULL; }
 	return module;
 }
 int parser_errors() { return cpp_yyerrors(); }
 int parser_warnings() { return cpp_yywarnings(); }
+
+
+/* --- Helper Subroutines --- */
+bool is_varname_free(const string& name, const Scope* scope) {
+	// Check if a similar variable exists in the same scope, we can mask parents
+	auto found = scope->symbols.find(name);
+	if(found == scope->symbols.end())
+	{
+		return true;
+	}
+
+	// If the scope of found isn't the current scope, we can mask the value
+	if(found->second.scope != scope)
+	{
+		return true;
+	}
+
+	// Type names don't conflict with variable names.
+	if(found->second.type == SYMBOL_TYPENAME)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool is_typename_free(const string& name, const Scope* scope) {
+	auto found = scope->symbols.find(name);
+	if(found == scope->symbols.end())
+	{
+		return true;
+	}
+
+	// If the scope of found isn't the current scope, we can mask the value
+	if(found->second.scope != scope)
+	{
+		return true;
+	}
+
+	// Type names don't conflict with variable names.
+	if(found->second.type == SYMBOL_VARIABLE)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool is_existing_typename(const string& name, const Scope* scope) {
+	while(scope != NULL) {
+		if(scope->types.find(name) != scope->types.end())
+		{
+			return true;
+		}
+		scope = scope->parent;
+	}
+
+	return false;
+}
+
+Type* get_type(const string& name, Scope* scope) {
+	while(scope != NULL) {
+		auto found = scope->types.find(name);
+		if(found != scope->types.end())
+		{
+			return &found->second;
+		}
+
+		scope = scope->parent;
+	}
+
+	return NULL;
+}
+
+string print_type_difference(const Type* defined, const set<Attribute>& defining)
+{
+	return "TODO: Bad type";
+}
+
+string print_location(const Location& loc)
+{
+	return "TODO: Location";
+}

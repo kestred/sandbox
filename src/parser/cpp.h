@@ -1,11 +1,17 @@
 // Filename: cpp.h
-#include <string>        // std::string
-#include <vector>        // std::vector
-#include <unordered_map> // std::unordered_map
+#pragma once
+#include <type_traits>
+
+#include <list>   // std::list
+#include <vector> // std::vector
+#include <string> // std::string
+#include <map>    // std::map
+#include <set>    // std::set
 
 //Forward Declarations
 struct Macro;
 struct Namespace;
+struct Scope;
 
 
 /* Utility Functions */
@@ -28,38 +34,54 @@ struct File {
 };
 
 struct Location {
-	Location();
+	Location() = default;
 	Location(File*);
+	Location copy();
 
 	File* file;
+	std::string* comment;
 	int first_line, first_column;
 	int last_line, last_column;
 };
+static_assert(std::is_trivial<Location>::value,
+		"Location is used by GLR parser, so it must be trivial.");
 
-enum Scope {
+
+typedef std::pair<std::string, std::string> Attribute;
+struct Type {
+	Type();
+	Type(std::set<Attribute> attribs, Location declaration);
+
+	std::set<Attribute> attributes;
+
+	Location definition;
+	std::list<Location> declarations;
 };
 
 enum SymbolType {
-	STScope
+	SYMBOL_TYPENAME,
+	SYMBOL_VARIABLE,
+	SYMBOL_NAMESPACE
 };
 
 struct Symbol {
+	Symbol(const std::string& name, SymbolType type, Scope* scope);
+
 	std::string name;
 	SymbolType type;
-	Scope scope;
+	Scope* scope;
 };
 
-// A SymbolTable holds references to a set of symbols by name.
-//     The parser also keeps a SymbolTable around while parsing.
-struct SymbolTable {
-	std::unordered_map<std::string, Symbol> symbols;
-	std::unordered_map<std::string, Namespace*> namespaces;
-};
+struct Scope {
+	Scope();
+	Scope(Scope* parent);
 
-// A Namespace is a named SymbolTable with all of its symbols being scoped
-//     globally (to the namespace's own scope) as "<namespace>::<symbol-name>".
-struct Namespace : SymbolTable {
-	std::string name;
+	std::map<std::string, Symbol> symbols;
+
+	std::map<std::string, Type> types;
+	std::map<std::string, Type*> variables;
+
+	Scope* parent;
 };
 
 struct Macro {
@@ -69,7 +91,7 @@ struct Macro {
 
 	std::string identifier;
 	std::string replace_text;
-	Location location;
+	Location definition;
 
 	bool is_function;
 	std::vector<std::string> args;
@@ -78,8 +100,8 @@ struct Macro {
 // A Module is an upper level representation of the state of parsed symbols.
 //     Typically there will be a single Module, representing the global space.
 struct Module {
-	SymbolTable table;
-	std::unordered_map<std::string, File*> files;
-	std::unordered_map<std::string, Macro> macros;
+	Scope global;
+	std::map<std::string, File*> files;
+	std::map<std::string, Macro> macros;
 };
 
