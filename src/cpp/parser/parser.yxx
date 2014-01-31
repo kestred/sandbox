@@ -358,6 +358,7 @@ struct_identifier
 			t->declarations.push_back(yylloc);
 		} else if(is_typename_free(name)) {
 			outer_scope->types.emplace(name, Type(attribs, yylloc));
+			outer_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL, outer_scope));
 			printf("Foo: %s", $2->c_str());
 		} else {
 			current_error = "TODO: name for struct has conflict";
