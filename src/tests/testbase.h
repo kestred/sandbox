@@ -22,7 +22,7 @@ extern string tb_test_name;
 //     UNITTEST(test_name) as the function prototype.
 #define UNITTEST(name)    \
 	string tb_test_name = #name; \
-	int main(void)
+	int main(int argc, char* argv[])
 
 // The pass and fail macros cause the test to immediately pass or fail;
 //     they must be called from the function body of UNITTEST.
@@ -36,16 +36,16 @@ extern string tb_test_name;
 		 << tb_test_name               \
 		 << ") at line " << __LINE__   \
          << " of file\n\t" << __FILE__ \
-         << "\nLine: " << text         \
+         << "\nLine: " << (text)       \
          << "\n"
 
 // The assert macros cause the test to fail if the condition evalues to false;
 //     they must be called from the function body of UNITTEST.
 #define assert(cond, err)               \
 	if(!(cond)) {                       \
-		line("assert("#cond")") \
+		line("assert("#cond")")         \
 		     << "Assertion Error: "     \
-		     << err << ".\n";           \
+		     << (err) << ".\n";         \
 		fail();                         \
 	}
 
