@@ -317,27 +317,51 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 <include>["] {
 	// Reads a quoted (") include (& following junk)
 	accept();
-	if(!accept_include('"')) { yyterminate(); }
-	else { yy_pop_state(); }
+
+	if(!accept_include('"', true)) {
+		yyterminate();
+	} else {
+		yy_pop_state();
+		yylval.file = inputs.front();
+		emit(TOKEN_FILE_SCOPE);
+	}
 }
 <include>[<] {
 	// Reads a braced (<>) include (& following junk)
 	accept();
-	if(!accept_include('>')) { yyterminate(); }
-	else { yy_pop_state(); }
+
+	if(!accept_include('>', true)) {
+		yyterminate();
+	} else {
+		yy_pop_state();
+		yylval.file = inputs.front();
+		emit(TOKEN_FILE_SCOPE);
+	}
 }
 
 <include_next>["] {
 	// Reads a quoted (") include (& following junk)
 	accept();
-	if(!accept_include('"', true)) { yyterminate(); }
-	else { yy_pop_state(); }
+
+	if(!accept_include('"', true)) {
+		yyterminate();
+	} else {
+		yy_pop_state();
+		yylval.file = inputs.front();
+		emit(TOKEN_FILE_SCOPE);
+	}
 }
 <include_next>[<] {
 	// Reads a braced (<>) include (& following junk)
 	accept();
-	if(!accept_include('>', true)) { yyterminate(); }
-	else { yy_pop_state(); }
+
+	if(!accept_include('>', true)) {
+		yyterminate();
+	} else {
+		yy_pop_state();
+		yylval.file = inputs.front();
+		emit(TOKEN_FILE_SCOPE);
+	}
 }
 
 
@@ -834,7 +858,8 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yypop_buffer_state();
 
 	// Check if we need to cleanup after a macro
-	if(inputs.front()->is_macro) {
+	bool end_macro = inputs.front()->is_macro;
+	if(end_macro) {
 		delete inputs.front();		
 	}
 	inputs.pop_front();
@@ -853,6 +878,11 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		}
 
 		yypush_buffer_state(yy_new_buffer(yyin, YY_BUF_SIZE));
+
+		if(!end_macro) {
+			yylval.file = inputs.front();
+			emit(TOKEN_FILE_SCOPE);
+		}
 	}
 }
 
@@ -1411,6 +1441,7 @@ Module* init_lexer(const string & filename) {
 		cpperror("Could not open file for reading.");
 		return NULL;
 	}
+
 	return current_module;
 }
 

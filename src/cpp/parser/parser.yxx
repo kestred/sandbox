@@ -15,6 +15,7 @@
 	static string current_error;
 
 	static Module* module = NULL;
+	static File* current_file = NULL;
 
 	// outer_scope is the appropriate scope for declarations and
 	//     definitions that have external linkage.
@@ -74,10 +75,12 @@
 	char character;
 	double floating;
 	std::string* string;
+	File* file;
 }
 
 /* Lexing Symbols */
 %token END 0 "end of file" // error messages refer to "end of file" intead of $end
+%token <file> FILE_SCOPE "change in file scope"
 
 /* Literal Tokens */
 %token <integer>   INTEGER
@@ -164,6 +167,11 @@
 %%
 
 cxx : empty
+	| FILE_SCOPE
+	{
+		current_file = $1;
+		inner_scope = &current_file->scope;
+	}
 	| declarations
 	| error ';'
 	{
@@ -509,6 +517,8 @@ empty
 Module* run_parser(const std::string & filename) {
 	module = init_lexer(filename);
 	if(!module) { return NULL; }
+	current_file = module->files[filename];
+	inner_scope = &current_file->scope;
 	outer_scope = &module->global;
 	if(yyparse() != 0 || cpp_errors() > 0) { return NULL; }
 	return module;

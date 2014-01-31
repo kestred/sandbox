@@ -11,8 +11,8 @@
 //Forward Declarations
 struct Macro;
 struct Namespace;
-struct Scope;
-
+struct Type;
+struct Symbol;
 
 /* Utility Functions */
 std::vector<std::string> get_compiler_includes();
@@ -20,12 +20,33 @@ std::vector<Macro> get_compiler_defines();
 
 
 /* Type Definitions */
+enum ScopeType {
+	ANONYMOUS_SCOPE,
+	NAMESPACE_SCOPE,
+	FILE_SCOPE
+};
+
+struct Scope {
+	Scope(ScopeType type = ANONYMOUS_SCOPE);
+	Scope(Scope* parent, ScopeType type);
+
+	ScopeType type;
+	Scope* parent;
+
+	std::map<std::string, Symbol> symbols;
+
+	std::map<std::string, Type> types;
+	std::map<std::string, Type*> variables;
+};
+
 struct File {
 	File(const std::string& filename);
 	File(const std::string& filename, bool internal);
 
 	std::string name;
 	bool is_internal;
+
+	Scope scope;
 };
 
 struct Location {
@@ -66,25 +87,6 @@ struct Symbol {
 	std::string name;
 	SymbolType type;
 	Scope* scope;
-};
-
-enum ScopeType {
-	ANONYMOUS_SCOPE,
-	NAMESPACE_SCOPE,
-	FILE_SCOPE
-};
-
-struct Scope {
-	Scope(ScopeType type = ANONYMOUS_SCOPE);
-	Scope(Scope* parent, ScopeType type);
-
-	ScopeType type;
-	Scope* parent;
-
-	std::map<std::string, Symbol> symbols;
-
-	std::map<std::string, Type> types;
-	std::map<std::string, Type*> variables;
 };
 
 struct Macro {

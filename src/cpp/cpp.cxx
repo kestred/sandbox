@@ -7,7 +7,7 @@ using namespace std;
 
 File::File(const string & filename) : File(filename, false) {}
 File::File(const string & filename, bool internal) :
-	name(filename), is_internal(internal) {}
+	name(filename), is_internal(internal), scope(FILE_SCOPE) {}
 
 Location::Location(File * f) : file(f),
 	first_line(0), first_column(0),
