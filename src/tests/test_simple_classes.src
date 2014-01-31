@@ -7,3 +7,7 @@ struct B {};
 // Lets try with classes
 class C;
 class D {};
+
+// Now lets first declare a class, then define it later
+class E;
+class E {};

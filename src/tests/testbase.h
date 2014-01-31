@@ -43,7 +43,7 @@ extern string tb_test_name;
 //     they must be called from the function body of UNITTEST.
 #define assert(cond, err)               \
 	if(!(cond)) {                       \
-		line("assert("#cond", "#err")") \
+		line("assert("#cond")") \
 		     << "Assertion Error: "     \
 		     << err << ".\n";           \
 		fail();                         \
