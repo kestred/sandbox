@@ -52,6 +52,10 @@ include_directories(src)
 include_directories(${CMAKE_BINARY_DIR}/src)
 
 # Build the library target
-add_library(libtreesap
+add_library(treesap
   ${CPP_SOURCES}
   ${UTIL_SOURCES})
+
+# Build unittests
+add_executable(test_simple_struct src/tests/test_simple_struct.cxx)
+target_link_libraries(test_simple_struct treesap)
