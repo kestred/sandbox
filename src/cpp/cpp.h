@@ -135,7 +135,6 @@ struct Class {
 // A Module is an upper level representation of the state of parsed symbols.
 //     Typically there will be a single Module, representing the global space.
 struct Module {
-	Scope global;
 	map<string, File*> files;
 	map<string, Macro> macros;
 };

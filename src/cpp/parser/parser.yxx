@@ -16,50 +16,37 @@
 
 	static Module* module = NULL;
 	static File* current_file = NULL;
-
-	// outer_scope is the appropriate scope for declarations and
-	//     definitions that have external linkage.
-	static Scope* outer_scope = NULL;
-
-	// inner_scope is the appropriate scope for declarations and
-	//     definitions that have internal linkage.
-	static Scope* inner_scope = NULL;
+	static Scope* local_scope = NULL;
+	static Scope* file_scope = NULL;
 
 	// is_varname_free returns true if a provided identifier is not used as a
 	//     symbol or can be masked as a varname in a provided scope.
-	static bool is_varname_free(const string& name);
-	static bool is_varname_free(const string& name, const Scope* scope);
+	static bool is_varname_free(const string& name, const Scope* scope = local_scope);
 
 	// is_declared_varname returns true if a provided qualified name is
 	//     visible from the provided scope.
-	static bool is_declared_varname(QualifiedName* name);
-	static bool is_declared_varname(QualifiedName* name, const Scope* scope);
+	static bool is_declared_varname(QualifiedName* name, const Scope* scope = local_scope);
 
 	// is_typename_free returns true if a provided identifier is not used as a
 	//     symbol or can be masked as a typename in a provided scope.
-	static bool is_typename_free(const string& name);
-	static bool is_typename_free(const string& name, const Scope* scope);
+	static bool is_typename_free(const string& name, const Scope* scope = local_scope);
 
 	// is_declared_typename returns true if a type with a provided name is
 	//     visible from the provided scope. It may be declared in another scope.
-	static bool is_declared_typename(const string& name);
-	static bool is_declared_typename(const string& name, const Scope* scope);
+	static bool is_declared_typename(const string& name, const Scope* scope = local_scope);
 
 	// is_defined_typename returns true if a type with a provided name is
 	//     visible from the provided scope and it has a complete definition.
-	static inline bool is_defined_typename(const string& name);
-	static inline bool is_defined_typename(const string& name, const Scope* scope);
+	static inline bool is_defined_typename(const string& name, const Scope* scope = local_scope);
 
 	// get_namespace returns a pointer to the namespace visible in a provided
 	//     scope with a provided name. Returns NULL if no such namespace exists.
-	Scope* get_namespace(string name);
-	Scope* get_namespace(string name, Scope* scope);
+	Scope* get_namespace(string name, Scope* scope = local_scope);
 	const Scope* get_namespace(string name, const Scope* scope);
 
 	// get_type returns a pointer to the type visible in a provided scope
 	//     with a provided name. Returns NULL if no such type exists.
-	static Type* get_type(const string& name);
-	static Type* get_type(const string& name, Scope* scope);
+	static Type* get_type(const string& name, Scope* scope = local_scope);
 	static const Type* get_type(const string& name, const Scope* scope);
 
 	// print_type_error returns a human readable type-error explanation.
@@ -368,8 +355,8 @@ class_identifier
 			}
 			t->declarations.push_back(yylloc);
 		} else if(is_typename_free(name)) {
-			outer_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
-			outer_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL, outer_scope));
+			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
+			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL, local_scope));
 		} else {
 			current_error = "TODO: name for struct has conflict";
 			YYERROR;
@@ -434,8 +421,8 @@ struct_identifier
 			}
 			t->declarations.push_back(yylloc);
 		} else if(is_typename_free(name)) {
-			outer_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
-			outer_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL, outer_scope));
+			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
+			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL, local_scope));
 		} else {
 			current_error = "TODO: name for struct has conflict";
 			YYERROR;
@@ -602,15 +589,15 @@ Module* run_parser(const string & filename) {
 	module = init_lexer(filename);
 	if(!module) { return NULL; }
 	current_file = module->files[filename];
-	inner_scope = &current_file->scope;
-	outer_scope = &module->global;
+	file_scope = &current_file->scope;
+	local_scope = file_scope;
 	if(yyparse() != 0 || cpp_errors() > 0) { return NULL; }
 	return module;
 }
 
 void cpp_parser_file(File* file) {
 	current_file = file;
-	inner_scope = &current_file->scope;
+	file_scope = &current_file->scope;
 }
 
 /* --- Helper Subroutines --- */
@@ -656,9 +643,6 @@ bool is_varname_free(const string& name, const Scope* scope) {
 
 	return false;
 }
-bool is_varname_free(const string& name) {
-	return is_varname_free(name, inner_scope) && is_varname_free(name, outer_scope);
-}
 
 bool is_declared_varname(QualifiedName* name, const Scope* scope) {
 	if(name->names.size() == 0) { return false; }
@@ -683,9 +667,6 @@ bool is_declared_varname(QualifiedName* name, const Scope* scope) {
 	}
 
 	return found->second.type == VARIABLE_SYMBOL;
-}
-bool is_declared_varname(QualifiedName* name) {
-	return is_declared_varname(name, inner_scope) || is_declared_varname(name, outer_scope);
 }
 
 //Scope* get_namespace(string name);
@@ -736,9 +717,6 @@ bool is_typename_free(const string& name, const Scope* scope) {
 
 	return false;
 }
-bool is_typename_free(const string& name) {
-	return is_typename_free(name, inner_scope) && is_varname_free(name, outer_scope);
-}
 
 bool is_declared_typename(const string& name, const Scope* scope) {
 	while(scope != NULL) {
@@ -751,23 +729,11 @@ bool is_declared_typename(const string& name, const Scope* scope) {
 
 	return false;
 }
-bool is_declared_typename(const string& name) {
-	if(inner_scope->types.find(name) != inner_scope->types.end()) {
-		return true;
-	}
-
-	return is_declared_typename(name, outer_scope);
-}
 
 bool is_defined_typename(const string& name, const Scope* scope) {
 	const Type* t = get_type(name, scope);
 	return (t != NULL) && (t->definition.file != NULL);
 }
-bool is_defined_typename(const string& name) {
-	Type* t = get_type(name);
-	return (t != NULL) && (t->definition.file != NULL);
-}
-
 
 Type* get_type(const string& name, Scope* scope) {
 	while(scope != NULL) {
@@ -794,15 +760,6 @@ const Type* get_type(const string& name, const Scope* scope) {
 	}
 
 	return NULL;
-}
-Type* get_type(const string& name) {
-	auto found = inner_scope->types.find(name);
-	if(found != inner_scope->types.end())
-	{
-		return &found->second;
-	}
-
-	return get_type(name, outer_scope);
 }
 
 string print_type_error(Subtype expected, Subtype received)
