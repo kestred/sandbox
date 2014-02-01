@@ -161,6 +161,7 @@
 %left "::"
 
 /* Non-terminals */
+%type <string> class_identifier
 %type <string> struct_identifier
 
 
@@ -318,14 +319,67 @@ template_spec_with_instance_type
 class_decl
 	: class_identifier         // declaration
 	| class_identifier '{' '}' // definition
+	{
+		string name = *$1;
+		bool defined = is_defined_typename(name);
+		if(defined) {
+			current_error = "Redefinition of 'struct " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(get_type(name)->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Generate struct
+	}
 	| class_identifier '{' class_body '}'
+	{
+		string name = *$1;
+		bool defined = is_defined_typename(name);
+		if(defined) {
+			current_error = "Redefinition of 'struct " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(get_type(name)->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Generate struct
+	}
 	;
 
 class_identifier
 	: "class" IDENTIFIER
+	{
+		string name = *$2;
+		set<Attribute> attribs({Attribute("subtype", "class")});
+		bool declared = is_declared_typename(name);
+		if(declared) {
+			Type* t = get_type(name);
+			if(t->attributes != attribs) {
+				current_error = "'struct " + name + '\'' + print_type_difference(t, attribs)
+					+ "\n\tFirst declared: " + print_location(t->declarations.front()) + "\n";
+				YYERROR;
+			}
+			t->declarations.push_back(yylloc);
+		} else if(is_typename_free(name)) {
+			outer_scope->types.emplace(name, Type(attribs, yylloc));
+			outer_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL, outer_scope));
+		} else {
+			current_error = "TODO: name for struct has conflict";
+			YYERROR;
+		}
+
+		$$ = $2;
+	}
 	| template_decl "class" IDENTIFIER
+	{
+		// TODO
+	}
 	| template_spec "class" template_instance_type
+	{
+		// TODO
+	}
 	| template_spec_with_instance_type "class" IDENTIFIER
+	{
+		// TODO
+	}
 	;
 
 struct_decl
@@ -337,9 +391,23 @@ struct_decl
 		if(defined) {
 			current_error = "Redefinition of 'struct " + name + "'.\n"
 				+ "\n\tPreviously defined: " + print_location(get_type(name)->definition) + "\n";
+			YYERROR;
 		}
+
+		// TODO: Generate struct
 	}
 	| struct_identifier '{' class_body '}'
+	{
+		string name = *$1;
+		bool defined = is_defined_typename(name);
+		if(defined) {
+			current_error = "Redefinition of 'struct " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(get_type(name)->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Generate struct
+	}
 	;
 
 struct_identifier
@@ -359,7 +427,6 @@ struct_identifier
 		} else if(is_typename_free(name)) {
 			outer_scope->types.emplace(name, Type(attribs, yylloc));
 			outer_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL, outer_scope));
-			printf("Foo: %s", $2->c_str());
 		} else {
 			current_error = "TODO: name for struct has conflict";
 			YYERROR;

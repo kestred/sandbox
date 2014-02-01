@@ -2,11 +2,18 @@
 #pragma once
 #include <type_traits>
 
-#include <list>   // std::list
-#include <vector> // std::vector
-#include <string> // std::string
-#include <map>    // std::map
-#include <set>    // std::set
+#include <list>   // list
+#include <vector> // vector
+#include <string> // string
+#include <map>    // map
+#include <set>    // set
+
+using std::string;
+using std::vector;
+using std::list;
+using std::map;
+using std::set;
+using std::pair;
 
 //Forward Declarations
 struct Macro;
@@ -15,8 +22,8 @@ struct Type;
 struct Symbol;
 
 /* Utility Functions */
-std::vector<std::string> get_compiler_includes();
-std::vector<Macro> get_compiler_defines();
+vector<string> get_compiler_includes();
+vector<Macro> get_compiler_defines();
 
 
 /* Type Definitions */
@@ -33,17 +40,17 @@ struct Scope {
 	ScopeType type;
 	Scope* parent;
 
-	std::map<std::string, Symbol> symbols;
+	map<string, Symbol> symbols;
 
-	std::map<std::string, Type> types;
-	std::map<std::string, Type*> variables;
+	map<string, Type> types;
+	map<string, Type*> variables;
 };
 
 struct File {
-	File(const std::string& filename);
-	File(const std::string& filename, bool internal);
+	File(const string& filename);
+	File(const string& filename, bool internal);
 
-	std::string name;
+	string name;
 	bool is_internal;
 
 	Scope scope;
@@ -55,23 +62,23 @@ struct Location {
 	Location copy();
 
 	File* file;
-	std::string* comment;
+	string* comment;
 	int first_line, first_column;
 	int last_line, last_column;
 };
 static_assert(std::is_trivial<Location>::value,
-		"Location is used by GLR parser, so it must be trivial.");
+	"Location is used by GLR parser, so it must be trivial.");
 
 
-typedef std::pair<std::string, std::string> Attribute;
+typedef pair<string, string> Attribute;
 struct Type {
 	Type();
-	Type(std::set<Attribute> attribs, Location declaration);
+	Type(set<Attribute> attribs, Location declaration);
 
-	std::set<Attribute> attributes;
+	set<Attribute> attributes;
 
 	Location definition;
-	std::list<Location> declarations;
+	list<Location> declarations;
 };
 
 enum SymbolType {
@@ -81,32 +88,39 @@ enum SymbolType {
 };
 
 struct Symbol {
-	Symbol(const std::string& name, SymbolType type, Scope* scope);
-	operator std::string();
+	Symbol(const string& name, SymbolType type, Scope* scope);
+	operator string();
 
-	std::string name;
+	string name;
 	SymbolType type;
 	Scope* scope;
 };
 
 struct Macro {
-	Macro(const std::string & identifier);
-	Macro(const std::string & identifier, Location);
-	Macro(const std::string & name, const std::string & text, Location);
+	Macro(const string & identifier);
+	Macro(const string & identifier, Location);
+	Macro(const string & name, const string & text, Location);
 
-	std::string identifier;
-	std::string replace_text;
+	string identifier;
+	string replace_text;
 	Location definition;
 
 	bool is_function;
-	std::vector<std::string> args;
+	vector<string> args;
+};
+
+struct Class {
+	string name;
+
+	Type* type;
+	list<Class*> parents;
+
 };
 
 // A Module is an upper level representation of the state of parsed symbols.
 //     Typically there will be a single Module, representing the global space.
 struct Module {
 	Scope global;
-	std::map<std::string, File*> files;
-	std::map<std::string, Macro> macros;
+	map<string, File*> files;
+	map<string, Macro> macros;
 };
-

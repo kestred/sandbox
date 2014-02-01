@@ -17,6 +17,7 @@ using std::cerr;
 /* Define testbase globals */
 extern string tb_test_name;
 
+
 /* Define testbase macros */
 // To define a new unittest, define a new function using
 //     UNITTEST(test_name) as the function prototype.
@@ -39,7 +40,7 @@ extern string tb_test_name;
          << "\nLine: " << (text)       \
          << "\n"
 
-// The assert macros cause the test to fail if the condition evalues to false;
+// The assert macros cause the test to fail if the condition evaluates to false;
 //     they must be called from the function body of UNITTEST.
 #define assert(cond, err)               \
 	if(!(cond)) {                       \
@@ -57,3 +58,20 @@ extern string tb_test_name;
 		     << (b) << "'.\n";           \
 		fail();                          \
 	}
+
+#define assert_not_equal(a, b)               \
+	if((a) == (b)) {                         \
+		line("assert_not_equal("#a", "#b")") \
+		     << "Assertion Error: '"         \
+		     << (a) << "' == "               \
+		     << (b) << "'.\n";               \
+		fail();                              \
+	}
+
+// The __DIR__ macro returns the name of the directory containing the
+//     source file as a string, including the trailing slash.
+#define __DIR__ strip_file(__FILE__)
+string strip_file(const char* path) {
+	string ret = path;
+	return ret.substr(0, ret.find_last_of('/')+1);
+}

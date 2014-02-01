@@ -62,10 +62,7 @@ set(CMAKE_TEST_DIR ${CMAKE_SOURCE_DIR}/src/tests)
 
 add_executable(test_simple_classes src/tests/test_simple_classes.cxx)
 target_link_libraries(test_simple_classes treesap)
-add_test(
-  NAME parse_simple_classes
-  COMMAND test_simple_classes
-  WORKING_DIRECTORY ${CMAKE_TEST_DIR})
+add_test(parse_simple_classes test_simple_classes)
 
 # The executable test_parse can be used to parse any random file passed as the first argument
 add_executable(test_parse src/tests/test_parse.cxx)
