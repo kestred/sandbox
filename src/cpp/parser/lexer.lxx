@@ -318,24 +318,22 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	// Reads a quoted (") include (& following junk)
 	accept();
 
-	if(!accept_include('"', true)) {
+	if(!accept_include('"')) {
 		yyterminate();
 	} else {
 		yy_pop_state();
-		yylval.file = inputs.front();
-		emit(TOKEN_FILE_SCOPE);
+		cpp_parser_file(inputs.front());
 	}
 }
 <include>[<] {
 	// Reads a braced (<>) include (& following junk)
 	accept();
 
-	if(!accept_include('>', true)) {
+	if(!accept_include('>')) {
 		yyterminate();
 	} else {
 		yy_pop_state();
-		yylval.file = inputs.front();
-		emit(TOKEN_FILE_SCOPE);
+		cpp_parser_file(inputs.front());
 	}
 }
 
@@ -347,8 +345,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yyterminate();
 	} else {
 		yy_pop_state();
-		yylval.file = inputs.front();
-		emit(TOKEN_FILE_SCOPE);
+		cpp_parser_file(inputs.front());
 	}
 }
 <include_next>[<] {
@@ -359,8 +356,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yyterminate();
 	} else {
 		yy_pop_state();
-		yylval.file = inputs.front();
-		emit(TOKEN_FILE_SCOPE);
+		cpp_parser_file(inputs.front());
 	}
 }
 
@@ -865,7 +861,9 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	inputs.pop_front();
 
 	// Check if we have a file to return to (for example, after an #include)
-	if(!YY_CURRENT_BUFFER) {
+	if(YY_CURRENT_BUFFER) {
+		cpp_parser_file(inputs.front());
+	} else {
 		// Check if we have inputs left in our queue
 		if(inputs.empty()) {
 			yyterminate();
@@ -880,8 +878,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yypush_buffer_state(yy_new_buffer(yyin, YY_BUF_SIZE));
 
 		if(!end_macro) {
-			yylval.file = inputs.front();
-			emit(TOKEN_FILE_SCOPE);
+			cpp_parser_file(inputs.front());
 		}
 	}
 }
@@ -1239,6 +1236,8 @@ static bool accept_include(char end_mark, bool next) {
 		return false;
 	}
 
+	// For include_next we have to keep track of the last
+	//     version of the file we included.
 	string prevdir;
 	bool found_prev = false;
 	if(next && prev_include_dir.find(filename) != prev_include_dir.end()) {
@@ -1246,8 +1245,11 @@ static bool accept_include(char end_mark, bool next) {
 	}
 	if(prevdir == "") { found_prev = true; }
 
+	// Now we're going to start looking for a file
 	string fileref;
 	vector<string> dirs;
+
+	// Try to find the file as a local include
 	if(end_mark == '\"' && (!next || found_prev)) {
 		yyin = fopen(filename.c_str(), "r");
 		if(yyin) {
@@ -1257,6 +1259,7 @@ static bool accept_include(char end_mark, bool next) {
 		}
 	}
 
+	// Try to find the file as a system include
 	if(prevdir == ".") { found_prev = true; }
 	dirs = get_compiler_includes();
 	for(auto it = dirs.begin(); it != dirs.end(); ++it) {
@@ -1278,11 +1281,17 @@ static bool accept_include(char end_mark, bool next) {
 		}
 	}
 
-	if(!yyin) {
+	// If we get here, we have failed to open a new input
+	if(next) {
+		yyerror("Could not open file " + filename + " for scanning,"
+			    " no more version of the file exist in #include_next.");
+	} else {
 		yyerror("Could not open file " + filename + " for scanning.");
-		return false;
 	}
+	return false;
 
+	// Skip to here after we finished loading the file to ignore
+	//     any junk up to the end of the file.
   eatline:
 	inputs.front()->line_number = line;
 	inputs.front()->col_number = col;
@@ -1297,17 +1306,20 @@ static bool accept_include(char end_mark, bool next) {
 				break;
 			case '/':
 				// Ignore comments
-				goto stop;
+				goto finish;
 			default:
 				yywarning("Junk characters after #include.");
-				goto stop;
+				goto finish;
 		}
 		c = peek_char();
 	}
 
-  stop:
+  // Skip to here to exit the above loop from within "switch"
+  finish:
   	auto prev_include = files.find(fileref);
   	if(prev_include != files.end()) {
+  		// We've already included this file so get a
+  		//     pointer to the existing file object.
   		if(prev_include->second->is_internal) {
   			yyerror("Name conflict with compiler file.");
   			return false;
@@ -1317,9 +1329,10 @@ static bool accept_include(char end_mark, bool next) {
   		inputs.push_front(input);
   		input->times_included++;
   	} else {
+  		// This is a new file, lets create an Input to represent it.
   		Input* input = new Input(fileref);
 		inputs.push_front(input);
-		files.emplace(input->name, input);  		
+		files.emplace(input->name, input);  	
   	}
 
 	// Switch to the new buffer

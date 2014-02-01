@@ -75,12 +75,10 @@
 	char character;
 	double floating;
 	std::string* string;
-	File* file;
 }
 
 /* Lexing Symbols */
 %token END 0 "end of file" // error messages refer to "end of file" intead of $end
-%token <file> FILE_SCOPE "change in file scope"
 
 /* Literal Tokens */
 %token <integer>   INTEGER
@@ -168,17 +166,7 @@
 %%
 
 cxx : empty
-	| FILE_SCOPE
-	{
-		current_file = $1;
-		inner_scope = &current_file->scope;
-	}
 	| declarations
-	| error ';'
-	{
-		yyerror(current_error);
-		current_error.clear();
-	}
 	;
 
 declarations
@@ -592,6 +580,10 @@ Module* run_parser(const std::string & filename) {
 	return module;
 }
 
+void cpp_parser_file(File* file) {
+	current_file = file;
+	inner_scope = &current_file->scope;
+}
 
 /* --- Helper Subroutines --- */
 bool is_varname_free(const string& name, const Scope* scope) {
