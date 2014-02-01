@@ -16,10 +16,11 @@ using std::set;
 using std::pair;
 
 //Forward Declarations
-struct Macro;
-struct Namespace;
-struct Type;
 struct Symbol;
+struct Type;
+struct Variable;
+struct Namespace;
+struct Macro;
 
 /* Utility Functions */
 vector<string> get_compiler_includes();
@@ -36,6 +37,7 @@ enum ScopeType {
 struct Scope {
 	Scope(ScopeType type = ANONYMOUS_SCOPE);
 	Scope(Scope* parent, ScopeType type);
+	~Scope();
 
 	ScopeType type;
 	Scope* parent;
@@ -43,7 +45,8 @@ struct Scope {
 	map<string, Symbol> symbols;
 
 	map<string, Type> types;
-	map<string, Type*> variables;
+	map<string, Variable> variables;
+	map<string, Scope*> namespaces;
 };
 
 struct File {
@@ -69,18 +72,6 @@ struct Location {
 static_assert(std::is_trivial<Location>::value,
 	"Location is used by GLR parser, so it must be trivial.");
 
-
-typedef pair<string, string> Attribute;
-struct Type {
-	Type();
-	Type(set<Attribute> attribs, Location declaration);
-
-	set<Attribute> attributes;
-
-	Location definition;
-	list<Location> declarations;
-};
-
 enum SymbolType {
 	TYPENAME_SYMBOL,
 	VARIABLE_SYMBOL,
@@ -94,6 +85,30 @@ struct Symbol {
 	string name;
 	SymbolType type;
 	Scope* scope;
+};
+
+enum Subtype {
+	ENUM_SUBTYPE,
+	CLASS_SUBTYPE,
+	TEMPLATE_SUBTYPE,
+	INVALID_SUBTYPE
+};
+
+struct Type {
+	Type();
+	Type(Subtype, Location declaration);
+
+	Subtype subtype;
+	Location definition;
+	list<Location> declarations;
+};
+
+struct Variable {
+	Variable();
+	Variable(Type* type);
+
+	Type* type;
+	string value;
 };
 
 struct Macro {

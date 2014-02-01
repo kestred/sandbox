@@ -14,7 +14,3 @@ int cpp_warnings();
 
 /* Internal interface */
 void cpp_parser_file(File*);
-
-struct Location;
-#define CPPLTYPE_IS_DECLARED
-#define CPPLTYPE Location

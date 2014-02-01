@@ -24,9 +24,9 @@ Location Location::copy()
 	return l;
 }
 
-Type::Type() : definition(NULL) {}
-Type::Type(set<Attribute> attribs, Location declaration) :
-	attributes(attribs), definition(NULL) {
+Type::Type() : subtype(INVALID_SUBTYPE), definition(NULL) {}
+Type::Type(Subtype subtype, Location declaration) :
+	subtype(subtype), definition(NULL) {
 	declarations.push_back(declaration);
 }
 
@@ -34,8 +34,20 @@ Symbol::Symbol(const std::string& name, SymbolType type, Scope* scope) :
 	name(name), type(type), scope(scope) {}
 
 Scope::Scope(Scope* parent, ScopeType type) :
-	type(type), parent(parent), symbols(), types(), variables() {}
+	type(type), parent(parent), symbols(), types(), variables(), namespaces() {}
 Scope::Scope(ScopeType type) : Scope(NULL, type) {}
+Scope::~Scope() {
+	for(auto it = namespaces.begin(); it != namespaces.end(); ++it) {
+		delete it->second;
+	}
+
+	type = ANONYMOUS_SCOPE;
+	parent = NULL;
+	symbols.clear();
+	types.clear();
+	variables.clear();
+	namespaces.clear();
+}
 
 Macro::Macro(const string & name) : Macro(name, Location()) {}
 Macro::Macro(const string & name, Location loc) : Macro(name, "", loc) {}
