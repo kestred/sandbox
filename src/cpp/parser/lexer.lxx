@@ -1459,6 +1459,29 @@ Module* init_lexer(const string & filename) {
 	return current_module;
 }
 
+Module* init_lexer(const string & filename, FILE* file) {
+	error_count = 0;
+	warning_count = 0;
+
+	current_module = new Module();
+
+	macros.clear();
+	vector<Macro> predefines = get_compiler_defines();
+	for(auto it = predefines.begin(); it != predefines.end(); ++it) {
+		macros.emplace(it->identifier, (*it));
+	}
+
+	inputs.clear();
+	Input* input = new Input(filename);
+	inputs.push_front(input);
+	files.emplace(filename, input);
+
+	yyout = fopen("/dev/null", "w");
+	yyin = file;
+
+	return current_module;
+}
+
 int cpp_errors() { return error_count; }
 int cpp_warnings() { return warning_count; }
 void cpperror(const string & msg)

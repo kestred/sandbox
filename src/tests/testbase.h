@@ -67,11 +67,3 @@ extern string tb_test_name;
 		     << (b) << "'.\n";               \
 		fail();                              \
 	}
-
-// The __DIR__ macro returns the name of the directory containing the
-//     source file as a string, including the trailing slash.
-#define __DIR__ strip_file(__FILE__)
-string strip_file(const char* path) {
-	string ret = path;
-	return ret.substr(0, ret.find_last_of('/')+1);
-}

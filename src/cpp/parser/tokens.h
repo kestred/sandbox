@@ -22,7 +22,7 @@ static_assert(std::is_trivial<Token>::value, "Token must be trivial type for GLR
 #define CPPSTYPE_IS_DECLARED 1
 #define CPPSTYPE Token
 
-/* Define location type */
+/* Declare external location type */
 struct Location;
 #define CPPLTYPE_IS_DECLARED 1
 #define CPPLTYPE Location

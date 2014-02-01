@@ -6,6 +6,7 @@
 struct Module;
 
 Module* init_lexer(const std::string& filename);
+Module* init_lexer(const std::string& filename, FILE* file);
 int cpplex();
 
 int cpp_errors();

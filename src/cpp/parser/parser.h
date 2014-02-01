@@ -9,6 +9,7 @@ struct File;
 
 /* Published interface */
 Module* run_parser(const std::string & filename);
+Module* run_parser(const std::string & filename, FILE* file);
 int cpp_errors();
 int cpp_warnings();
 

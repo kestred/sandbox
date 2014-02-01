@@ -594,6 +594,15 @@ Module* run_parser(const string & filename) {
 	if(yyparse() != 0 || cpp_errors() > 0) { return NULL; }
 	return module;
 }
+Module* run_parser(const string & filename, FILE* file) {
+	module = init_lexer(filename, file);
+	if(!module) { return NULL; }
+	current_file = module->files[filename];
+	file_scope = &current_file->scope;
+	local_scope = file_scope;
+	if(yyparse() != 0 || cpp_errors() > 0) { return NULL; }
+	return module;
+}
 
 void cpp_parser_file(File* file) {
 	current_file = file;

@@ -1,16 +1,30 @@
 // Filename: test_simple_struct.cxx
-// Depends:
-//     - test_comments
 #include "testbase.h"
 #include "cpp/cpp.h"
 #include "cpp/parser/parser.h"
 
+static const char* filename = "test_simple_classes.src";
+static char file[] = 
+// Lets try declaring a struct
+"struct A;"
+
+// Now lets define an empty struct
+"struct B {};"
+
+// Lets try with classes
+"class C;"
+"class D {};"
+
+// Now lets first declare a class, then define it later
+"class E;"
+"class E {};"
+;
+
 UNITTEST(test_simple_classes) {
-	string file = __DIR__ + "test_simple_classes.src";
-	Module* module = run_parser(file);
+	Module* module = run_parser(filename, fmemopen(file, sizeof(file), "r"));
 	assert(module != NULL, "Encountered errors while parsing test_simple_classes.src");
 
-	Scope* global = &module->files.find(file)->second->scope;
+	Scope* global = &module->files.find(filename)->second->scope;
 	// Check our structs have corresponding symbols
 	assert(global->symbols.find("A") != global->symbols.end(), "Symbol 'struct A' doesn't exist.");
 	assert(global->symbols.find("B") != global->symbols.end(), "Symbol 'struct B' doesn't exist.");
