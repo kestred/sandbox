@@ -46,7 +46,7 @@ extern string tb_test_name;
 	if(!(cond)) {                       \
 		line("assert("#cond")")         \
 		     << "Assertion Error: "     \
-		     << (err) << ".\n";         \
+		     << (err) << "\n";         \
 		fail();                         \
 	}
 
