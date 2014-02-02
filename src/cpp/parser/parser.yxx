@@ -21,33 +21,34 @@
 
 	// is_varname_free returns true if a provided identifier is not used as a
 	//     symbol or can be masked as a varname in a provided scope.
-	static bool is_varname_free(const string& name, const Scope* scope = local_scope);
-
-	// is_declared_varname returns true if a provided qualified name is
-	//     visible from the provided scope.
-	static bool is_declared_varname(QualifiedName* name, const Scope* scope = local_scope);
+	static bool is_varname_free(const string& name, Scope* scope);
 
 	// is_typename_free returns true if a provided identifier is not used as a
 	//     symbol or can be masked as a typename in a provided scope.
-	static bool is_typename_free(const string& name, const Scope* scope = local_scope);
+	static bool is_typename_free(const string& name, Scope* scope);
 
-	// is_declared_typename returns true if a type with a provided name is
-	//     visible from the provided scope. It may be declared in another scope.
-	static bool is_declared_typename(const string& name, const Scope* scope = local_scope);
+	// resolve_qualified finds the scope associated with the name
+	//     that is visible from the provided scope.
+	//     For example, "foo::bar::baz" would return the scope "bar"
+	//     in which the variable baz is expected to be found.
+	static Scope* resolve_qualified(QualifiedName* name, Scope* scope);
 
-	// is_defined_typename returns true if a type with a provided name is
-	//     visible from the provided scope and it has a complete definition.
-	static inline bool is_defined_typename(const string& name, const Scope* scope = local_scope);
-
-	// get_namespace returns a pointer to the namespace visible in a provided
-	//     scope with a provided name. Returns NULL if no such namespace exists.
-	Scope* get_namespace(string name, Scope* scope = local_scope);
-	const Scope* get_namespace(string name, const Scope* scope);
+	// get_variable returns a pointer to the variable visible in a provided
+	//     scope with a provided name. Returns NULL if no such variable exists.
+	static Variable* get_variable(const string& name, Scope* scope);
+	static Variable* get_variable(QualifiedName* name, Scope* scope);
 
 	// get_type returns a pointer to the type visible in a provided scope
 	//     with a provided name. Returns NULL if no such type exists.
-	static Type* get_type(const string& name, Scope* scope = local_scope);
-	static const Type* get_type(const string& name, const Scope* scope);
+	static Type* get_type(const string& name, Scope* scope);
+	static Type* get_type(QualifiedName* name, Scope* scope);
+
+	// get_namespace returns a pointer to the namespace visible in a provided
+	//     scope with a provided name. Returns NULL if no such namespace exists.
+	static Scope* get_namespace(const string& name, Scope* scope);
+
+	// merge_templates
+	static YYSTYPE merge_templates(YYSTYPE parse1, YYSTYPE parse2);
 
 	// print_type_error returns a human readable type-error explanation.
 	static string print_type_error(Subtype expected, Subtype received);
@@ -60,6 +61,7 @@
 %glr-parser    // using glr so we can allow some conflicts in ambiguous C++ grammar
 %error-verbose // has bison output verbose errors
 %locations     // enable location tracking; we use this to pair comments with tokens
+%define parse.trace
 
 //%define api.namespace {treesap}
 %define api.prefix {cpp}
@@ -150,6 +152,7 @@
 %type <string> class_identifier
 %type <string> struct_identifier
 %type <name> qualified_name
+%type <name> existing_variable_identifier
 
 
 /* Destructors */
@@ -166,8 +169,10 @@ cxx : empty
 	| declarations
 	| error ';'
 	{
-		yyerror(current_error);
-		current_error.clear();
+		if(!current_error.empty()) {
+			yyerror(current_error);
+			current_error.clear();
+		}
 	}
 	;
 
@@ -177,13 +182,16 @@ declarations
 	;
 
 declaration
-	: namespace_decl
-	| method_decl ';'
-	| class_decl ';'
-	| struct_decl ';'
-	| enum_decl ';'
-	| typedef_decl ';'
-	| variable_decl ';'
+	: namespace_declaration
+	| method_definition
+	| method_declaration ';'
+	| enum_declaration ';'
+	| class_declaration ';'
+	| struct_declaration ';'
+	| template_declaration ';'
+	| template_specialization ';'
+	| typedef_declaration ';'
+	| variable_declaration ';'
 	;
 
 statements
@@ -196,13 +204,7 @@ statement
 	;
 
 expression
-	: qualified_name
-	{
-		if(!is_declared_varname($1)) {
-			current_error = "TODO: qualified_name in expression is not a variable";
-			YYERROR;
-		}
-	}
+	: existing_variable_identifier
 	| raw_value
 	| boolean_value
 	| cast_value
@@ -262,9 +264,9 @@ enum_element
 	| IDENTIFIER "=" expression
 	;
 
-variable_decl
+variable_declaration
 	: type_name variable_init
-	| variable_decl ',' variable_init
+	| variable_declaration ',' variable_init
 	;
 
 variable_init
@@ -272,14 +274,152 @@ variable_init
 	| variable_spec '=' statement
 	;
 
-enum_decl
+enum_declaration
 	: "enum" IDENTIFIER '{' '}'
 	| "enum" IDENTIFIER '{' enumeration '}'
 	| "enum" '{' enumeration '}'
 	;
 
-template_decl
-	: "template" "<" template_type_list ">" 
+class_declaration
+	: class_identifier         // declaration
+	| class_identifier '{' '}' // definition
+	{
+		string name = *$1;
+
+		Type* prev = get_type(name, local_scope);
+		if(prev == NULL) {
+			current_error = "TODO: class definition without declaration";
+			YYERROR;
+		}
+
+		if(prev->is_defined) {
+			current_error = "Redefinition of 'class " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Define class
+	}
+	| class_identifier '{' class_body '}'
+	{
+		string name = *$1;
+
+		Type* prev = get_type(name, local_scope);
+		if(prev == NULL) {
+			current_error = "TODO: class definition without declaration";
+			YYERROR;
+		}
+
+		if(prev->is_defined) {
+			current_error = "Redefinition of 'class " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Define class
+	}
+	;
+
+class_identifier
+	: "class" IDENTIFIER
+	{
+		string name = *$2;
+		Type* prev = get_type(name, local_scope);
+		if(prev != NULL) {
+			if(prev->subtype != CLASS_SUBTYPE) {
+				current_error = "'class " + name + '\''
+				                + print_type_error(prev->subtype, CLASS_SUBTYPE)
+					            + "\n\tFirst declared: "
+					            + print_location(prev->declarations.front()) + "\n";
+				YYERROR;
+			}
+			prev->declarations.push_back(yylloc);
+		} else if(is_typename_free(name, local_scope)) {
+			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
+			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL));
+		} else {
+			current_error = "TODO: name for class has conflict";
+			YYERROR;
+		}
+
+		$$ = $2;
+	}
+	;
+
+struct_declaration
+	: struct_identifier         // declaration
+	| struct_identifier '{' '}' // definition
+	{
+		string name = *$1;
+
+		Type* prev = get_type(name, local_scope);
+		if(prev == NULL) {
+			current_error = "TODO: struct definition without declaration";
+			YYERROR;
+		}
+
+		if(prev->is_defined) {
+			current_error = "Redefinition of 'struct " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Define class
+	}
+	| struct_identifier '{' class_body '}'
+	{
+		string name = *$1;
+
+		Type* prev = get_type(name, local_scope);
+		if(prev == NULL) {
+			current_error = "TODO: struct definition without declaration";
+			YYERROR;
+		}
+
+		if(prev->is_defined) {
+			current_error = "Redefinition of 'struct " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Define class
+	}
+	;
+
+struct_identifier
+	: "struct" IDENTIFIER
+	{
+		string name = *$2;
+		Type* prev = get_type(name, local_scope);
+		if(prev != NULL) {
+			if(prev->subtype != CLASS_SUBTYPE) {
+				current_error = "'struct " + name + '\''
+				                + print_type_error(prev->subtype, CLASS_SUBTYPE)
+					            + "\n\tFirst declared: "
+					            + print_location(prev->declarations.front()) + "\n";
+				YYERROR;
+			}
+			prev->declarations.push_back(yylloc);
+		} else if(is_typename_free(name, local_scope)) {
+			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
+			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL));
+		} else {
+			current_error = "TODO: name for struct has conflict";
+			YYERROR;
+		}
+
+		$$ = $2;
+	}
+	;
+
+template_declaration
+	: "template" "<" template_type_list ">" "class" IDENTIFIER
+	| "template" "<" template_type_list ">" "struct" IDENTIFIER
+	;
+
+template_specialization
+	: "template" "<" ">" "class" template_instance_type
+	| "template" "<" ">" "struct" template_instance_type
 	;
 
 template_type_list
@@ -300,164 +440,32 @@ template_type_identifier
 	;
 
 template_instance_type
-	: type_qualified_name "<" type_list ">"
-	| type_qualified_name "<" raw_value_list ">"
+	: existing_type_identifier "<" type_list ">"
+	| existing_type_identifier "<" raw_value_list ">"
 	;
 
-template_spec
-	: "template" "<" ">"
-	;
-
-template_spec_with_instance_type
-	: "template" "<" type_list ">"
-	;
-
-class_decl
-	: class_identifier         // declaration
-	| class_identifier '{' '}' // definition
-	{
-		string name = *$1;
-		bool defined = is_defined_typename(name);
-		if(defined) {
-			current_error = "Redefinition of 'struct " + name + "'.\n"
-				+ "\n\tPreviously defined: " + print_location(get_type(name)->definition) + "\n";
-			YYERROR;
-		}
-
-		// TODO: Generate struct
-	}
-	| class_identifier '{' class_body '}'
-	{
-		string name = *$1;
-		bool defined = is_defined_typename(name);
-		if(defined) {
-			current_error = "Redefinition of 'struct " + name + "'.\n"
-				+ "\n\tPreviously defined: " + print_location(get_type(name)->definition) + "\n";
-			YYERROR;
-		}
-
-		// TODO: Generate struct
-	}
-	;
-
-class_identifier
-	: "class" IDENTIFIER
-	{
-		string name = *$2;
-		bool declared = is_declared_typename(name);
-		if(declared) {
-			Type* t = get_type(name);
-			if(t->subtype != CLASS_SUBTYPE) {
-				current_error = "'struct " + name + '\''
-				                + print_type_error(t->subtype, CLASS_SUBTYPE);
-					+ "\n\tFirst declared: " + print_location(t->declarations.front()) + "\n";
-				YYERROR;
-			}
-			t->declarations.push_back(yylloc);
-		} else if(is_typename_free(name)) {
-			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
-			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL, local_scope));
-		} else {
-			current_error = "TODO: name for struct has conflict";
-			YYERROR;
-		}
-
-		$$ = $2;
-	}
-	| template_decl "class" IDENTIFIER
-	{
-		// TODO
-	}
-	| template_spec "class" template_instance_type
-	{
-		// TODO
-	}
-	| template_spec_with_instance_type "class" IDENTIFIER
-	{
-		// TODO
-	}
-	;
-
-struct_decl
-	: struct_identifier         // declaration
-	| struct_identifier '{' '}' // definition
-	{
-		string name = *$1;
-		bool defined = is_defined_typename(name);
-		if(defined) {
-			current_error = "Redefinition of 'struct " + name + "'.\n"
-				+ "\n\tPreviously defined: " + print_location(get_type(name)->definition) + "\n";
-			YYERROR;
-		}
-
-		// TODO: Generate struct
-	}
-	| struct_identifier '{' class_body '}'
-	{
-		string name = *$1;
-		bool defined = is_defined_typename(name);
-		if(defined) {
-			current_error = "Redefinition of 'struct " + name + "'.\n"
-				+ "\n\tPreviously defined: " + print_location(get_type(name)->definition) + "\n";
-			YYERROR;
-		}
-
-		// TODO: Generate struct
-	}
-	;
-
-struct_identifier
-	: "struct" IDENTIFIER
-	{
-		string name = *$2;
-		bool declared = is_declared_typename(name);
-		if(declared) {
-			Type* t = get_type(name);
-			if(t->subtype != CLASS_SUBTYPE) {
-				current_error = "'struct " + name + '\''
-				                + print_type_error(t->subtype, CLASS_SUBTYPE);
-					+ "\n\tFirst declared: " + print_location(t->declarations.front()) + "\n";
-				YYERROR;
-			}
-			t->declarations.push_back(yylloc);
-		} else if(is_typename_free(name)) {
-			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
-			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL, local_scope));
-		} else {
-			current_error = "TODO: name for struct has conflict";
-			YYERROR;
-		}
-
-		$$ = $2;
-	}
-	| template_decl "struct" IDENTIFIER
-	{
-		// TODO
-	}
-	| template_spec "struct" template_instance_type
-	{
-		// TODO
-	}
-	| template_spec_with_instance_type "struct" IDENTIFIER
-	{
-		// TODO
-	}
-	;
-
-typedef_decl
+typedef_declaration
 	: "typedef" type_name variable_spec
 	;
 
-namespace_decl
+namespace_declaration
 	: "namespace" attribute_directive '{' '}'
 	| "namespace" attribute_directive '{' declarations '}'
 	| "namespace" IDENTIFIER attribute_directive '{' '}'
 	| "namespace" IDENTIFIER attribute_directive '{' declarations '}'
 	;
 
-method_decl
-	: type_name variable_spec '(' ')' method_body attribute_directive
-	| type_name variable_spec '(' method_params ')' method_body attribute_directive
+method_declaration
+	: method_base attribute_directive
+	;
+
+method_base
+	: type_name variable_spec '(' ')'
+	| type_name variable_spec '(' method_params ')'
+	;
+
+method_definition
+	: method_base method_body
 	;
 
 method_params
@@ -490,8 +498,27 @@ compiler_attribute
 	;
 
 method_body
-	: empty
+	: '{' '}'
 	| '{' statements '}'
+	;
+
+existing_variable_identifier
+	: IDENTIFIER
+	{
+		if(get_variable(*$1, local_scope) == NULL) {
+			current_error = "TODO: identifier is not a variable";
+			YYERROR;
+		}
+	}
+	| qualified_name
+	{
+		if(get_variable($1, local_scope) == NULL) {
+			current_error = "TODO: qualified_name is not a variable";
+			YYERROR;
+		}
+
+		$$ = $1;
+	}
 	;
 
 variable_spec
@@ -507,20 +534,46 @@ variable_prefix
 type_name
 	: integer_type
 	| "bool"
-	| type_qualified_name
+	| existing_type_identifier
 	| template_instance_type
 	| "decltype" '(' IDENTIFIER ')'
 	| type_const_name
 	;
 
-type_qualified_name
-	: qualified_name
+existing_type_identifier
+	: IDENTIFIER
+	{
+		if(get_type(*$1, local_scope) == NULL) {
+			current_error = "'" + *$1 + "' doesn't name a type";
+			YYERROR;
+		}
+	}
+	| qualified_name
+	{
+		if(get_type($1, local_scope) == NULL) {
+			current_error = "TODO: qualified_name is not a type";
+			YYERROR;
+		}
+	}
+	| "typename" IDENTIFIER
+	{
+		if(get_type(*$2, local_scope) == NULL) {
+			current_error = "TODO: identifier is not a type";
+			YYERROR;
+		}
+	}
 	| "typename" qualified_name
+	{
+		if(get_type($2, local_scope) == NULL) {
+			current_error = "TODO: qualified_name is not a type";
+			YYERROR;
+		}
+	}
 	;
 
 type_const_name
 	: "const" integer_type
-	| "const" type_qualified_name
+	| "const" existing_type_identifier
 	| "const" template_instance_type
 	;
 
@@ -560,9 +613,10 @@ integer_type
 	;
 
 qualified_name
-	: IDENTIFIER
+	: IDENTIFIER "::" IDENTIFIER
 	{
 		$$ = new QualifiedName(*$1);
+		$$->names.push_back(*$3);
 	}
 	| qualified_name "::" IDENTIFIER
 	{
@@ -610,6 +664,40 @@ void cpp_parser_file(File* file) {
 }
 
 /* --- Helper Subroutines --- */
+bool is_varname_free(const string& name, Scope* scope) {
+	// Check if a similar variable exists in the same scope, we can mask parents
+	auto found = scope->symbols.find(name);
+	if(found == scope->symbols.end())
+	{
+		return true;
+	}
+
+	// Type names don't conflict with variable names.
+	if(found->second.type == TYPENAME_SYMBOL)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool is_typename_free(const string& name, Scope* scope) {
+	// Check if a similar variable exists in the same scope, we can mask parents
+	auto found = scope->symbols.find(name);
+	if(found == scope->symbols.end())
+	{
+		return true;
+	}
+
+	// Variable names don't conflict with type names.
+	if(found->second.type == VARIABLE_SYMBOL)
+	{
+		return true;
+	}
+
+	return false;
+}
+
 Scope* resolve_qualified(QualifiedName* name, Scope* scope) {
 	if(name->names.size() == 0) { return NULL; }
 	if(name->names.size() == 1) { return scope; }
@@ -630,61 +718,13 @@ Scope* resolve_qualified(QualifiedName* name, Scope* scope) {
 	return scope;
 }
 
-bool is_varname_free(const string& name, const Scope* scope) {
-	// Check if a similar variable exists in the same scope, we can mask parents
-	auto found = scope->symbols.find(name);
-	if(found == scope->symbols.end())
-	{
-		return true;
-	}
-
-	// If the scope of found isn't the current scope, we can mask the value
-	if(found->second.scope != scope)
-	{
-		return true;
-	}
-
-	// Type names don't conflict with variable names.
-	if(found->second.type == TYPENAME_SYMBOL)
-	{
-		return true;
-	}
-
-	return false;
-}
-
-bool is_declared_varname(QualifiedName* name, const Scope* scope) {
-	if(name->names.size() == 0) { return false; }
-
-	list<string>::iterator last = name->names.end()--;
-	for(auto it = name->names.begin(); it != last; ++it) {
-		scope = get_namespace(*it, scope);
-		if(scope == NULL) { return false; }
-	}
-
-	auto found = scope->symbols.find(*last);
-	if(found == scope->symbols.end())
-	{
-		return false;
-	}
-
-	// If the scope of found isn't the current scope,
-	//     then it is not in the qualified namespace
-	if(found->second.scope != scope)
-	{
-		return true;
-	}
-
-	return found->second.type == VARIABLE_SYMBOL;
-}
-
-//Scope* get_namespace(string name);
-Scope* get_namespace(string name, Scope* scope) {
+Variable* get_variable(const string& name, Scope* scope) {
+	// Keep traversing up scopes till we find the name
 	while(scope != NULL) {
-		auto found = scope->namespaces.find(name);
-		if(found != scope->namespaces.end())
+		auto found = scope->variables.find(name);
+		if(found != scope->variables.end())
 		{
-			return found->second;
+			return &found->second;
 		}
 		scope = scope->parent;
 	}
@@ -692,59 +732,24 @@ Scope* get_namespace(string name, Scope* scope) {
 	return NULL;
 }
 
-const Scope* get_namespace(string name, const Scope* scope) {
-	while(scope != NULL) {
-		auto found = scope->namespaces.find(name);
-		if(found != scope->namespaces.end())
-		{
-			return found->second;
-		}
-		scope = scope->parent;
+Variable* get_variable(QualifiedName* name, Scope* scope) {
+	if(name->names.size() == 0) { return NULL; }
+
+	// If the name doesn't have qualifications, it can be found anywhere
+	if(name->names.size() == 1) {
+		return get_variable(name->names.front(), scope);
 	}
 
-	return NULL;
-}
-
-bool is_typename_free(const string& name, const Scope* scope) {
-	auto found = scope->symbols.find(name);
-	if(found == scope->symbols.end())
-	{
-		return true;
-	}
-
-	// If the scope of found isn't the current scope, we can mask the value
-	if(found->second.scope != scope)
-	{
-		return true;
-	}
-
-	// Variable names don't conflict with type names.
-	if(found->second.type == VARIABLE_SYMBOL)
-	{
-		return true;
-	}
-
-	return false;
-}
-
-bool is_declared_typename(const string& name, const Scope* scope) {
-	while(scope != NULL) {
-		if(scope->types.find(name) != scope->types.end())
-		{
-			return true;
-		}
-		scope = scope->parent;
-	}
-
-	return false;
-}
-
-bool is_defined_typename(const string& name, const Scope* scope) {
-	const Type* t = get_type(name, scope);
-	return (t != NULL) && (t->definition.file != NULL);
+	// If the name has qualification it has to be found at that location
+	scope = resolve_qualified(name, scope);
+	if(scope == NULL) { return NULL; }
+	auto found = scope->variables.find(name->names.back());
+	if(found == scope->variables.end()) { return NULL; }
+	return &found->second;
 }
 
 Type* get_type(const string& name, Scope* scope) {
+	// Keep traversing up scopes till we find the name
 	while(scope != NULL) {
 		auto found = scope->types.find(name);
 		if(found != scope->types.end())
@@ -757,14 +762,30 @@ Type* get_type(const string& name, Scope* scope) {
 
 	return NULL;
 }
-const Type* get_type(const string& name, const Scope* scope) {
-	while(scope != NULL) {
-		auto found = scope->types.find(name);
-		if(found != scope->types.end())
-		{
-			return &found->second;
-		}
 
+Type* get_type(QualifiedName* name, Scope* scope) {
+	if(name->names.size() == 0) { return NULL; }
+
+	// If the name doesn't have qualifications, it can be found anywhere
+	if(name->names.size() == 1) {
+		return get_type(name->names.front(), scope);
+	}
+
+	// If the name has qualification it has to be found at that location
+	scope = resolve_qualified(name, scope);
+	if(scope == NULL) { return NULL; }
+	auto found = scope->types.find(name->names.back());
+	if(found == scope->types.end()) { return NULL; }
+	return &found->second;
+}
+
+Scope* get_namespace(const string& name, Scope* scope) {
+	while(scope != NULL) {
+		auto found = scope->namespaces.find(name);
+		if(found != scope->namespaces.end())
+		{
+			return found->second;
+		}
 		scope = scope->parent;
 	}
 

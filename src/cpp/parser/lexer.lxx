@@ -49,9 +49,7 @@
 	static int error_count;
 	static int warning_count;
 	static deque<Input*> inputs;
-	static Module* current_module = NULL;
-	#define macros (current_module->macros)
-	#define files (current_module->files)
+	static Module* module = NULL;
 	static MacroCall current_macro;
 	static string current_value;
 	static map<string, string> prev_include_dir;
@@ -199,7 +197,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 	inputs.front()->condition_depth++;
 	string condition = scan_if();
-	if(!parse_if_directive(current_module, condition)) {
+	if(!parse_if_directive(module, condition)) {
 		yy_push_state(elseif);
 	} else {
 		yy_push_state(INITIAL);
@@ -379,8 +377,9 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	accept();
 	yy_pop_state();
 
+	// Is the identifer a defined macro?
 	inputs.front()->condition_depth++;
-	if(macros.find(yytext) == macros.end()) {
+	if(module->macros.find(yytext) == module->macros.end()) {
 		yy_push_state(elseif);
 	} else {
 		yy_push_state(INITIAL);
@@ -411,11 +410,12 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	accept();
 	yy_pop_state();
 
+	// Is the identifier undefined as a macro?
 	inputs.front()->condition_depth++;
-	if(macros.find(yytext) == macros.end()) {
-		yy_push_state(INITIAL);
-	} else {
+	if(module->macros.find(yytext) != module->macros.end()) {
 		yy_push_state(elseif);
+	} else {
+		yy_push_state(INITIAL);
 	}
 
 	// Consume the rest of the line, except the newline (\n) character
@@ -447,7 +447,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 <undef>{IDENTIFIER} {
 	accept();
-	macros.erase(yytext);
+	module->macros.erase(yytext);
 
 	// Consume the rest of the line, except the newline (\n) character
 	int c = peek_char();
@@ -496,7 +496,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	accept();
 
 	string condition = scan_if();
-	if(parse_if_directive(current_module, condition)) {
+	if(parse_if_directive(module, condition)) {
 		yy_pop_state();
 		yy_push_state(INITIAL);
 	}
@@ -809,8 +809,8 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 	// Check if its a macro, and if it is, expand it
 	string identifier(yytext);
-	auto macro_it = macros.find(identifier);
-	if(macro_it !=  macros.end()) {
+	auto macro_it = module->macros.find(identifier);
+	if(macro_it !=  module->macros.end()) {
 		Macro macro = macro_it->second;
 		if(macro.is_function) {
 			yy_push_state(macro_start);
@@ -914,7 +914,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	current_macro.values.push_back(current_value);
 	current_value.clear();
 
-	Macro& macro = macros.find(current_macro.identifier)->second;
+	Macro& macro = module->macros.find(current_macro.identifier)->second;
 	string new_input = expand_macro(macro, current_macro);
 	if(!new_input.empty()) {
 		Input* input = new Input(macro.identifier);
@@ -1130,10 +1130,11 @@ static void scan_define(const string& identifier) {
 	}
 
 	def.replace_text = replace;
-	macros.emplace(identifier, def);
+	module->macros.emplace(identifier, def);
 }
 
 static string scan_if() {
+
 	string result;
 	int c = read_char();
 	while(c != EOF && c != '\n') {
@@ -1315,26 +1316,26 @@ static bool accept_include(char end_mark, bool next) {
 		c = peek_char();
 	}
 
-  // Skip to here to exit the above loop from within "switch"
+	// Skip to here to exit the above loop from within "switch"
   finish:
-  	auto prev_include = files.find(fileref);
-  	if(prev_include != files.end()) {
-  		// We've already included this file so get a
-  		//     pointer to the existing file object.
-  		if(prev_include->second->is_internal) {
-  			yyerror("Name conflict with compiler file.");
-  			return false;
-  		}
+	auto prev_include = module->files.find(fileref);
+	if(prev_include != module->files.end()) {
+		// We've already included this file so get a
+		//     pointer to the existing file object.
+		if(prev_include->second->is_internal) {
+			yyerror("Name conflict with compiler file.");
+			return false;
+		}
 
-  		Input* input = (Input*)(prev_include->second);
-  		inputs.push_front(input);
-  		input->times_included++;
-  	} else {
-  		// This is a new file, lets create an Input to represent it.
-  		Input* input = new Input(fileref);
+		Input* input = (Input*)(prev_include->second);
 		inputs.push_front(input);
-		files.emplace(input->name, input);  	
-  	}
+		input->times_included++;
+	} else {
+		// This is a new file, lets create an Input to represent it.
+		Input* input = new Input(fileref);
+		inputs.push_front(input);
+		module->files.emplace(input->name, input);
+	}
 
 	// Switch to the new buffer
 	yypush_buffer_state(yy_new_buffer(yyin, YY_BUF_SIZE));
@@ -1436,18 +1437,18 @@ Module* init_lexer(const string & filename) {
 	error_count = 0;
 	warning_count = 0;
 
-	current_module = new Module();
+	module = new Module();
 
-	macros.clear();
+	module->macros.clear();
 	vector<Macro> predefines = get_compiler_defines();
 	for(auto it = predefines.begin(); it != predefines.end(); ++it) {
-		macros.emplace(it->identifier, (*it));
+		module->macros.emplace(it->identifier, (*it));
 	}
 
 	inputs.clear();
 	Input* input = new Input(filename);
 	inputs.push_front(input);
-	files.emplace(filename, input);
+	module->files.emplace(filename, input);
 
 	yyout = fopen("/dev/null", "w");
 	yyin = fopen(filename.c_str(), "r");
@@ -1456,30 +1457,30 @@ Module* init_lexer(const string & filename) {
 		return NULL;
 	}
 
-	return current_module;
+	return module;
 }
 
 Module* init_lexer(const string & filename, FILE* file) {
 	error_count = 0;
 	warning_count = 0;
 
-	current_module = new Module();
+	module = new Module();
 
-	macros.clear();
+	module->macros.clear();
 	vector<Macro> predefines = get_compiler_defines();
 	for(auto it = predefines.begin(); it != predefines.end(); ++it) {
-		macros.emplace(it->identifier, (*it));
+		module->macros.emplace(it->identifier, (*it));
 	}
 
 	inputs.clear();
 	Input* input = new Input(filename);
 	inputs.push_front(input);
-	files.emplace(filename, input);
+	module->files.emplace(filename, input);
 
 	yyout = fopen("/dev/null", "w");
 	yyin = file;
 
-	return current_module;
+	return module;
 }
 
 int cpp_errors() { return error_count; }

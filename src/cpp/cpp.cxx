@@ -7,7 +7,7 @@ using namespace std;
 
 File::File(const string & filename) : File(filename, false) {}
 File::File(const string & filename, bool internal) :
-	name(filename), is_internal(internal), scope(FILE_SCOPE) {}
+	name(filename), scope(FILE_SCOPE), is_internal(internal) {}
 
 Location::Location(File * f) : file(f),
 	first_line(0), first_column(0),
@@ -16,7 +16,7 @@ Location::Location(File * f) : file(f),
 Location Location::copy()
 {
 	Location l(file);
-	l.comment = new string(*comment);
+	l.comment = comment;
 	l.first_line = first_line;
 	l.last_line = last_line;
 	l.first_column = first_column;
@@ -24,14 +24,14 @@ Location Location::copy()
 	return l;
 }
 
-Type::Type() : subtype(INVALID_SUBTYPE), definition(NULL) {}
+Type::Type() : subtype(INVALID_SUBTYPE), is_defined(false) {}
 Type::Type(Subtype subtype, Location declaration) :
-	subtype(subtype), definition(NULL) {
+	subtype(subtype), is_defined(false) {
 	declarations.push_back(declaration);
 }
 
-Symbol::Symbol(const std::string& name, SymbolType type, Scope* scope) :
-	name(name), type(type), scope(scope) {}
+Symbol::Symbol(const std::string& name, SymbolType type) :
+	name(name), type(type) {}
 
 Scope::Scope(Scope* parent, ScopeType type) :
 	type(type), parent(parent), symbols(), types(), variables(), namespaces() {}
@@ -155,6 +155,8 @@ vector<Macro> get_compiler_defines() {
 		compiler_defines.push_back(Macro("_XOPEN_SOURCE", "700", gcc_builtin));
 		compiler_defines.push_back(Macro("_POSIX_SOURCE", "1", gcc_builtin));
 		compiler_defines.push_back(Macro("_POSIX_C_SOURCE", "200809L", gcc_builtin));
+		compiler_defines.push_back(Macro("__SIZE_TYPE__", "unsigned long int", gcc_builtin));
+		compiler_defines.push_back(Macro("__PTRDIFF_TYPE__", "long int", gcc_builtin));
 	}
 
 	return compiler_defines;

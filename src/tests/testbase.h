@@ -21,8 +21,8 @@ extern string tb_test_name;
 /* Define testbase macros */
 // To define a new unittest, define a new function using
 //     UNITTEST(test_name) as the function prototype.
-#define UNITTEST(name)    \
-	string tb_test_name = #name; \
+#define UNITTEST(name)               \
+	string tb_test_name = #name;     \
 	int main(int argc, char* argv[])
 
 // The pass and fail macros cause the test to immediately pass or fail;

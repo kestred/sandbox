@@ -16,11 +16,12 @@ using std::set;
 using std::pair;
 
 //Forward Declarations
+struct File;
+struct Macro;
 struct Symbol;
 struct Type;
 struct Variable;
 struct Namespace;
-struct Macro;
 
 /* Utility Functions */
 vector<string> get_compiler_includes();
@@ -28,6 +29,39 @@ vector<Macro> get_compiler_defines();
 
 
 /* Type Definitions */
+// A Module is an upper level representation of the state of parsed symbols.
+//     Typically there will be a single Module, representing the global space.
+struct Module {
+	map<string, File*> files;
+	map<string, Macro> macros;
+};
+
+struct Location {
+	Location() = default;
+	Location(File*);
+	Location copy();
+
+	File* file;
+	string* comment;
+	int first_line, first_column;
+	int last_line, last_column;
+};
+static_assert(std::is_trivial<Location>::value,
+	"Location is used by GLR parser, so it must be trivial.");
+
+struct Macro {
+	Macro(const string & identifier);
+	Macro(const string & identifier, Location);
+	Macro(const string & name, const string & text, Location);
+
+	string identifier;
+	string replace_text;
+	Location definition;
+
+	bool is_function;
+	vector<string> args;
+};
+
 enum ScopeType {
 	ANONYMOUS_SCOPE,
 	NAMESPACE_SCOPE,
@@ -54,23 +88,12 @@ struct File {
 	File(const string& filename, bool internal);
 
 	string name;
-	bool is_internal;
+	list<string> comments;
 
 	Scope scope;
-};
+	bool is_internal;
 
-struct Location {
-	Location() = default;
-	Location(File*);
-	Location copy();
-
-	File* file;
-	string* comment;
-	int first_line, first_column;
-	int last_line, last_column;
 };
-static_assert(std::is_trivial<Location>::value,
-	"Location is used by GLR parser, so it must be trivial.");
 
 enum SymbolType {
 	TYPENAME_SYMBOL,
@@ -79,12 +102,11 @@ enum SymbolType {
 };
 
 struct Symbol {
-	Symbol(const string& name, SymbolType type, Scope* scope);
+	Symbol(const string& name, SymbolType type);
 	operator string();
 
 	string name;
 	SymbolType type;
-	Scope* scope;
 };
 
 enum Subtype {
@@ -101,6 +123,8 @@ struct Type {
 	Subtype subtype;
 	Location definition;
 	list<Location> declarations;
+
+	bool is_defined;
 };
 
 struct Variable {
@@ -111,30 +135,10 @@ struct Variable {
 	string value;
 };
 
-struct Macro {
-	Macro(const string & identifier);
-	Macro(const string & identifier, Location);
-	Macro(const string & name, const string & text, Location);
-
-	string identifier;
-	string replace_text;
-	Location definition;
-
-	bool is_function;
-	vector<string> args;
-};
-
 struct Class {
 	string name;
 
 	Type* type;
 	list<Class*> parents;
 
-};
-
-// A Module is an upper level representation of the state of parsed symbols.
-//     Typically there will be a single Module, representing the global space.
-struct Module {
-	map<string, File*> files;
-	map<string, Macro> macros;
 };
