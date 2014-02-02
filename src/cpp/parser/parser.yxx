@@ -106,6 +106,7 @@
 %token KW_LONG     "long"
 %token KW_SHORT    "short"
 %token KW_BOOL     "bool"
+%token KW_VOID     "void"
 
 // Compiler directives
 %token KW_ATTRIBUTE "__attribute__"
@@ -414,7 +415,45 @@ struct_identifier
 
 template_declaration
 	: "template" "<" template_type_list ">" "class" IDENTIFIER
+	{
+		string name = *$6;
+		Type* prev = get_type(name, local_scope);
+		if(prev != NULL) {
+			if(prev->subtype != TEMPLATE_SUBTYPE) {
+				current_error = "'template<...> class " + name + '\''
+				                + print_type_error(prev->subtype, CLASS_SUBTYPE)
+					            + "\n\tFirst declared: "
+					            + print_location(prev->declarations.front()) + "\n";
+				YYERROR;
+			}
+		} else if(is_typename_free(name, local_scope)) {
+			local_scope->types.emplace(name, Type(TEMPLATE_SUBTYPE, yylloc));
+			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL));
+		} else {
+			current_error = "TODO: name for template class has conflict";
+			YYERROR;
+		}
+	}
 	| "template" "<" template_type_list ">" "struct" IDENTIFIER
+	{
+		string name = *$6;
+		Type* prev = get_type(name, local_scope);
+		if(prev != NULL) {
+			if(prev->subtype != TEMPLATE_SUBTYPE) {
+				current_error = "'template<...> struct " + name + '\''
+				                + print_type_error(prev->subtype, CLASS_SUBTYPE)
+					            + "\n\tFirst declared: "
+					            + print_location(prev->declarations.front()) + "\n";
+				YYERROR;
+			}
+		} else if(is_typename_free(name, local_scope)) {
+			local_scope->types.emplace(name, Type(TEMPLATE_SUBTYPE, yylloc));
+			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL));
+		} else {
+			current_error = "TODO: name for template struct has conflict";
+			YYERROR;
+		}
+	}
 	;
 
 template_specialization
@@ -534,10 +573,11 @@ variable_prefix
 type_name
 	: integer_type
 	| "bool"
+	| "void"
 	| existing_type_identifier
+	| type_const_name
 	| template_instance_type
 	| "decltype" '(' IDENTIFIER ')'
-	| type_const_name
 	;
 
 existing_type_identifier
