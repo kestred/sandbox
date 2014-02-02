@@ -15,7 +15,7 @@ static char file[] = "\n"
 "template<class X> struct A;\n"
 
 // We can specialize the templates
-"template<> class A<int>\n"
+"template<> class A<int>;\n"
 
 // And we can have partially specialized templates
 "template<typename T, typename U> struct E;\n"
