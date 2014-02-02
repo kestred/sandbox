@@ -4,20 +4,20 @@
 #include "cpp/parser/parser.h"
 
 static const char* filename = "test_simple_classes.src";
-static char file[] = 
+static char file[] = "\n"
 // Lets try declaring a struct
-"struct A;"
+"struct A;\n"
 
 // Now lets define an empty struct
-"struct B {};"
+"struct B {};\n"
 
 // Lets try with classes
-"class C;"
-"class D {};"
+"class C;\n"
+"class D {};\n"
 
 // Now lets first declare a class, then define it later
-"class E;"
-"class E {};"
+"class E;\n"
+"class E {};\n"
 ;
 
 UNITTEST(test_simple_classes) {
