@@ -191,6 +191,7 @@ declaration
 	| struct_declaration ';'
 	| template_declaration ';'
 	| template_specialization ';'
+	| template_partial ';'
 	| typedef_declaration ';'
 	| variable_declaration ';'
 	;
@@ -467,15 +468,26 @@ template_type_list
 	;
 
 template_type
-	: template_type_identifier
-	| template_type_identifier "=" template_instance_type
-	;
-
-template_type_identifier
 	: "class"
 	| "typename"
 	| "class" IDENTIFIER
 	| "typename" IDENTIFIER
+	;
+
+template_partial
+	: "template" "<" template_partial_list ">" "class" IDENTIFIER
+	| "template" "<" template_partial_list ">" "struct" IDENTIFIER
+	;
+
+template_partial_list
+	: template_partial_type
+	| template_partial_list ',' template_partial_type
+	| template_partial_list ',' template_type_list
+	| template_type_list ',' template_partial_list
+	;
+
+template_partial_type
+	: template_type "=" template_instance_type
 	;
 
 template_instance_type
