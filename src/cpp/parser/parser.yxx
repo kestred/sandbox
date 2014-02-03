@@ -100,6 +100,7 @@
 // Fundamental-type keywords
 %token KW_INT      "int"
 %token KW_CHAR     "char"
+%token KW_FLOAT    "float"
 %token KW_DOUBLE   "double"
 %token KW_UNSIGNED "unsigned"
 %token KW_SIGNED   "signed"
@@ -336,9 +337,10 @@ class_identifier
 				YYERROR;
 			}
 			prev->declarations.push_back(yylloc);
+
 		} else if(is_typename_free(name, local_scope)) {
 			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
-			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL));
+
 		} else {
 			current_error = "TODO: name for class has conflict";
 			YYERROR;
@@ -402,9 +404,10 @@ struct_identifier
 				YYERROR;
 			}
 			prev->declarations.push_back(yylloc);
+
 		} else if(is_typename_free(name, local_scope)) {
 			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
-			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL));
+
 		} else {
 			current_error = "TODO: name for struct has conflict";
 			YYERROR;
@@ -414,44 +417,90 @@ struct_identifier
 	}
 	;
 
+start_template_scope
+	: "template" "<" { local_scope = new Scope(local_scope, TEMPLATE_SCOPE); }
+	;
+
 template_declaration
-	: "template" "<" template_type_list ">" "class" IDENTIFIER
+	: start_template_scope template_type_list ">" "class" IDENTIFIER
 	{
-		string name = *$6;
-		Type* prev = get_type(name, local_scope);
-		if(prev != NULL) {
-			if(prev->subtype != TEMPLATE_SUBTYPE) {
+		Scope* template_scope = local_scope;
+		local_scope = local_scope->parent;
+
+		string name = *$5;
+		Type* type = get_type(name, local_scope);
+		if(type != NULL) {
+			if(type->subtype != TEMPLATE_SUBTYPE) {
 				current_error = "'template<...> class " + name + '\''
-				                + print_type_error(prev->subtype, CLASS_SUBTYPE)
-					            + "\n\tFirst declared: "
-					            + print_location(prev->declarations.front()) + "\n";
+				                + print_type_error(type->subtype, CLASS_SUBTYPE)
+				                + "\n\tFirst declared: "
+				                + print_location(type->declarations.front()) + "\n";
 				YYERROR;
 			}
+
+			/*
+			Template* templ = get_template(name, local_scope);
+			size_t expected_args = templ->scope->types.size();
+			size_t received_args = template_scope->types.size();
+			if(expected_args != received_args) {
+				current_error = "TODO: num template args is different";
+				delete template_scope;
+				YYERROR;
+			}
+			*/
+
+			type->declarations.push_back(yylloc);
+			delete template_scope;
+
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types.emplace(name, Type(TEMPLATE_SUBTYPE, yylloc));
-			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL));
+			local_scope->types[name] = Type(TEMPLATE_SUBTYPE, yylloc);
+			type = &local_scope->types[name];
+
+			local_scope->templates[name] = Template(name, type, template_scope);
+
 		} else {
 			current_error = "TODO: name for template class has conflict";
 			YYERROR;
 		}
 	}
-	| "template" "<" template_type_list ">" "struct" IDENTIFIER
+	| start_template_scope template_type_list ">" "struct" IDENTIFIER
 	{
-		string name = *$6;
-		Type* prev = get_type(name, local_scope);
-		if(prev != NULL) {
-			if(prev->subtype != TEMPLATE_SUBTYPE) {
-				current_error = "'template<...> struct " + name + '\''
-				                + print_type_error(prev->subtype, CLASS_SUBTYPE)
-					            + "\n\tFirst declared: "
-					            + print_location(prev->declarations.front()) + "\n";
+		Scope* template_scope = local_scope;
+		local_scope = local_scope->parent;
+
+		string name = *$5;
+		Type* type = get_type(name, local_scope);
+		if(type != NULL) {
+			if(type->subtype != TEMPLATE_SUBTYPE) {
+				current_error = "'template<...> class " + name + '\''
+				                + print_type_error(type->subtype, CLASS_SUBTYPE)
+				                + "\n\tFirst declared: "
+				                + print_location(type->declarations.front()) + "\n";
 				YYERROR;
 			}
+
+			/*
+			Template* templ = get_template(name, local_scope);
+			size_t expected_args = templ->scope->types.size();
+			size_t received_args = template_scope->types.size();
+			if(expected_args != received_args) {
+				current_error = "TODO: num template args is different";
+				delete template_scope;
+				YYERROR;
+			}
+			*/
+
+			type->declarations.push_back(yylloc);
+			delete template_scope;
+
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types.emplace(name, Type(TEMPLATE_SUBTYPE, yylloc));
-			local_scope->symbols.emplace(name, Symbol(name, TYPENAME_SYMBOL));
+			local_scope->types[name] = Type(TEMPLATE_SUBTYPE, yylloc);
+			type = &local_scope->types[name];
+
+			local_scope->templates[name] = Template(name, type, template_scope);
+
 		} else {
-			current_error = "TODO: name for template struct has conflict";
+			current_error = "TODO: name for template class has conflict";
 			YYERROR;
 		}
 	}
@@ -469,14 +518,114 @@ template_type_list
 
 template_type
 	: "class"
+	{
+		local_scope->types.emplace(get_internal_identifier(local_scope),
+		                           Type(DEFERRED_SUBTYPE, yylloc));
+	}
 	| "typename"
+	{
+		local_scope->types.emplace(get_internal_identifier(local_scope),
+		                           Type(DEFERRED_SUBTYPE, yylloc));
+	}
 	| "class" IDENTIFIER
+	{
+		string name = *$2;
+		local_scope->types.emplace(name, Type(DEFERRED_SUBTYPE, yylloc));
+	}
 	| "typename" IDENTIFIER
+	{
+		string name = *$2;
+		local_scope->types.emplace(name, Type(DEFERRED_SUBTYPE, yylloc));
+	}
 	;
 
 template_partial
-	: "template" "<" template_partial_list ">" "class" IDENTIFIER
-	| "template" "<" template_partial_list ">" "struct" IDENTIFIER
+	: start_template_scope template_partial_list ">" "class" IDENTIFIER
+	{
+		Scope* template_scope = local_scope;
+		local_scope = local_scope->parent;
+
+		string name = *$5;
+		Type* type = get_type(name, local_scope);
+		if(type != NULL) {
+			if(type->subtype != TEMPLATE_SUBTYPE) {
+				current_error = "'template<...> class " + name + "'"
+				                + print_type_error(type->subtype, CLASS_SUBTYPE)
+				                + "\n\tFirst declared: "
+				                + print_location(type->declarations.front()) + "\n";
+				YYERROR;
+			}
+
+			/*
+			Template* templ = get_template(name, local_scope);
+			size_t expected_args = templ->scope->types.size();
+			size_t received_args = template_scope->types.size();
+			if(expected_args != received_args) {
+				current_error = "TODO: num template args is different";
+				delete template_scope;
+				YYERROR;
+			}
+			*/
+
+			// TODO: Test default template argument equivilance
+
+			type->declarations.push_back(yylloc);
+			delete template_scope;
+
+		} else if(is_typename_free(name, local_scope)) {
+			local_scope->types[name] = Type(TEMPLATE_SUBTYPE, yylloc);
+			type = &local_scope->types[name];
+
+			local_scope->templates[name] = Template(name, type, template_scope);
+
+		} else {
+			current_error = "TODO: name for template class has conflict";
+			YYERROR;
+		}
+	}
+	| start_template_scope template_partial_list ">" "struct" IDENTIFIER
+	{
+		Scope* template_scope = local_scope;
+		local_scope = local_scope->parent;
+
+		string name = *$5;
+		Type* type = get_type(name, local_scope);
+		if(type != NULL) {
+			if(type->subtype != TEMPLATE_SUBTYPE) {
+				current_error = "'template<...> class " + name + "'"
+				                + print_type_error(type->subtype, CLASS_SUBTYPE)
+				                + "\n\tFirst declared: "
+				                + print_location(type->declarations.front()) + "\n";
+				YYERROR;
+			}
+
+			/*
+			Template* templ = get_template(name, local_scope);
+			size_t expected_args = templ->scope->types.size();
+			size_t received_args = template_scope->types.size();
+			if(expected_args != received_args) {
+				current_error = "TODO: num template args is different";
+				delete template_scope;
+				YYERROR;
+			}
+			*/
+
+			// TODO: Test default template argument equivilance
+
+			type->declarations.push_back(yylloc);
+			delete template_scope;
+
+		} else if(is_typename_free(name, local_scope)) {
+			local_scope->types[name] = Type(TEMPLATE_SUBTYPE, yylloc);
+			type = &local_scope->types[name];
+
+			local_scope->templates[name] = Template(name, type, template_scope);
+
+		} else {
+			current_error = "TODO: name for template class has conflict";
+			YYERROR;
+		}
+	}
 	;
 
 template_partial_list
@@ -487,7 +636,7 @@ template_partial_list
 	;
 
 template_partial_type
-	: template_type "=" template_instance_type
+	: template_type "=" type_name
 	;
 
 template_instance_type
@@ -583,9 +732,10 @@ variable_prefix
 	;
 
 type_name
-	: integer_type
+	: "void"
 	| "bool"
-	| "void"
+	| integer_type
+	| float_type
 	| existing_type_identifier
 	| type_const_name
 	| template_instance_type
@@ -625,6 +775,7 @@ existing_type_identifier
 
 type_const_name
 	: "const" integer_type
+	| "const" float_type
 	| "const" existing_type_identifier
 	| "const" template_instance_type
 	;
@@ -662,6 +813,12 @@ integer_type
 	| integer_type "int"
 	| integer_type "unsigned"
 	| integer_type "signed"
+	;
+
+float_type
+	: "float"
+	| "double"
+	| "long" "double"
 	;
 
 qualified_name
@@ -717,37 +874,33 @@ void cpp_parser_file(File* file) {
 
 /* --- Helper Subroutines --- */
 bool is_varname_free(const string& name, Scope* scope) {
-	// Check if a similar variable exists in the same scope, we can mask parents
-	auto found = scope->symbols.find(name);
-	if(found == scope->symbols.end())
-	{
-		return true;
+	// Check if a similar variable exists in the same scope.
+	//     We can mask outer scopes, so we don't have to check them.
+	if(scope->variables.find(name) != scope->variables.end()) {
+		return false;
 	}
 
-	// Type names don't conflict with variable names.
-	if(found->second.type == TYPENAME_SYMBOL)
-	{
-		return true;
+	// Namespace names conflict with variable names.
+	if(scope->namespaces.find(name) != scope->namespaces.end()) {
+		return false;
 	}
 
-	return false;
+	return true;
 }
 
 bool is_typename_free(const string& name, Scope* scope) {
-	// Check if a similar variable exists in the same scope, we can mask parents
-	auto found = scope->symbols.find(name);
-	if(found == scope->symbols.end())
-	{
-		return true;
+	// Check if a similar type exists in the same scope.
+	//     We can mask outer scopes, so we don't have to check them.
+	if(scope->types.find(name) != scope->types.end()) {
+		return false;
 	}
 
-	// Variable names don't conflict with type names.
-	if(found->second.type == VARIABLE_SYMBOL)
-	{
-		return true;
+	// Namespace names conflict with type names.
+	if(scope->namespaces.find(name) != scope->namespaces.end()) {
+		return false;
 	}
 
-	return false;
+	return true;
 }
 
 Scope* resolve_qualified(QualifiedName* name, Scope* scope) {

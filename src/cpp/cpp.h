@@ -16,16 +16,24 @@ using std::set;
 using std::pair;
 
 //Forward Declarations
+struct Scope;
 struct File;
 struct Macro;
-struct Symbol;
 struct Type;
 struct Variable;
-struct Namespace;
+struct Template;
 
 /* Utility Functions */
+// get_compiler_includes returns the include directories
+//     for the compiler in the order that the compiler searches them.
 vector<string> get_compiler_includes();
+// get_compiler_defines returns the set of defines provided
+//     by the compiler, and for compliance to various standards.
 vector<Macro> get_compiler_defines();
+// get_internal_identifier returns an identifier formatted as "$" followed
+//     by a string of identifier-characters that is guaranteed to be
+//     different from other values returned for the provided scope.
+string get_internal_identifier(const Scope*);
 
 
 /* Type Definitions */
@@ -49,22 +57,11 @@ struct Location {
 static_assert(std::is_trivial<Location>::value,
 	"Location is used by GLR parser, so it must be trivial.");
 
-struct Macro {
-	Macro(const string & identifier);
-	Macro(const string & identifier, Location);
-	Macro(const string & name, const string & text, Location);
-
-	string identifier;
-	string replace_text;
-	Location definition;
-
-	bool is_function;
-	vector<string> args;
-};
-
 enum ScopeType {
 	ANONYMOUS_SCOPE,
 	NAMESPACE_SCOPE,
+	TEMPLATE_SCOPE,
+	CLASS_SCOPE,
 	FILE_SCOPE
 };
 
@@ -76,18 +73,18 @@ struct Scope {
 	ScopeType type;
 	Scope* parent;
 
-	map<string, Symbol> symbols;
-
 	map<string, Type> types;
 	map<string, Variable> variables;
 	map<string, Scope*> namespaces;
+
+	map<string, Template> templates;
 };
 
 struct File {
 	File(const string& filename);
 	File(const string& filename, bool internal);
-
 	string name;
+
 	list<string> comments;
 
 	Scope scope;
@@ -95,30 +92,28 @@ struct File {
 
 };
 
-enum SymbolType {
-	TYPENAME_SYMBOL,
-	VARIABLE_SYMBOL,
-	NAMESPACE_SYMBOL
-};
-
-struct Symbol {
-	Symbol(const string& name, SymbolType type);
-	operator string();
-
-	string name;
-	SymbolType type;
-};
-
 enum Subtype {
 	ENUM_SUBTYPE,
 	CLASS_SUBTYPE,
 	TEMPLATE_SUBTYPE,
+	DEFERRED_SUBTYPE,
 	INVALID_SUBTYPE
+};
+
+struct Template {
+	Template();
+	Template(const string& name, Type* type, Scope* scope);
+	string name;
+
+	Type* type;
+	Scope* scope;
+	map<string, Type*> defaults;
 };
 
 struct Type {
 	Type();
 	Type(Subtype, Location declaration);
+	string name;
 
 	Subtype subtype;
 	Location definition;
@@ -129,16 +124,32 @@ struct Type {
 
 struct Variable {
 	Variable();
-	Variable(Type* type);
+	Variable(const string& name, Type* type);
+	string name;
 
 	Type* type;
 	string value;
 };
 
 struct Class {
+	Class();
+	Class(const string& name, Type* type);
 	string name;
 
 	Type* type;
 	list<Class*> parents;
 
+};
+
+struct Macro {
+	Macro(const string & identifier);
+	Macro(const string & identifier, Location);
+	Macro(const string & name, const string & text, Location);
+
+	string identifier;
+	string replace_text;
+	Location definition;
+
+	bool is_function;
+	vector<string> args;
 };

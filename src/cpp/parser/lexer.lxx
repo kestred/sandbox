@@ -656,6 +656,16 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	emit(TOKEN_KW_BOOL);
 }
 
+"float" {
+	accept();
+	emit(TOKEN_KW_FLOAT);
+}
+
+"double" {
+	accept();
+	emit(TOKEN_KW_DOUBLE);
+}
+
 "signed" {
 	accept();
 	emit(TOKEN_KW_SIGNED);

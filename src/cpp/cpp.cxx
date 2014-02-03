@@ -30,11 +30,14 @@ Type::Type(Subtype subtype, Location declaration) :
 	declarations.push_back(declaration);
 }
 
-Symbol::Symbol(const std::string& name, SymbolType type) :
-	name(name), type(type) {}
+Template::Template() : Template("", NULL, NULL) {}
+Template::Template(const string& name, Type* type, Scope* scope) :
+	name(name), type(type), scope(scope) {
+
+}
 
 Scope::Scope(Scope* parent, ScopeType type) :
-	type(type), parent(parent), symbols(), types(), variables(), namespaces() {}
+	type(type), parent(parent), types(), variables(), namespaces() {}
 Scope::Scope(ScopeType type) : Scope(NULL, type) {}
 Scope::~Scope() {
 	for(auto it = namespaces.begin(); it != namespaces.end(); ++it) {
@@ -43,7 +46,6 @@ Scope::~Scope() {
 
 	type = ANONYMOUS_SCOPE;
 	parent = NULL;
-	symbols.clear();
 	types.clear();
 	variables.clear();
 	namespaces.clear();
@@ -53,11 +55,6 @@ Macro::Macro(const string & name) : Macro(name, Location()) {}
 Macro::Macro(const string & name, Location loc) : Macro(name, "", loc) {}
 Macro::Macro(const string & name, const string & text, Location loc) :
 	identifier(name), replace_text(text), definition(loc), is_function(false) {}
-
-static vector<string> include_dirs;
-static vector<Macro> compiler_defines;
-static string version;
-static string target;
 
 static string exec(string cmd) {
 	FILE* pipe = popen(cmd.c_str(), "r");
@@ -77,15 +74,18 @@ static string exec(string cmd) {
 	return result;
 }
 
+static string gcc_version;
+static string gcc_target;
 static void get_gcc_env() {
-	if(target.empty()) {
-		target = trim(exec("gcc -v 2>&1 | grep Target | cut -f 2 --delimiter=\" \""));
+	if(gcc_target.empty()) {
+		gcc_target = trim(exec("gcc -v 2>&1 | grep Target | cut -f 2 --delimiter=\" \""));
 	}
-	if(version.empty()) {
-		version = trim(exec("gcc -v 2>&1 | grep \"gcc version\" | cut -f 3 --delimiter=\" \""));
+	if(gcc_version.empty()) {
+		gcc_version = trim(exec("gcc -v 2>&1 | grep \"gcc version\" | cut -f 3 --delimiter=\" \""));
 	}
 }
 
+static vector<string> include_dirs;
 vector<string> get_compiler_includes() {
 	if(include_dirs.empty()) {
 		get_gcc_env();
@@ -93,7 +93,7 @@ vector<string> get_compiler_includes() {
 		string dirpath;
 		struct stat st;
 
-		dirpath = "/usr/include/c++/" + version + "/";
+		dirpath = "/usr/include/c++/" + gcc_version + "/";
 		stat(dirpath.c_str(), &st);
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
@@ -103,22 +103,22 @@ vector<string> get_compiler_includes() {
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
 		}
-		dirpath = "/usr/lib/gcc/" + target + "/" + version + "/include/";
+		dirpath = "/usr/lib/gcc/" + gcc_target + "/" + gcc_version + "/include/";
 		stat(dirpath.c_str(), &st);
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
 		}
-		dirpath += "g++-v" + version.substr(0,1) + "/";
+		dirpath += "g++-v" + gcc_version.substr(0,1) + "/";
 		stat(dirpath.c_str(), &st);
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
 		}
-		dirpath += target + "/";
+		dirpath += gcc_target + "/";
 		stat(dirpath.c_str(), &st);
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
 		}
-		dirpath = "/usr/" + target + "/include/";
+		dirpath = "/usr/" + gcc_target + "/include/";
 		stat(dirpath.c_str(), &st);
 		if(S_ISDIR(st.st_mode)) {
 			include_dirs.push_back(dirpath);
@@ -133,6 +133,7 @@ vector<string> get_compiler_includes() {
 	return include_dirs;
 }
 
+static vector<Macro> compiler_defines;
 vector<Macro> get_compiler_defines() {
 	if(compiler_defines.empty()) {
 		get_gcc_env();
@@ -146,9 +147,9 @@ vector<Macro> get_compiler_defines() {
 
 		/* Handle GCC */
 		Location gcc_builtin(new File("__gcc_builtin__", true));
-		compiler_defines.push_back(Macro("__GNUC__", version.substr(0,1), gcc_builtin));
-		compiler_defines.push_back(Macro("__GNUC_MINOR__", version.substr(2,1), gcc_builtin));
-		compiler_defines.push_back(Macro("__GNUC_PATCHLEVEL__", version.substr(4,1), gcc_builtin));
+		compiler_defines.push_back(Macro("__GNUC__", gcc_version.substr(0,1), gcc_builtin));
+		compiler_defines.push_back(Macro("__GNUC_MINOR__", gcc_version.substr(2,1), gcc_builtin));
+		compiler_defines.push_back(Macro("__GNUC_PATCHLEVEL__", gcc_version.substr(4,1), gcc_builtin));
 		compiler_defines.push_back(Macro("__extension__", gcc_builtin));
 		compiler_defines.push_back(Macro("__EXCEPTIONS", "1", gcc_builtin));
 		compiler_defines.push_back(Macro("__STDC_HOSTED__", "1", gcc_builtin));
@@ -160,4 +161,30 @@ vector<Macro> get_compiler_defines() {
 	}
 
 	return compiler_defines;
+}
+
+struct LastIdentifier {
+	LastIdentifier() : name("a") {}
+	string name;
+};
+static map<const Scope*, LastIdentifier> scope_identifiers;
+string get_internal_identifier(const Scope* scope) {
+	LastIdentifier* prev = &scope_identifiers[scope];
+
+	unsigned int i;
+	for(i = 0; i < prev->name.length() ; ++i) {
+		unsigned int n = prev->name.length() - i - 1;
+		prev->name[n] += 1;
+		if(prev->name[n] > 'z') {
+			prev->name[n] = 'a';
+		} else {
+			break;
+		}
+	}
+
+	if(i == prev->name.length()) {
+		prev->name += 'a';
+	}
+
+	return prev->name;
 }

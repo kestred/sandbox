@@ -47,7 +47,7 @@ UNITTEST(test_simple_classes) {
 	assert(global->templates.find("K") != global->templates.end(), "Template 'K' doesn't exist.");
 
 	// Check no extra bogus/duplicate templates exist
-	assert_equal(global->templates.size(), 8);
+	assert_equal(global->templates.size(), 10);
 
 	// Lets put those values into locals for convenience
 	Template* templateA = &global->templates.find("A")->second;
@@ -62,16 +62,16 @@ UNITTEST(test_simple_classes) {
 	Template* templateK = &global->templates.find("K")->second;
 
 	// Check the template scopes are a children of the global scope
-	assert_equal(templateA->scope, global);
-	assert_equal(templateB->scope, global);
-	assert_equal(templateC->scope, global);
-	assert_equal(templateD->scope, global);
-	assert_equal(templateE->scope, global);
-	assert_equal(templateF->scope, global);
-	assert_equal(templateG->scope, global);
-	assert_equal(templateH->scope, global);
-	assert_equal(templateJ->scope, global);
-	assert_equal(templateK->scope, global);
+	assert_equal(templateA->scope->parent, global);
+	assert_equal(templateB->scope->parent, global);
+	assert_equal(templateC->scope->parent, global);
+	assert_equal(templateD->scope->parent, global);
+	assert_equal(templateE->scope->parent, global);
+	assert_equal(templateF->scope->parent, global);
+	assert_equal(templateG->scope->parent, global);
+	assert_equal(templateH->scope->parent, global);
+	assert_equal(templateJ->scope->parent, global);
+	assert_equal(templateK->scope->parent, global);
 
 	// Check our templates have the correct template arguments
 	assert_equal(templateA->scope->types.size(), 1); // Named types should exist
