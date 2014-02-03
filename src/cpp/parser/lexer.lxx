@@ -651,6 +651,21 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	emit(TOKEN_KW_CHAR);
 }
 
+"char16_t" {
+	accept();
+	emit(TOKEN_KW_CHAR16_T);
+}
+
+"char32_t" {
+	accept();
+	emit(TOKEN_KW_CHAR32_T);
+}
+
+"wchar_t" {
+	accept();
+	emit(TOKEN_KW_WCHAR_T);
+}
+
 "bool" {
 	accept();
 	emit(TOKEN_KW_BOOL);

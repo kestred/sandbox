@@ -99,13 +99,16 @@
 
 // Fundamental-type keywords
 %token KW_INT      "int"
-%token KW_CHAR     "char"
 %token KW_FLOAT    "float"
 %token KW_DOUBLE   "double"
 %token KW_UNSIGNED "unsigned"
 %token KW_SIGNED   "signed"
 %token KW_LONG     "long"
 %token KW_SHORT    "short"
+%token KW_CHAR     "char"
+%token KW_CHAR16_T "char16_t"
+%token KW_CHAR32_T "char32_t"
+%token KW_WCHAR_T  "wchar_t"
 %token KW_BOOL     "bool"
 %token KW_VOID     "void"
 
@@ -192,7 +195,6 @@ declaration
 	| struct_declaration ';'
 	| template_declaration ';'
 	| template_specialization ';'
-	| template_partial ';'
 	| typedef_declaration ';'
 	| variable_declaration ';'
 	;
@@ -233,7 +235,7 @@ type_initializer
 	;
 
 cast_value
-	: '(' type_name variable_prefix ')' expression
+	: '(' type_name type_reference ')' expression
 	;
 
 argument_list
@@ -257,6 +259,12 @@ access_specifier
 	| "private" ':'
 	;
 
+enum_declaration
+	: "enum" IDENTIFIER '{' '}'
+	| "enum" IDENTIFIER '{' enumeration '}'
+	| "enum" '{' enumeration '}'
+	;
+
 enumeration
 	: enum_element
 	| enumeration ',' enum_element
@@ -268,19 +276,28 @@ enum_element
 	;
 
 variable_declaration
-	: type_name variable_init
-	| variable_declaration ',' variable_init
+	: variable_single_declaration
+	| variable_declaration ',' variable_expression
+	| variable_declaration ',' variable_initialization
 	;
 
-variable_init
-	: variable_spec
-	| variable_spec '=' statement
+variable_single_declaration
+	: type_name variable_expression
+	| type_name variable_initialization
 	;
 
-enum_declaration
-	: "enum" IDENTIFIER '{' '}'
-	| "enum" IDENTIFIER '{' enumeration '}'
-	| "enum" '{' enumeration '}'
+variable_parameter
+	: type_name type_reference
+	| type_name variable_expression
+	| type_name variable_initialization
+	;
+
+variable_expression
+	: type_reference IDENTIFIER
+	;
+
+variable_initialization
+	: variable_expression '=' expression
 	;
 
 class_declaration
@@ -422,7 +439,7 @@ start_template_scope
 	;
 
 template_declaration
-	: start_template_scope template_type_list ">" "class" IDENTIFIER
+	: start_template_scope template_argument_list ">" "class" IDENTIFIER
 	{
 		Scope* template_scope = local_scope;
 		local_scope = local_scope->parent;
@@ -448,6 +465,8 @@ template_declaration
 				YYERROR;
 			}
 			*/
+
+			// TODO: Test default template argument equivilance
 
 			type->declarations.push_back(yylloc);
 			delete template_scope;
@@ -463,7 +482,7 @@ template_declaration
 			YYERROR;
 		}
 	}
-	| start_template_scope template_type_list ">" "struct" IDENTIFIER
+	| start_template_scope template_argument_list ">" "struct" IDENTIFIER
 	{
 		Scope* template_scope = local_scope;
 		local_scope = local_scope->parent;
@@ -489,6 +508,8 @@ template_declaration
 				YYERROR;
 			}
 			*/
+
+			// TODO: Test default template argument equivilance
 
 			type->declarations.push_back(yylloc);
 			delete template_scope;
@@ -511,12 +532,20 @@ template_specialization
 	| "template" "<" ">" "struct" template_instance_type
 	;
 
-template_type_list
-	: template_type
-	| template_type_list ',' template_type
+template_argument_list
+	: template_argument
+	| template_argument_list ',' template_argument
 	;
 
-template_type
+template_argument
+	: template_type_argument
+	| template_type_argument "=" type_name
+	| template_declaration
+	| template_declaration "=" type_name
+	| variable_parameter
+	;
+
+template_type_argument
 	: "class"
 	{
 		local_scope->types.emplace(get_internal_identifier(local_scope),
@@ -539,104 +568,8 @@ template_type
 	}
 	;
 
-template_partial
-	: start_template_scope template_partial_list ">" "class" IDENTIFIER
-	{
-		Scope* template_scope = local_scope;
-		local_scope = local_scope->parent;
-
-		string name = *$5;
-		Type* type = get_type(name, local_scope);
-		if(type != NULL) {
-			if(type->subtype != TEMPLATE_SUBTYPE) {
-				current_error = "'template<...> class " + name + "'"
-				                + print_type_error(type->subtype, CLASS_SUBTYPE)
-				                + "\n\tFirst declared: "
-				                + print_location(type->declarations.front()) + "\n";
-				YYERROR;
-			}
-
-			/*
-			Template* templ = get_template(name, local_scope);
-			size_t expected_args = templ->scope->types.size();
-			size_t received_args = template_scope->types.size();
-			if(expected_args != received_args) {
-				current_error = "TODO: num template args is different";
-				delete template_scope;
-				YYERROR;
-			}
-			*/
-
-			// TODO: Test default template argument equivilance
-
-			type->declarations.push_back(yylloc);
-			delete template_scope;
-
-		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types[name] = Type(TEMPLATE_SUBTYPE, yylloc);
-			type = &local_scope->types[name];
-
-			local_scope->templates[name] = Template(name, type, template_scope);
-
-		} else {
-			current_error = "TODO: name for template class has conflict";
-			YYERROR;
-		}
-	}
-	| start_template_scope template_partial_list ">" "struct" IDENTIFIER
-	{
-		Scope* template_scope = local_scope;
-		local_scope = local_scope->parent;
-
-		string name = *$5;
-		Type* type = get_type(name, local_scope);
-		if(type != NULL) {
-			if(type->subtype != TEMPLATE_SUBTYPE) {
-				current_error = "'template<...> class " + name + "'"
-				                + print_type_error(type->subtype, CLASS_SUBTYPE)
-				                + "\n\tFirst declared: "
-				                + print_location(type->declarations.front()) + "\n";
-				YYERROR;
-			}
-
-			/*
-			Template* templ = get_template(name, local_scope);
-			size_t expected_args = templ->scope->types.size();
-			size_t received_args = template_scope->types.size();
-			if(expected_args != received_args) {
-				current_error = "TODO: num template args is different";
-				delete template_scope;
-				YYERROR;
-			}
-			*/
-
-			// TODO: Test default template argument equivilance
-
-			type->declarations.push_back(yylloc);
-			delete template_scope;
-
-		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types[name] = Type(TEMPLATE_SUBTYPE, yylloc);
-			type = &local_scope->types[name];
-
-			local_scope->templates[name] = Template(name, type, template_scope);
-
-		} else {
-			current_error = "TODO: name for template class has conflict";
-			YYERROR;
-		}
-	}
-	;
-
-template_partial_list
-	: template_partial_type
-	| template_partial_list ',' template_partial_type
-	| template_partial_list ',' template_type_list
-	| template_type_list ',' template_partial_list
-	;
-
-template_partial_type
-	: template_type "=" type_name
+template_template_argument
+	:
 	;
 
 template_instance_type
@@ -645,7 +578,7 @@ template_instance_type
 	;
 
 typedef_declaration
-	: "typedef" type_name variable_spec
+	: "typedef" type_name variable_expression
 	;
 
 namespace_declaration
@@ -660,8 +593,8 @@ method_declaration
 	;
 
 method_base
-	: type_name variable_spec '(' ')'
-	| type_name variable_spec '(' method_params ')'
+	: type_name variable_expression '(' ')'
+	| type_name variable_expression '(' method_params ')'
 	;
 
 method_definition
@@ -669,17 +602,8 @@ method_definition
 	;
 
 method_params
-	: method_param
-	| method_params ',' method_param
-	;
-
-method_param
-	: type_name variable_with_optional_name
-	;
-
-variable_with_optional_name
-	: variable_prefix
-	| variable_spec
+	: variable_parameter
+	| method_params ',' variable_parameter
 	;
 
 attribute_directive
@@ -721,16 +645,6 @@ existing_variable_identifier
 	}
 	;
 
-variable_spec
-	: variable_prefix IDENTIFIER
-	;
-
-variable_prefix
-	: empty
-	| "&"
-	| "*" variable_prefix
-	;
-
 type_name
 	: "void"
 	| "bool"
@@ -740,6 +654,12 @@ type_name
 	| type_const_name
 	| template_instance_type
 	| "decltype" '(' IDENTIFIER ')'
+	;
+
+type_reference
+	: empty
+	| "&"
+	| "*" type_reference
 	;
 
 existing_type_identifier
@@ -757,7 +677,11 @@ existing_type_identifier
 			YYERROR;
 		}
 	}
-	| "typename" IDENTIFIER
+	;
+
+/*
+nested_type_specifier
+	: "typename" IDENTIFIER
 	{
 		if(get_type(*$2, local_scope) == NULL) {
 			current_error = "TODO: identifier is not a type";
@@ -772,6 +696,7 @@ existing_type_identifier
 		}
 	}
 	;
+*/
 
 type_const_name
 	: "const" integer_type
@@ -801,13 +726,19 @@ raw_value
 // For this rule, we'll allow almost everything in the grammar, but manually
 //     check to make sure the user isn't insane.
 integer_type
-	: "short"
-	| "char"
+	: "char"
+	| "char16_t"
+	| "char32_t"
+	| "wchar_t"
+	| "short"
 	| "long"
 	| "int"
 	| "unsigned"
 	| "signed"
 	| integer_type "char"
+	| integer_type "char16_t"
+	| integer_type "char32_t"
+	| integer_type "wchar_t"
 	| integer_type "short"
 	| integer_type "long"
 	| integer_type "int"
