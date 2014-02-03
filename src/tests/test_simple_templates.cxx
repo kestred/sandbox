@@ -1,4 +1,4 @@
-// Filename: test_parse.cxx
+// Filename: test_simple_templates.cxx
 #include "testbase.h"
 #include "cpp/cpp.h"
 #include "cpp/parser/parser.h"
@@ -33,7 +33,7 @@ static char file[] = "\n"
 "template<int i> class M;\n"
 ;
 
-UNITTEST(test_simple_classes) {
+UNITTEST(test_simple_templates) {
 	Module* module = run_parser(filename, fmemopen(file, sizeof(file), "r"));
 	assert(module != NULL, "Encountered errors while parsing test_simple_templates.src");
 

@@ -68,6 +68,10 @@ add_executable(test_simple_templates src/tests/test_simple_templates.cxx)
 target_link_libraries(test_simple_templates treesap)
 add_test(parse_simple_templates test_simple_templates)
 
+add_executable(test_system_stl src/tests/test_system_stl.cxx)
+target_link_libraries(test_system_stl treesap)
+add_test(parse_system_stl test_simple_stl)
+
 # The executable test_parse can be used to parse any random file passed as the first argument
 add_executable(test_parse src/tests/test_parse.cxx)
 target_link_libraries(test_parse treesap)
