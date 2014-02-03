@@ -52,7 +52,6 @@ struct Module {
 struct Location {
 	Location() = default;
 	Location(File*);
-	Location copy();
 
 	File* file;
 	string* comment;
@@ -78,8 +77,8 @@ struct Scope {
 	ScopeType type;
 	Scope* parent;
 
-	map<string, Type> types;
-	map<string, Variable> variables;
+	map<string, Type*> types;
+	map<string, Variable*> variables;
 	map<string, Scope*> namespaces;
 };
 
@@ -106,6 +105,7 @@ enum Subtype {
 struct Type {
 	Type();
 	Type(const string& name, Subtype);
+	virtual ~Type();
 	string name;
 
 	Subtype subtype;
@@ -124,6 +124,9 @@ struct Class : Type {
 };
 
 struct Template : Type {
+	Template();
+	Template(const string& name, Scope* scope);
+
 	map<string, Type*> defaults;
 	virtual Template* as_template();
 };

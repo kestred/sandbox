@@ -45,16 +45,14 @@
 	static Type* get_type(const string& name, Scope* scope);
 	static Type* get_type(QualifiedName* name, Scope* scope);
 
-	// get_namespace returns a pointer to the namespace visible in a provided
-	//     scope with a provided name. Returns NULL if no such namespace exists.
-	static Scope* get_namespace(const string& name, Scope* scope);
-
 	// print_type_error returns a human readable type-error explanation.
 	static string print_type_error(Subtype expected, Subtype received);
 
 	// print_location returns a human readable string representing the given location.
 	static string print_location(const Location& loc);
 	static string print_location(const Location* loc);
+
+	static YYSTYPE merge_ambiguous_typename(YYSTYPE x0, YYSTYPE x1);
 %}
 
 /* Set Parser Options */
@@ -360,8 +358,8 @@ class_identifier
 			prev->declarations.push_back(yylloc);
 
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types[name] = Type(name, CLASS_SUBTYPE);
-			local_scope->types[name].declarations.push_back(yylloc);
+			local_scope->types[name] = new Type(name, CLASS_SUBTYPE);
+			local_scope->types[name]->declarations.push_back(yylloc);
 
 		} else {
 			current_error = "TODO: name for class has conflict";
@@ -428,8 +426,8 @@ struct_identifier
 			prev->declarations.push_back(yylloc);
 
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types[name] = Type(name, CLASS_SUBTYPE);
-			local_scope->types[name].declarations.push_back(yylloc);
+			local_scope->types[name] = new Type(name, CLASS_SUBTYPE);
+			local_scope->types[name]->declarations.push_back(yylloc);
 
 		} else {
 			current_error = "TODO: name for struct has conflict";
@@ -479,10 +477,10 @@ template_declaration
 			$$ = type->as_template();
 
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types[name] = Type(name, TEMPLATE_SUBTYPE);
-			local_scope->types[name].declarations.push_back(yylloc);
-			local_scope->types[name].scope = template_scope;
-			$$ = local_scope->types[name].as_template();
+			local_scope->types[name] = new Template(name, template_scope);
+			local_scope->types[name]->declarations.push_back(yylloc);
+			if(local_scope->types[name]->as_template() == NULL) { printf("Farts!"); }
+			$$ = local_scope->types[name]->as_template();
 		} else {
 			current_error = "TODO: name for template class has conflict";
 			YYERROR;
@@ -522,10 +520,10 @@ template_declaration
 			$$ = type->as_template();
 
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types[name] = Type(name, TEMPLATE_SUBTYPE);
-			local_scope->types[name].declarations.push_back(yylloc);
-			local_scope->types[name].scope = template_scope;
-			$$ = local_scope->types[name].as_template();
+			local_scope->types[name] = new Template(name, template_scope);
+			local_scope->types[name]->declarations.push_back(yylloc);
+			if(local_scope->types[name]->as_template() == NULL) { printf("Farts!"); }
+			$$ = local_scope->types[name]->as_template();
 		} else {
 			current_error = "TODO: name for template class has conflict";
 			YYERROR;
@@ -535,11 +533,7 @@ template_declaration
 
 template_definition
 	: template_declaration '{' '}'
-	| template_declaration '{'
-	{
-		if($1 != NULL) { scopes.push($1->scope); }
-	}
-	  class_body '}'
+	| template_declaration '{' { scopes.push($1->scope); } class_body '}'
 	{
 		if($1 != NULL) { scopes.pop(); }
 	}
@@ -561,37 +555,57 @@ template_argument_list
 	;
 
 template_argument
-	: template_type_argument
+	: template_type_argument %merge<merge_ambiguous_typename>
 	| template_type_argument "=" type_name
 	| template_declaration
 	| template_declaration "=" type_name
-	| variable_parameter
+	| variable_parameter %merge<merge_ambiguous_typename>
 	;
 
 template_type_argument
 	: "class"
 	{
 		string name = get_internal_identifier(local_scope);
-		local_scope->types[name] = Type(name, DEFERRED_SUBTYPE);
-		local_scope->types[name].declarations.push_back(yylloc);
+		local_scope->types[name] = new Type(name, DEFERRED_SUBTYPE);
+		local_scope->types[name]->declarations.push_back(yylloc);
+
+		Scope* deferred = new Scope();
+		deferred->types["*"] = new Type();
+		deferred->variables["*"] = new Variable();
+		local_scope->types[name]->scope = deferred;
 	}
 	| "typename"
 	{
 		string name = get_internal_identifier(local_scope);
-		local_scope->types[name] = Type(name, DEFERRED_SUBTYPE);
-		local_scope->types[name].declarations.push_back(yylloc);
+		local_scope->types[name] = new Type(name, DEFERRED_SUBTYPE);
+		local_scope->types[name]->declarations.push_back(yylloc);
+
+		Scope* deferred = new Scope();
+		deferred->types["*"] = new Type();
+		deferred->variables["*"] = new Variable();
+		local_scope->types[name]->scope = deferred;
 	}
 	| "class" IDENTIFIER
 	{
 		string name = *$2;
-		local_scope->types[name] = Type(name, DEFERRED_SUBTYPE);
-		local_scope->types[name].declarations.push_back(yylloc);
+		local_scope->types[name] = new Type(name, DEFERRED_SUBTYPE);
+		local_scope->types[name]->declarations.push_back(yylloc);
+
+		Scope* deferred = new Scope();
+		deferred->types["*"] = new Type();
+		deferred->variables["*"] = new Variable();
+		local_scope->types[name]->scope = deferred;
 	}
 	| "typename" IDENTIFIER
 	{
 		string name = *$2;
-		local_scope->types[name] = Type(name, DEFERRED_SUBTYPE);
-		local_scope->types[name].declarations.push_back(yylloc);
+		local_scope->types[name] = new Type(name, DEFERRED_SUBTYPE);
+		local_scope->types[name]->declarations.push_back(yylloc);
+
+		Scope* deferred = new Scope();
+		deferred->types["*"] = new Type();
+		deferred->variables["*"] = new Variable();
+		local_scope->types[name]->scope = deferred;
 	}
 	;
 
@@ -649,25 +663,6 @@ method_body
 	| '{' statements '}'
 	;
 
-existing_variable_identifier
-	: IDENTIFIER
-	{
-		if(get_variable(*$1, local_scope) == NULL) {
-			current_error = "TODO: identifier is not a variable";
-			YYERROR;
-		}
-	}
-	| qualified_name
-	{
-		if(get_variable($1, local_scope) == NULL) {
-			current_error = "TODO: qualified_name is not a variable";
-			YYERROR;
-		}
-
-		$$ = $1;
-	}
-	;
-
 type_name
 	: "void"
 	| "bool"
@@ -689,37 +684,54 @@ existing_type_identifier
 	: IDENTIFIER
 	{
 		if(get_type(*$1, local_scope) == NULL) {
-			current_error = "'" + *$1 + "' doesn't name a type";
+			current_error = "Type '" + *$1 + "' was not declared in this scope.";
 			YYERROR;
 		}
 	}
 	| qualified_name
 	{
 		if(get_type($1, local_scope) == NULL) {
-			current_error = "TODO: qualified_name is not a type";
+			current_error = "Type '" + $1->to_string()
+			                + "' was not declared in this scope.";
 			YYERROR;
 		}
 	}
-	;
-
-/*
-nested_type_specifier
-	: "typename" IDENTIFIER
+	| "typename" IDENTIFIER
 	{
 		if(get_type(*$2, local_scope) == NULL) {
-			current_error = "TODO: identifier is not a type";
+			current_error = "Type '" + *$2 + "' was not declared in this scope.";
 			YYERROR;
 		}
 	}
 	| "typename" qualified_name
 	{
 		if(get_type($2, local_scope) == NULL) {
-			current_error = "TODO: qualified_name is not a type";
+			current_error = "Type '" + $2->to_string()
+			                + "' was not declared in this scope.";
 			YYERROR;
 		}
 	}
 	;
-*/
+
+existing_variable_identifier
+	: IDENTIFIER
+	{
+		if(get_variable(*$1, local_scope) == NULL) {
+			current_error = "Variable '" + *$1 + "' was not declared in this scope.";
+			YYERROR;
+		}
+	}
+	| qualified_name
+	{
+		if(get_variable($1, local_scope) == NULL) {
+			current_error = "Variable '" + $1->to_string()
+			                + "' was not declared in this scope.";
+			YYERROR;
+		}
+
+		$$ = $1;
+	}
+	;
 
 type_const_name
 	: "const" integer_type
@@ -864,7 +876,19 @@ Scope* resolve_scope(const string& name, Scope* scope) {
 	if(found_ns != scope->namespaces.end()) { return found_ns->second; }
 
 	auto found_type = scope->types.find(name);
-	if(found_type != scope->types.end()) { return found_type->second.scope; }
+	if(found_type != scope->types.end()) { return found_type->second->scope; }
+
+	return NULL;
+}
+
+Scope* get_scope(const string& name, Scope* scope) {
+	Scope* ret;
+	// Keep traversing up scopes till we find the name
+	while(scope != NULL) {
+		ret = resolve_scope(name, scope);
+		if(ret != NULL) { return ret; }
+		scope = scope->parent;
+	}
 
 	return NULL;
 }
@@ -874,7 +898,7 @@ Scope* resolve_qualified(QualifiedName* name, Scope* scope) {
 	if(name->names.size() == 1) { return scope; }
 
 	// Find the outermost qualification visible from current scope
-	scope = get_namespace(name->names.front(), scope);
+	scope = get_scope(name->names.front(), scope);
 	if(scope == NULL) { return NULL; }
 
 	// Traverse the scope along the path provided by the qualifications
@@ -894,7 +918,7 @@ Variable* get_variable(const string& name, Scope* scope) {
 		auto found = scope->variables.find(name);
 		if(found != scope->variables.end())
 		{
-			return &found->second;
+			return found->second;
 		}
 		scope = scope->parent;
 	}
@@ -914,8 +938,14 @@ Variable* get_variable(QualifiedName* name, Scope* scope) {
 	scope = resolve_qualified(name, scope);
 	if(scope == NULL) { return NULL; }
 	auto found = scope->variables.find(name->names.back());
-	if(found == scope->variables.end()) { return NULL; }
-	return &found->second;
+	if(found != scope->variables.end()) { return found->second; }
+
+	// If its not found normally, maybe this a deferred scope?
+	found = scope->variables.find("*");
+	if(found != scope->variables.end()) { return found->second; }
+
+	// Otherwise give up
+	return NULL;
 }
 
 Type* get_type(const string& name, Scope* scope) {
@@ -924,7 +954,7 @@ Type* get_type(const string& name, Scope* scope) {
 		auto found = scope->types.find(name);
 		if(found != scope->types.end())
 		{
-			return &found->second;
+			return found->second;
 		}
 
 		scope = scope->parent;
@@ -945,21 +975,13 @@ Type* get_type(QualifiedName* name, Scope* scope) {
 	scope = resolve_qualified(name, scope);
 	if(scope == NULL) { return NULL; }
 	auto found = scope->types.find(name->names.back());
-	if(found == scope->types.end()) { return NULL; }
-	return &found->second;
-}
+	if(found != scope->types.end()) { return found->second; }
 
-Scope* get_namespace(const string& name, Scope* scope) {
-	// Keep traversing up scopes till we find the name
-	while(scope != NULL) {
-		auto found = scope->namespaces.find(name);
-		if(found != scope->namespaces.end())
-		{
-			return found->second;
-		}
-		scope = scope->parent;
-	}
+	// If its not found normally, maybe this a deferred scope?
+	found = scope->types.find("*");
+	if(found != scope->types.end()) { return found->second; }
 
+	// Otherwise give up
 	return NULL;
 }
 
@@ -977,4 +999,9 @@ string print_location(const Location* loc)
 {
 	if(loc == NULL) { return "TODO: Unknown location"; }
 	return print_location(*loc);
+}
+
+YYSTYPE merge_ambiguous_typename(YYSTYPE x0, YYSTYPE x1) {
+	// TODO: Actually merge
+	return x0;
 }

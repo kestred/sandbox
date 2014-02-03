@@ -36,9 +36,9 @@ UNITTEST(test_simple_classes) {
 	assert_equal(global->types.size(), 5);
 
 	// Check our structs/classes have the correct subtype
-	assert_equal(global->types.find("A")->second.subtype, CLASS_SUBTYPE);
-	assert_equal(global->types.find("B")->second.subtype, CLASS_SUBTYPE);
-	assert_equal(global->types.find("C")->second.subtype, CLASS_SUBTYPE);
-	assert_equal(global->types.find("D")->second.subtype, CLASS_SUBTYPE);
-	assert_equal(global->types.find("E")->second.subtype, CLASS_SUBTYPE);
+	assert_equal(global->types.find("A")->second->subtype, CLASS_SUBTYPE);
+	assert_equal(global->types.find("B")->second->subtype, CLASS_SUBTYPE);
+	assert_equal(global->types.find("C")->second->subtype, CLASS_SUBTYPE);
+	assert_equal(global->types.find("D")->second->subtype, CLASS_SUBTYPE);
+	assert_equal(global->types.find("E")->second->subtype, CLASS_SUBTYPE);
 }

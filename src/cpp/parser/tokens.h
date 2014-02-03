@@ -32,4 +32,16 @@ struct QualifiedName {
 	}
 
 	list<string> names;
+
+
+	string to_string() {
+		string ret;
+		for(auto it = names.begin(); it != names.end(); ) {
+			ret += *it;
+			if(++it != names.end()) {
+				ret += "::";
+			}
+		}
+		return ret;
+	}
 };

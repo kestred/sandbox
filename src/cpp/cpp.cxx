@@ -4,39 +4,22 @@
 #include "strutils.h"
 using namespace std;
 
+Location::Location(File * f)
+	: file(f), comment(NULL),
+	  first_line(0), first_column(0),
+	  last_line(0), last_column(0) {}
 
-File::File(const string & filename) : File(filename, false) {}
-File::File(const string & filename, bool internal) :
-	name(filename), scope(FILE_SCOPE), is_internal(internal) {}
-
-Location::Location(File * f) : file(f),
-	first_line(0), first_column(0),
-	last_line(0), last_column(0) {}
-
-Location Location::copy()
-{
-	Location l(file);
-	l.comment = comment;
-	l.first_line = first_line;
-	l.last_line = last_line;
-	l.first_column = first_column;
-	l.last_column = last_column;
-	return l;
-}
-
-Type::Type() : Type("", INVALID_SUBTYPE) {}
-Type::Type(const string& name, Subtype subtype) :
-	name(name), subtype(subtype), scope(NULL), definition(NULL) {}
-Class* Type::as_class() { return NULL; }
-Class* Class::as_class() { return this; }
-Template* Type::as_template() { return NULL; }
-Template* Template::as_template() { return this; }
-
-Scope::Scope(Scope* parent, ScopeType type) :
-	type(type), parent(parent), types(), variables(), namespaces() {}
+Scope::Scope(Scope* parent, ScopeType type)
+	: type(type), parent(parent), types(), variables(), namespaces() {}
 Scope::Scope(ScopeType type) : Scope(NULL, type) {}
 Scope::~Scope() {
 	for(auto it = namespaces.begin(); it != namespaces.end(); ++it) {
+		delete it->second;
+	}
+	for(auto it = variables.begin(); it != variables.end(); ++it) {
+		delete it->second;
+	}
+	for(auto it = types.begin(); it != types.end(); ++it) {
 		delete it->second;
 	}
 
@@ -46,6 +29,33 @@ Scope::~Scope() {
 	variables.clear();
 	namespaces.clear();
 }
+
+File::File(const string & filename) : File(filename, false) {}
+File::File(const string & filename, bool internal)
+	: name(filename), scope(FILE_SCOPE), is_internal(internal) {}
+
+Type::Type() : Type("", INVALID_SUBTYPE) {}
+Type::Type(const string& name, Subtype subtype)
+	: name(name), subtype(subtype), scope(NULL), definition(NULL) {}
+Type::~Type() {
+	delete scope;
+	delete definition;
+}
+Class* Type::as_class() { return NULL; }
+Class* Class::as_class() { return this; }
+Template* Type::as_template() { return NULL; }
+
+Template::Template() : Type() {}
+Template::Template(const string& name, Scope* scope)
+	: Type(name, TEMPLATE_SUBTYPE) {
+	this->scope = scope;
+}
+Template* Template::as_template() { return this; }
+
+
+Variable::Variable() : Variable("", NULL) {}
+Variable::Variable(const string& name, Type* type)
+	: name(name), type(type), value() {}
 
 Macro::Macro(const string & name) : Macro(name, Location()) {}
 Macro::Macro(const string & name, Location loc) : Macro(name, "", loc) {}

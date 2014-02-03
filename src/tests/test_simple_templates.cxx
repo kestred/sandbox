@@ -57,19 +57,19 @@ UNITTEST(test_simple_templates) {
 	assert_equal(global->types.size(), 13);
 
 	// Lets put those values into locals for convenience
-	Type* templateA = &global->types.find("A")->second;
-	Type* templateB = &global->types.find("B")->second;
-	Type* templateC = &global->types.find("C")->second;
-	Type* templateD = &global->types.find("D")->second;
-	Type* templateE = &global->types.find("E")->second;
-	Type* templateF = &global->types.find("F")->second;
-	Type* templateG = &global->types.find("G")->second;
-	Type* templateH = &global->types.find("H")->second;
-	Type* templateI = &global->types.find("I")->second;
-	Type* templateJ = &global->types.find("J")->second;
-	Type* templateK = &global->types.find("K")->second;
-	Type* templateL = &global->types.find("L")->second;
-	Type* templateM = &global->types.find("M")->second;
+	Type* templateA = global->types.find("A")->second;
+	Type* templateB = global->types.find("B")->second;
+	Type* templateC = global->types.find("C")->second;
+	Type* templateD = global->types.find("D")->second;
+	Type* templateE = global->types.find("E")->second;
+	Type* templateF = global->types.find("F")->second;
+	Type* templateG = global->types.find("G")->second;
+	Type* templateH = global->types.find("H")->second;
+	Type* templateI = global->types.find("I")->second;
+	Type* templateJ = global->types.find("J")->second;
+	Type* templateK = global->types.find("K")->second;
+	Type* templateL = global->types.find("L")->second;
+	Type* templateM = global->types.find("M")->second;
 
 	// Check the types are templates
 	assert_equal(templateA->subtype, TEMPLATE_SUBTYPE);
