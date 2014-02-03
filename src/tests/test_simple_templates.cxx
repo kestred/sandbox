@@ -19,14 +19,18 @@ static char file[] = "\n"
 // We can specialize the templates
 "template<> class A<int>;\n"
 
-// And we can have partially specialized templates
+// And we can have template classes with default arguments
 "template<typename T, typename U> struct G;\n"
 "template<typename T, typename U = int> struct H;\n"
 "template<typename T = float, typename U = double> struct J;\n"
 
-// And we can have self-refrencing partially specialized templates
+// And we can have template classes with template classes as arguments and defaults
 "template<typename T, typename U = A<T> > class K;\n"
-// template<typename T = A<U>, typename U> struct I; --- this is an invalid construction
+"template<template<class T> class U> struct I;\n"
+
+// And we can have template classes with non-type arguments
+"template<bool> class L;\n"
+"template<int i> class M;\n"
 ;
 
 UNITTEST(test_simple_classes) {
@@ -43,11 +47,14 @@ UNITTEST(test_simple_classes) {
 	assert(global->templates.find("F") != global->templates.end(), "Template 'F' doesn't exist.");
 	assert(global->templates.find("G") != global->templates.end(), "Template 'G' doesn't exist.");
 	assert(global->templates.find("H") != global->templates.end(), "Template 'H' doesn't exist.");
+	assert(global->templates.find("I") != global->templates.end(), "Template 'I' doesn't exist.");
 	assert(global->templates.find("J") != global->templates.end(), "Template 'J' doesn't exist.");
 	assert(global->templates.find("K") != global->templates.end(), "Template 'K' doesn't exist.");
+	assert(global->templates.find("L") != global->templates.end(), "Template 'L' doesn't exist.");
+	assert(global->templates.find("M") != global->templates.end(), "Template 'M' doesn't exist.");
 
 	// Check no extra bogus/duplicate templates exist
-	assert_equal(global->templates.size(), 10);
+	assert_equal(global->templates.size(), 13);
 
 	// Lets put those values into locals for convenience
 	Template* templateA = &global->templates.find("A")->second;
@@ -58,8 +65,11 @@ UNITTEST(test_simple_classes) {
 	Template* templateF = &global->templates.find("F")->second;
 	Template* templateG = &global->templates.find("G")->second;
 	Template* templateH = &global->templates.find("H")->second;
+	Template* templateI = &global->templates.find("I")->second;
 	Template* templateJ = &global->templates.find("J")->second;
 	Template* templateK = &global->templates.find("K")->second;
+	Template* templateL = &global->templates.find("L")->second;
+	Template* templateM = &global->templates.find("M")->second;
 
 	// Check the template scopes are a children of the global scope
 	assert_equal(templateA->scope->parent, global);
@@ -70,8 +80,11 @@ UNITTEST(test_simple_classes) {
 	assert_equal(templateF->scope->parent, global);
 	assert_equal(templateG->scope->parent, global);
 	assert_equal(templateH->scope->parent, global);
+	assert_equal(templateI->scope->parent, global);
 	assert_equal(templateJ->scope->parent, global);
 	assert_equal(templateK->scope->parent, global);
+	assert_equal(templateL->scope->parent, global);
+	assert_equal(templateM->scope->parent, global);
 
 	// Check our templates have the correct template arguments
 	assert_equal(templateA->scope->types.size(), 1); // Named types should exist
