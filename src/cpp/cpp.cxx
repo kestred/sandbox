@@ -24,17 +24,13 @@ Location Location::copy()
 	return l;
 }
 
-Type::Type() : subtype(INVALID_SUBTYPE), is_defined(false) {}
-Type::Type(Subtype subtype, Location declaration) :
-	subtype(subtype), is_defined(false) {
-	declarations.push_back(declaration);
-}
-
-Template::Template() : Template("", NULL, NULL) {}
-Template::Template(const string& name, Type* type, Scope* scope) :
-	name(name), type(type), scope(scope) {
-
-}
+Type::Type() : Type("", INVALID_SUBTYPE) {}
+Type::Type(const string& name, Subtype subtype) :
+	name(name), subtype(subtype), scope(NULL), definition(NULL) {}
+Class* Type::as_class() { return NULL; }
+Class* Class::as_class() { return this; }
+Template* Type::as_template() { return NULL; }
+Template* Template::as_template() { return this; }
 
 Scope::Scope(Scope* parent, ScopeType type) :
 	type(type), parent(parent), types(), variables(), namespaces() {}

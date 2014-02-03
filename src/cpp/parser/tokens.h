@@ -1,10 +1,6 @@
 // Filename: tokens.h
 #pragma once
-#include <type_traits>
-#include <string>
-#include <list>
-using std::string;
-using std::list;
+#include "cpp/cpp.h"
 
 // Preclare token value types
 struct QualifiedName;
@@ -17,6 +13,7 @@ union Token {
 	double floating;
 	std::string* string;
 	QualifiedName* name;
+	Template* template_type;
 };
 static_assert(std::is_trivial<Token>::value, "Token must be trivial type for GLR parser.");
 #define CPPSTYPE_IS_DECLARED 1

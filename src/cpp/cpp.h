@@ -15,13 +15,18 @@ using std::map;
 using std::set;
 using std::pair;
 
-//Forward Declarations
-struct Scope;
+/* Forward Declarations */
 struct File;
-struct Macro;
+struct Scope;
+
 struct Type;
-struct Variable;
+struct Class;
 struct Template;
+
+struct Variable;
+
+struct Macro;
+
 
 /* Utility Functions */
 // get_compiler_includes returns the include directories
@@ -76,8 +81,6 @@ struct Scope {
 	map<string, Type> types;
 	map<string, Variable> variables;
 	map<string, Scope*> namespaces;
-
-	map<string, Template> templates;
 };
 
 struct File {
@@ -100,26 +103,29 @@ enum Subtype {
 	INVALID_SUBTYPE
 };
 
-struct Template {
-	Template();
-	Template(const string& name, Type* type, Scope* scope);
-	string name;
-
-	Type* type;
-	Scope* scope;
-	map<string, Type*> defaults;
-};
-
 struct Type {
 	Type();
-	Type(Subtype, Location declaration);
+	Type(const string& name, Subtype);
 	string name;
 
 	Subtype subtype;
-	Location definition;
+	Scope* scope;
+
+	Location* definition;
 	list<Location> declarations;
 
-	bool is_defined;
+	virtual Class* as_class();
+	virtual Template* as_template();
+};
+
+struct Class : Type {
+	list<Class*> parents;
+	virtual Class* as_class();
+};
+
+struct Template : Type {
+	map<string, Type*> defaults;
+	virtual Template* as_template();
 };
 
 struct Variable {
@@ -129,16 +135,6 @@ struct Variable {
 
 	Type* type;
 	string value;
-};
-
-struct Class {
-	Class();
-	Class(const string& name, Type* type);
-	string name;
-
-	Type* type;
-	list<Class*> parents;
-
 };
 
 struct Macro {

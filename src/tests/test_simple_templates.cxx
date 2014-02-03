@@ -39,37 +39,52 @@ UNITTEST(test_simple_templates) {
 
 	Scope* global = &module->files.find(filename)->second->scope;
 	// Check we have a type defined for each struct/class
-	assert(global->templates.find("A") != global->templates.end(), "Template 'A' doesn't exist.");
-	assert(global->templates.find("B") != global->templates.end(), "Template 'B' doesn't exist.");
-	assert(global->templates.find("C") != global->templates.end(), "Template 'C' doesn't exist.");
-	assert(global->templates.find("D") != global->templates.end(), "Template 'D' doesn't exist.");
-	assert(global->templates.find("E") != global->templates.end(), "Template 'E' doesn't exist.");
-	assert(global->templates.find("F") != global->templates.end(), "Template 'F' doesn't exist.");
-	assert(global->templates.find("G") != global->templates.end(), "Template 'G' doesn't exist.");
-	assert(global->templates.find("H") != global->templates.end(), "Template 'H' doesn't exist.");
-	assert(global->templates.find("I") != global->templates.end(), "Template 'I' doesn't exist.");
-	assert(global->templates.find("J") != global->templates.end(), "Template 'J' doesn't exist.");
-	assert(global->templates.find("K") != global->templates.end(), "Template 'K' doesn't exist.");
-	assert(global->templates.find("L") != global->templates.end(), "Template 'L' doesn't exist.");
-	assert(global->templates.find("M") != global->templates.end(), "Template 'M' doesn't exist.");
+	assert(global->types.find("A") != global->types.end(), "Template 'A' doesn't exist.");
+	assert(global->types.find("B") != global->types.end(), "Template 'B' doesn't exist.");
+	assert(global->types.find("C") != global->types.end(), "Template 'C' doesn't exist.");
+	assert(global->types.find("D") != global->types.end(), "Template 'D' doesn't exist.");
+	assert(global->types.find("E") != global->types.end(), "Template 'E' doesn't exist.");
+	assert(global->types.find("F") != global->types.end(), "Template 'F' doesn't exist.");
+	assert(global->types.find("G") != global->types.end(), "Template 'G' doesn't exist.");
+	assert(global->types.find("H") != global->types.end(), "Template 'H' doesn't exist.");
+	assert(global->types.find("I") != global->types.end(), "Template 'I' doesn't exist.");
+	assert(global->types.find("J") != global->types.end(), "Template 'J' doesn't exist.");
+	assert(global->types.find("K") != global->types.end(), "Template 'K' doesn't exist.");
+	assert(global->types.find("L") != global->types.end(), "Template 'L' doesn't exist.");
+	assert(global->types.find("M") != global->types.end(), "Template 'M' doesn't exist.");
 
 	// Check no extra bogus/duplicate templates exist
-	assert_equal(global->templates.size(), 13);
+	assert_equal(global->types.size(), 13);
 
 	// Lets put those values into locals for convenience
-	Template* templateA = &global->templates.find("A")->second;
-	Template* templateB = &global->templates.find("B")->second;
-	Template* templateC = &global->templates.find("C")->second;
-	Template* templateD = &global->templates.find("D")->second;
-	Template* templateE = &global->templates.find("E")->second;
-	Template* templateF = &global->templates.find("F")->second;
-	Template* templateG = &global->templates.find("G")->second;
-	Template* templateH = &global->templates.find("H")->second;
-	Template* templateI = &global->templates.find("I")->second;
-	Template* templateJ = &global->templates.find("J")->second;
-	Template* templateK = &global->templates.find("K")->second;
-	Template* templateL = &global->templates.find("L")->second;
-	Template* templateM = &global->templates.find("M")->second;
+	Type* templateA = &global->types.find("A")->second;
+	Type* templateB = &global->types.find("B")->second;
+	Type* templateC = &global->types.find("C")->second;
+	Type* templateD = &global->types.find("D")->second;
+	Type* templateE = &global->types.find("E")->second;
+	Type* templateF = &global->types.find("F")->second;
+	Type* templateG = &global->types.find("G")->second;
+	Type* templateH = &global->types.find("H")->second;
+	Type* templateI = &global->types.find("I")->second;
+	Type* templateJ = &global->types.find("J")->second;
+	Type* templateK = &global->types.find("K")->second;
+	Type* templateL = &global->types.find("L")->second;
+	Type* templateM = &global->types.find("M")->second;
+
+	// Check the types are templates
+	assert_equal(templateA->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateB->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateC->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateD->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateE->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateF->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateG->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateH->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateI->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateJ->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateK->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateL->subtype, TEMPLATE_SUBTYPE);
+	assert_equal(templateM->subtype, TEMPLATE_SUBTYPE);
 
 	// Check the template scopes are a children of the global scope
 	assert_equal(templateA->scope->parent, global);

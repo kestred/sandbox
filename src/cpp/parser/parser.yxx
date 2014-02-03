@@ -6,6 +6,7 @@
 	#include "lexer.h"
 
 	#include "cpp/cpp.h"
+	#include <stack>
 
 	#define yyerror cpperror
 	#define yywarning cppwarning
@@ -16,8 +17,9 @@
 
 	static Module* module = NULL;
 	static File* current_file = NULL;
-	static Scope* local_scope = NULL;
 	static Scope* file_scope = NULL;
+	static stack<Scope*> scopes;
+	#define local_scope scopes.top()
 
 	// is_varname_free returns true if a provided identifier is not used as a
 	//     symbol or can be masked as a varname in a provided scope.
@@ -47,14 +49,12 @@
 	//     scope with a provided name. Returns NULL if no such namespace exists.
 	static Scope* get_namespace(const string& name, Scope* scope);
 
-	// merge_templates
-	static YYSTYPE merge_templates(YYSTYPE parse1, YYSTYPE parse2);
-
 	// print_type_error returns a human readable type-error explanation.
 	static string print_type_error(Subtype expected, Subtype received);
 
 	// print_location returns a human readable string representing the given location.
 	static string print_location(const Location& loc);
+	static string print_location(const Location* loc);
 %}
 
 /* Set Parser Options */
@@ -159,6 +159,8 @@
 %type <name> qualified_name
 %type <name> existing_variable_identifier
 
+%type <template_type> template_declaration
+
 
 /* Destructors */
 /*
@@ -194,7 +196,9 @@ declaration
 	| class_declaration ';'
 	| struct_declaration ';'
 	| template_declaration ';'
+	| template_definition ';'
 	| template_specialization ';'
+	| template_spec_definition ';'
 	| typedef_declaration ';'
 	| variable_declaration ';'
 	;
@@ -312,7 +316,7 @@ class_declaration
 			YYERROR;
 		}
 
-		if(prev->is_defined) {
+		if(prev->definition != NULL) {
 			current_error = "Redefinition of 'class " + name + "'.\n"
 				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
 			YYERROR;
@@ -330,7 +334,7 @@ class_declaration
 			YYERROR;
 		}
 
-		if(prev->is_defined) {
+		if(prev->definition != NULL) {
 			current_error = "Redefinition of 'class " + name + "'.\n"
 				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
 			YYERROR;
@@ -356,7 +360,8 @@ class_identifier
 			prev->declarations.push_back(yylloc);
 
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
+			local_scope->types[name] = Type(name, CLASS_SUBTYPE);
+			local_scope->types[name].declarations.push_back(yylloc);
 
 		} else {
 			current_error = "TODO: name for class has conflict";
@@ -379,7 +384,7 @@ struct_declaration
 			YYERROR;
 		}
 
-		if(prev->is_defined) {
+		if(prev->definition != NULL) {
 			current_error = "Redefinition of 'struct " + name + "'.\n"
 				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
 			YYERROR;
@@ -397,7 +402,7 @@ struct_declaration
 			YYERROR;
 		}
 
-		if(prev->is_defined) {
+		if(prev->definition != NULL) {
 			current_error = "Redefinition of 'struct " + name + "'.\n"
 				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
 			YYERROR;
@@ -423,7 +428,8 @@ struct_identifier
 			prev->declarations.push_back(yylloc);
 
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types.emplace(name, Type(CLASS_SUBTYPE, yylloc));
+			local_scope->types[name] = Type(name, CLASS_SUBTYPE);
+			local_scope->types[name].declarations.push_back(yylloc);
 
 		} else {
 			current_error = "TODO: name for struct has conflict";
@@ -435,14 +441,14 @@ struct_identifier
 	;
 
 start_template_scope
-	: "template" "<" { local_scope = new Scope(local_scope, TEMPLATE_SCOPE); }
+	: "template" "<" { scopes.push(new Scope(local_scope, TEMPLATE_SCOPE)); }
 	;
 
 template_declaration
 	: start_template_scope template_argument_list ">" "class" IDENTIFIER
 	{
 		Scope* template_scope = local_scope;
-		local_scope = local_scope->parent;
+		scopes.pop();
 
 		string name = *$5;
 		Type* type = get_type(name, local_scope);
@@ -469,14 +475,14 @@ template_declaration
 			// TODO: Test default template argument equivilance
 
 			type->declarations.push_back(yylloc);
-			delete template_scope;
+
+			$$ = type->as_template();
 
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types[name] = Type(TEMPLATE_SUBTYPE, yylloc);
-			type = &local_scope->types[name];
-
-			local_scope->templates[name] = Template(name, type, template_scope);
-
+			local_scope->types[name] = Type(name, TEMPLATE_SUBTYPE);
+			local_scope->types[name].declarations.push_back(yylloc);
+			local_scope->types[name].scope = template_scope;
+			$$ = local_scope->types[name].as_template();
 		} else {
 			current_error = "TODO: name for template class has conflict";
 			YYERROR;
@@ -485,7 +491,7 @@ template_declaration
 	| start_template_scope template_argument_list ">" "struct" IDENTIFIER
 	{
 		Scope* template_scope = local_scope;
-		local_scope = local_scope->parent;
+		scopes.pop();
 
 		string name = *$5;
 		Type* type = get_type(name, local_scope);
@@ -512,14 +518,14 @@ template_declaration
 			// TODO: Test default template argument equivilance
 
 			type->declarations.push_back(yylloc);
-			delete template_scope;
+
+			$$ = type->as_template();
 
 		} else if(is_typename_free(name, local_scope)) {
-			local_scope->types[name] = Type(TEMPLATE_SUBTYPE, yylloc);
-			type = &local_scope->types[name];
-
-			local_scope->templates[name] = Template(name, type, template_scope);
-
+			local_scope->types[name] = Type(name, TEMPLATE_SUBTYPE);
+			local_scope->types[name].declarations.push_back(yylloc);
+			local_scope->types[name].scope = template_scope;
+			$$ = local_scope->types[name].as_template();
 		} else {
 			current_error = "TODO: name for template class has conflict";
 			YYERROR;
@@ -527,9 +533,26 @@ template_declaration
 	}
 	;
 
+template_definition
+	: template_declaration '{' '}'
+	| template_declaration '{'
+	{
+		if($1 != NULL) { scopes.push($1->scope); }
+	}
+	  class_body '}'
+	{
+		if($1 != NULL) { scopes.pop(); }
+	}
+	;
+
 template_specialization
 	: "template" "<" ">" "class" template_instance_type
 	| "template" "<" ">" "struct" template_instance_type
+	;
+
+template_spec_definition
+	: template_specialization '{' '}'
+	| template_specialization '{' class_body '}'
 	;
 
 template_argument_list
@@ -548,28 +571,28 @@ template_argument
 template_type_argument
 	: "class"
 	{
-		local_scope->types.emplace(get_internal_identifier(local_scope),
-		                           Type(DEFERRED_SUBTYPE, yylloc));
+		string name = get_internal_identifier(local_scope);
+		local_scope->types[name] = Type(name, DEFERRED_SUBTYPE);
+		local_scope->types[name].declarations.push_back(yylloc);
 	}
 	| "typename"
 	{
-		local_scope->types.emplace(get_internal_identifier(local_scope),
-		                           Type(DEFERRED_SUBTYPE, yylloc));
+		string name = get_internal_identifier(local_scope);
+		local_scope->types[name] = Type(name, DEFERRED_SUBTYPE);
+		local_scope->types[name].declarations.push_back(yylloc);
 	}
 	| "class" IDENTIFIER
 	{
 		string name = *$2;
-		local_scope->types.emplace(name, Type(DEFERRED_SUBTYPE, yylloc));
+		local_scope->types[name] = Type(name, DEFERRED_SUBTYPE);
+		local_scope->types[name].declarations.push_back(yylloc);
 	}
 	| "typename" IDENTIFIER
 	{
 		string name = *$2;
-		local_scope->types.emplace(name, Type(DEFERRED_SUBTYPE, yylloc));
+		local_scope->types[name] = Type(name, DEFERRED_SUBTYPE);
+		local_scope->types[name].declarations.push_back(yylloc);
 	}
-	;
-
-template_template_argument
-	:
 	;
 
 template_instance_type
@@ -784,7 +807,8 @@ Module* run_parser(const string & filename) {
 	if(!module) { return NULL; }
 	current_file = module->files[filename];
 	file_scope = &current_file->scope;
-	local_scope = file_scope;
+	scopes = stack<Scope*>();
+	scopes.push(file_scope);
 	if(yyparse() != 0 || cpp_errors() > 0) { return NULL; }
 	return module;
 }
@@ -793,7 +817,8 @@ Module* run_parser(const string & filename, FILE* file) {
 	if(!module) { return NULL; }
 	current_file = module->files[filename];
 	file_scope = &current_file->scope;
-	local_scope = file_scope;
+	scopes = stack<Scope*>();
+	scopes.push(file_scope);
 	if(yyparse() != 0 || cpp_errors() > 0) { return NULL; }
 	return module;
 }
@@ -834,6 +859,16 @@ bool is_typename_free(const string& name, Scope* scope) {
 	return true;
 }
 
+Scope* resolve_scope(const string& name, Scope* scope) {
+	auto found_ns = scope->namespaces.find(name);
+	if(found_ns != scope->namespaces.end()) { return found_ns->second; }
+
+	auto found_type = scope->types.find(name);
+	if(found_type != scope->types.end()) { return found_type->second.scope; }
+
+	return NULL;
+}
+
 Scope* resolve_qualified(QualifiedName* name, Scope* scope) {
 	if(name->names.size() == 0) { return NULL; }
 	if(name->names.size() == 1) { return scope; }
@@ -846,9 +881,8 @@ Scope* resolve_qualified(QualifiedName* name, Scope* scope) {
 	auto it = ++name->names.begin();
 	auto last = --name->names.end();
 	for(; it != last; ++it) {
-		auto found = scope->namespaces.find(*it);
-		if(found == scope->namespaces.end()) { return NULL; }
-		scope = found->second;
+		scope = resolve_scope(*it, scope);
+		if(scope == NULL) { return NULL; }
 	}
 
 	return scope;
@@ -916,6 +950,7 @@ Type* get_type(QualifiedName* name, Scope* scope) {
 }
 
 Scope* get_namespace(const string& name, Scope* scope) {
+	// Keep traversing up scopes till we find the name
 	while(scope != NULL) {
 		auto found = scope->namespaces.find(name);
 		if(found != scope->namespaces.end())
@@ -936,4 +971,10 @@ string print_type_error(Subtype expected, Subtype received)
 string print_location(const Location& loc)
 {
 	return "TODO: Location";
+}
+
+string print_location(const Location* loc)
+{
+	if(loc == NULL) { return "TODO: Unknown location"; }
+	return print_location(*loc);
 }
