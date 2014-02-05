@@ -9,6 +9,7 @@
 	#include <stack>
 
 	#define yyerror cpperror
+	#define yyerronce cpperronce
 	#define yywarning cppwarning
 
 	using namespace std;
@@ -21,7 +22,7 @@
 	static stack<Scope*> scopes;
 	#define local_scope scopes.top()
 
-	// is_varname_free returns true if a provided identifier is not used as a
+	// is_varname_free returns true if a provided identifer is not used as a
 	//     symbol or can be masked as a varname in a provided scope.
 	static bool is_varname_free(const string& name, Scope* scope);
 
@@ -45,6 +46,10 @@
 	static Type* get_type(const string& name, Scope* scope);
 	static Type* get_type(QualifiedName* name, Scope* scope);
 
+	// get_namespace returns a pointer to the namespace visible in a provided scope
+	//     with a provided name. Returns NULL if no such namespace exists.
+	static Scope* get_namespace(const string& name, Scope* scope);
+
 	// print_type_error returns a human readable type-error explanation.
 	static string print_type_error(Subtype expected, Subtype received);
 
@@ -52,14 +57,15 @@
 	static string print_location(const Location& loc);
 	static string print_location(const Location* loc);
 
-	static YYSTYPE merge_ambiguous_typename(YYSTYPE x0, YYSTYPE x1);
+	static YYSTYPE merge_ambiguous(YYSTYPE x0, YYSTYPE x1);
 %}
 
 /* Set Parser Options */
 %glr-parser    // using glr so we can allow some conflicts in ambiguous C++ grammar
-%error-verbose // has bison output verbose errors
 %locations     // enable location tracking; we use this to pair comments with tokens
+%error-verbose // has bison output verbose errors
 %define parse.trace
+%debug
 
 //%define api.namespace {treesap}
 %define api.prefix {cpp}
@@ -132,6 +138,9 @@
 %token OP_STAR    "*"
 %token OP_ANGLE_L "<"
 %token OP_ANGLE_R ">"
+%token OP_PLUS    "+"
+%token OP_DASH    "-"
+%token OP_SLASH   "/"
 
 /* Precedence */
 %left ','
@@ -152,20 +161,24 @@
 %left "::"
 
 /* Non-terminals */
-%type <string> class_identifier
-%type <string> struct_identifier
-%type <name> qualified_name
-%type <name> existing_variable_identifier
+%type <string> class_declaration
+%type <string> struct_declaration
+
+%type <name> id
+%type <name> type_id
+%type <name> qualified_id
+%type <name> nested_name_specifier
+%type <string> unqualified_id
 
 %type <template_type> template_declaration
 
-
-/* Destructors */
-/*
-%destructor {} END
-%destructor { delete($$); } <string>
-%destructor { delete($$); } <name>
-*/
+/* Formatting for debugging output */
+%printer { fprintf(yyoutput, "%c", $$); } <character>
+%printer { fprintf(yyoutput, "%d", $$); } <integer>
+%printer { fprintf(yyoutput, "%f", $$); } <floating>
+%printer { fprintf(yyoutput, "%s", $$->c_str()); } <string>
+%printer { fprintf(yyoutput, "%s", $$->to_string().c_str()); } <name>
+%printer { fprintf(yyoutput, $$ ? "true" : "false"); } <boolean>
 
 
 %%
@@ -177,6 +190,8 @@ cxx : empty
 		if(!current_error.empty()) {
 			yyerror(current_error);
 			current_error.clear();
+		} else {
+			yyerronce("Found unknown syntax error. This may be caused by a previous error.");
 		}
 	}
 	;
@@ -188,15 +203,16 @@ declarations
 
 declaration
 	: namespace_declaration
-	| method_definition
 	| method_declaration ';'
+	| method_definition
 	| enum_declaration ';'
 	| class_declaration ';'
+	| class_definition ';'
 	| struct_declaration ';'
+	| struct_definition ';'
 	| template_declaration ';'
-	| template_definition ';'
 	| template_specialization ';'
-	| template_spec_definition ';'
+	| template_definition ';'
 	| typedef_declaration ';'
 	| variable_declaration ';'
 	;
@@ -211,24 +227,40 @@ statement
 	;
 
 expression
-	: existing_variable_identifier
-	| raw_value
-	| boolean_value
-	| cast_value
+	: id
+	| non_id_expression
+	;
+
+non_id_expression
+	: cast_value
+	| literal_value
+	| boolean_expression
+	| logical_expression
+	| arithmetic_expression
 	| type_initializer
 	| '(' expression ')'
 	;
 
-boolean_value
+boolean_expression
 	: expression "==" expression
 	| expression "!=" expression
 	| expression "<=" expression
 	| expression ">=" expression
 	| expression "<" expression
 	| expression ">" expression
-	| expression "||" expression
+	;
+
+logical_expression
+	: expression "||" expression
 	| expression "&&" expression
 	| "!" expression
+	;
+
+arithmetic_expression
+	: expression "+" expression
+	| expression "-" expression
+	| expression "*" expression
+	| expression "/" expression
 	;
 
 type_initializer
@@ -252,18 +284,18 @@ class_body
 
 class_part
 	: declaration
-	| access_specifier
+	| access_specifier ':'
 	;
 
 access_specifier
-	: "public" ':'
-	| "protected" ':'
-	| "private" ':'
+	: "public"
+	| "protected"
+	| "private"
 	;
 
 enum_declaration
-	: "enum" IDENTIFIER '{' '}'
-	| "enum" IDENTIFIER '{' enumeration '}'
+	: "enum" unqualified_id '{' '}'
+	| "enum" unqualified_id '{' enumeration '}'
 	| "enum" '{' enumeration '}'
 	;
 
@@ -273,8 +305,32 @@ enumeration
 	;
 
 enum_element
-	: IDENTIFIER
-	| IDENTIFIER "=" expression
+	: unqualified_id
+	{
+		string name = *$1;
+		
+
+		if(is_varname_free(name, local_scope)) {
+			local_scope->variables[name] = new Variable(name, INT_TYPE);
+		} else {
+			current_error = "TODO: Previous declaration of A.\n";
+		}
+
+		// TODO: Set enum value
+	}
+	| unqualified_id "=" expression
+	{
+		string name = *$1;
+		
+
+		if(is_varname_free(name, local_scope)) {
+			local_scope->variables[name] = new Variable(name, INT_TYPE);
+		} else {
+			current_error = "TODO: Previous declaration of A.\n";
+		}
+
+		// TODO: Set enum value
+	}
 	;
 
 variable_declaration
@@ -295,57 +351,60 @@ variable_parameter
 	;
 
 variable_expression
-	: type_reference IDENTIFIER
+	: type_reference unqualified_id
 	;
 
 variable_initialization
-	: variable_expression '=' expression
+	: variable_expression "=" expression
+	;
+
+class_definition
+	: class_declaration parent_list '{' '}' // definition
+	{
+		string name = *$1;
+		
+
+		Type* prev = get_type(name, local_scope);
+		if(prev == NULL) {
+			current_error = "TODO: class definition without declaration";
+			YYERROR;
+		}
+
+		if(prev->definition != NULL) {
+			current_error = "Redefinition of 'class " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Define class
+	}
+	| class_declaration parent_list '{' class_body '}'
+	{
+		string name = *$1;
+		
+
+		Type* prev = get_type(name, local_scope);
+		if(prev == NULL) {
+			current_error = "TODO: class definition without declaration";
+			YYERROR;
+		}
+
+		if(prev->definition != NULL) {
+			current_error = "Redefinition of 'class " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Define class
+	}
 	;
 
 class_declaration
-	: class_identifier         // declaration
-	| class_identifier '{' '}' // definition
-	{
-		string name = *$1;
-
-		Type* prev = get_type(name, local_scope);
-		if(prev == NULL) {
-			current_error = "TODO: class definition without declaration";
-			YYERROR;
-		}
-
-		if(prev->definition != NULL) {
-			current_error = "Redefinition of 'class " + name + "'.\n"
-				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
-			YYERROR;
-		}
-
-		// TODO: Define class
-	}
-	| class_identifier '{' class_body '}'
-	{
-		string name = *$1;
-
-		Type* prev = get_type(name, local_scope);
-		if(prev == NULL) {
-			current_error = "TODO: class definition without declaration";
-			YYERROR;
-		}
-
-		if(prev->definition != NULL) {
-			current_error = "Redefinition of 'class " + name + "'.\n"
-				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
-			YYERROR;
-		}
-
-		// TODO: Define class
-	}
-	;
-
-class_identifier
-	: "class" IDENTIFIER
+	: "class" unqualified_id
 	{
 		string name = *$2;
+		$$ = $2;
+
 		Type* prev = get_type(name, local_scope);
 		if(prev != NULL) {
 			if(prev->subtype != CLASS_SUBTYPE) {
@@ -365,55 +424,56 @@ class_identifier
 			current_error = "TODO: name for class has conflict";
 			YYERROR;
 		}
+	}
+	;
 
-		$$ = $2;
+struct_definition
+	: struct_declaration parent_list '{' '}' // definition
+	{
+		string name = *$1;
+		
+
+		Type* prev = get_type(name, local_scope);
+		if(prev == NULL) {
+			current_error = "TODO: struct definition without declaration";
+			YYERROR;
+		}
+
+		if(prev->definition != NULL) {
+			current_error = "Redefinition of 'struct " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Define class
+	}
+	| struct_declaration parent_list '{' class_body '}'
+	{
+		string name = *$1;
+		
+
+		Type* prev = get_type(name, local_scope);
+		if(prev == NULL) {
+			current_error = "TODO: struct definition without declaration";
+			YYERROR;
+		}
+
+		if(prev->definition != NULL) {
+			current_error = "Redefinition of 'struct " + name + "'.\n"
+				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Define class
 	}
 	;
 
 struct_declaration
-	: struct_identifier         // declaration
-	| struct_identifier '{' '}' // definition
-	{
-		string name = *$1;
-
-		Type* prev = get_type(name, local_scope);
-		if(prev == NULL) {
-			current_error = "TODO: struct definition without declaration";
-			YYERROR;
-		}
-
-		if(prev->definition != NULL) {
-			current_error = "Redefinition of 'struct " + name + "'.\n"
-				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
-			YYERROR;
-		}
-
-		// TODO: Define class
-	}
-	| struct_identifier '{' class_body '}'
-	{
-		string name = *$1;
-
-		Type* prev = get_type(name, local_scope);
-		if(prev == NULL) {
-			current_error = "TODO: struct definition without declaration";
-			YYERROR;
-		}
-
-		if(prev->definition != NULL) {
-			current_error = "Redefinition of 'struct " + name + "'.\n"
-				+ "\n\tPreviously defined: " + print_location(prev->definition) + "\n";
-			YYERROR;
-		}
-
-		// TODO: Define class
-	}
-	;
-
-struct_identifier
-	: "struct" IDENTIFIER
+	: "struct" unqualified_id
 	{
 		string name = *$2;
+		$$ = $2;
+
 		Type* prev = get_type(name, local_scope);
 		if(prev != NULL) {
 			if(prev->subtype != CLASS_SUBTYPE) {
@@ -433,8 +493,6 @@ struct_identifier
 			current_error = "TODO: name for struct has conflict";
 			YYERROR;
 		}
-
-		$$ = $2;
 	}
 	;
 
@@ -442,13 +500,19 @@ start_template_scope
 	: "template" "<" { scopes.push(new Scope(local_scope, TEMPLATE_SCOPE)); }
 	;
 
+template_arguments
+	: start_template_scope template_argument_list ">"
+	;
+
 template_declaration
-	: start_template_scope template_argument_list ">" "class" IDENTIFIER
+	: template_arguments "class" unqualified_id
 	{
 		Scope* template_scope = local_scope;
 		scopes.pop();
 
-		string name = *$5;
+		string name = *$3;
+		
+
 		Type* type = get_type(name, local_scope);
 		if(type != NULL) {
 			if(type->subtype != TEMPLATE_SUBTYPE) {
@@ -465,7 +529,7 @@ template_declaration
 			size_t received_args = template_scope->types.size();
 			if(expected_args != received_args) {
 				current_error = "TODO: num template args is different";
-				delete template_scope;
+				template_scope.decref();
 				YYERROR;
 			}
 			*/
@@ -479,23 +543,24 @@ template_declaration
 		} else if(is_typename_free(name, local_scope)) {
 			local_scope->types[name] = new Template(name, template_scope);
 			local_scope->types[name]->declarations.push_back(yylloc);
-			if(local_scope->types[name]->as_template() == NULL) { printf("Farts!"); }
 			$$ = local_scope->types[name]->as_template();
 		} else {
 			current_error = "TODO: name for template class has conflict";
 			YYERROR;
 		}
 	}
-	| start_template_scope template_argument_list ">" "struct" IDENTIFIER
+	| template_arguments "struct" unqualified_id
 	{
 		Scope* template_scope = local_scope;
 		scopes.pop();
 
-		string name = *$5;
+		string name = *$3;
+		
+
 		Type* type = get_type(name, local_scope);
 		if(type != NULL) {
 			if(type->subtype != TEMPLATE_SUBTYPE) {
-				current_error = "'template<...> class " + name + '\''
+				current_error = "'template<...> struct " + name + '\''
 				                + print_type_error(type->subtype, CLASS_SUBTYPE)
 				                + "\n\tFirst declared: "
 				                + print_location(type->declarations.front()) + "\n";
@@ -508,7 +573,7 @@ template_declaration
 			size_t received_args = template_scope->types.size();
 			if(expected_args != received_args) {
 				current_error = "TODO: num template args is different";
-				delete template_scope;
+				template_scope.decref();
 				YYERROR;
 			}
 			*/
@@ -522,31 +587,41 @@ template_declaration
 		} else if(is_typename_free(name, local_scope)) {
 			local_scope->types[name] = new Template(name, template_scope);
 			local_scope->types[name]->declarations.push_back(yylloc);
-			if(local_scope->types[name]->as_template() == NULL) { printf("Farts!"); }
 			$$ = local_scope->types[name]->as_template();
 		} else {
-			current_error = "TODO: name for template class has conflict";
+			current_error = "TODO: name for template struct has conflict";
 			YYERROR;
 		}
 	}
 	;
 
+parent_list
+	: empty
+	| ':' non_empty_parent_list
+	;
+
+non_empty_parent_list
+	: parent_class
+	| non_empty_parent_list ',' parent_class
+	;
+
+parent_class
+	: type_name
+	| access_specifier type_name
+	;
+
 template_definition
-	: template_declaration '{' '}'
-	| template_declaration '{' { scopes.push($1->scope); } class_body '}'
-	{
-		if($1 != NULL) { scopes.pop(); }
-	}
+	: template_declaration parent_list '{' '}'
+	| template_declaration parent_list '{' { scopes.push($1->scope); } class_body '}' { scopes.pop(); }
+	| template_specialization '{' '}'
+	| template_specialization '{' class_body '}'
 	;
 
 template_specialization
 	: "template" "<" ">" "class" template_instance_type
 	| "template" "<" ">" "struct" template_instance_type
-	;
-
-template_spec_definition
-	: template_specialization '{' '}'
-	| template_specialization '{' class_body '}'
+	| template_arguments "class" template_instance_type { scopes.pop(); }
+	| template_arguments "struct" template_instance_type { scopes.pop(); }
 	;
 
 template_argument_list
@@ -555,11 +630,11 @@ template_argument_list
 	;
 
 template_argument
-	: template_type_argument %merge<merge_ambiguous_typename>
+	: template_type_argument               %merge<merge_ambiguous>
 	| template_type_argument "=" type_name
 	| template_declaration
 	| template_declaration "=" type_name
-	| variable_parameter %merge<merge_ambiguous_typename>
+	| variable_parameter                   %merge<merge_ambiguous>
 	;
 
 template_type_argument
@@ -585,7 +660,7 @@ template_type_argument
 		deferred->variables["*"] = new Variable();
 		local_scope->types[name]->scope = deferred;
 	}
-	| "class" IDENTIFIER
+	| "class" unqualified_id
 	{
 		string name = *$2;
 		local_scope->types[name] = new Type(name, DEFERRED_SUBTYPE);
@@ -596,7 +671,7 @@ template_type_argument
 		deferred->variables["*"] = new Variable();
 		local_scope->types[name]->scope = deferred;
 	}
-	| "typename" IDENTIFIER
+	| "typename" unqualified_id
 	{
 		string name = *$2;
 		local_scope->types[name] = new Type(name, DEFERRED_SUBTYPE);
@@ -610,8 +685,18 @@ template_type_argument
 	;
 
 template_instance_type
-	: existing_type_identifier "<" type_list ">"
-	| existing_type_identifier "<" raw_value_list ">"
+	: type_id "<" template_instance_item_list ">"
+	;
+
+template_instance_item_list
+	: template_instance_item
+	| template_instance_item_list ',' template_instance_item
+	;
+
+template_instance_item
+	: id type_reference
+	| non_id_type_name
+	| non_id_expression
 	;
 
 typedef_declaration
@@ -620,9 +705,41 @@ typedef_declaration
 
 namespace_declaration
 	: "namespace" attribute_directive '{' '}'
-	| "namespace" attribute_directive '{' declarations '}'
-	| "namespace" IDENTIFIER attribute_directive '{' '}'
-	| "namespace" IDENTIFIER attribute_directive '{' declarations '}'
+	| "namespace" attribute_directive '{'
+	{
+		// Create a new anonymous scope
+		Scope* scope = new Scope(local_scope, ANONYMOUS_SCOPE);
+		local_scope->anonymous_scopes.push_back(scope);
+		scopes.push(scope); // enter scope
+	}
+	  declarations '}'
+	{
+		scopes.pop(); // exit namespace scope
+	}
+	| "namespace" unqualified_id attribute_directive '{' '}'
+	| "namespace" unqualified_id attribute_directive '{'
+	{
+		string name = *$2;
+
+		// Get a new or existing namespace scope
+		Scope* scope = get_namespace(name, local_scope);
+		if(scope == NULL) {
+			scope = new Scope(local_scope, NAMESPACE_SCOPE); 
+		} else {
+			// If its an existing scope, we have to set the parent to
+			// our current scope so the namespace can see our variables
+			scope->parent = local_scope;
+		}
+		local_scope->namespaces[name] = scope;
+		scopes.push(scope); // enter scope
+	}
+	  declarations '}'
+	{
+		// Namespaces aren't parented to other scopes, since we've already
+		// resolved references in this namespace, we need to remove the parent now.
+		local_scope->parent = NULL;
+		scopes.pop(); // exit namespace scope
+	}
 	;
 
 method_declaration
@@ -631,16 +748,16 @@ method_declaration
 
 method_base
 	: type_name variable_expression '(' ')'
-	| type_name variable_expression '(' method_params ')'
+	| type_name variable_expression '(' parameter_list ')'
 	;
 
 method_definition
 	: method_base method_body
 	;
 
-method_params
+parameter_list
 	: variable_parameter
-	| method_params ',' variable_parameter
+	| parameter_list ',' variable_parameter
 	;
 
 attribute_directive
@@ -664,14 +781,19 @@ method_body
 	;
 
 type_name
+	: non_id_type_name
+	| type_id
+	| template_instance_type qualified_id
+	;
+
+non_id_type_name
 	: "void"
 	| "bool"
 	| integer_type
 	| float_type
-	| existing_type_identifier
 	| type_const_name
 	| template_instance_type
-	| "decltype" '(' IDENTIFIER ')'
+	| "decltype" '(' id ')'
 	;
 
 type_reference
@@ -680,77 +802,37 @@ type_reference
 	| "*" type_reference
 	;
 
-existing_type_identifier
-	: IDENTIFIER
-	{
-		if(get_type(*$1, local_scope) == NULL) {
-			current_error = "Type '" + *$1 + "' was not declared in this scope.";
-			YYERROR;
-		}
-	}
-	| qualified_name
+type_id
+	: id
 	{
 		if(get_type($1, local_scope) == NULL) {
 			current_error = "Type '" + $1->to_string()
 			                + "' was not declared in this scope.";
 			YYERROR;
 		}
+
+		$$ = $1;
 	}
-	| "typename" IDENTIFIER
-	{
-		if(get_type(*$2, local_scope) == NULL) {
-			current_error = "Type '" + *$2 + "' was not declared in this scope.";
-			YYERROR;
-		}
-	}
-	| "typename" qualified_name
+	| "typename" id
 	{
 		if(get_type($2, local_scope) == NULL) {
 			current_error = "Type '" + $2->to_string()
 			                + "' was not declared in this scope.";
 			YYERROR;
 		}
-	}
-	;
 
-existing_variable_identifier
-	: IDENTIFIER
-	{
-		if(get_variable(*$1, local_scope) == NULL) {
-			current_error = "Variable '" + *$1 + "' was not declared in this scope.";
-			YYERROR;
-		}
-	}
-	| qualified_name
-	{
-		if(get_variable($1, local_scope) == NULL) {
-			current_error = "Variable '" + $1->to_string()
-			                + "' was not declared in this scope.";
-			YYERROR;
-		}
-
-		$$ = $1;
+		$$ = $2;
 	}
 	;
 
 type_const_name
 	: "const" integer_type
 	| "const" float_type
-	| "const" existing_type_identifier
+	| "const" type_id
 	| "const" template_instance_type
 	;
 
-type_list
-	: type_name
-	| type_list ',' type_name
-	;
-
-raw_value_list
-	: raw_value
-	| raw_value ',' raw_value_list
-	;
-
-raw_value
+literal_value
 	: BOOLEAN
 	| INTEGER
 	| FLOAT
@@ -787,18 +869,44 @@ float_type
 	| "long" "double"
 	;
 
-qualified_name
-	: IDENTIFIER "::" IDENTIFIER
+id  : qualified_id { $$ = $1; }
+	| unqualified_id 
 	{
 		$$ = new QualifiedName(*$1);
-		$$->names.push_back(*$3);
+		delete $1;
 	}
-	| qualified_name "::" IDENTIFIER
+	| nested_name_specifier unqualified_id
 	{
-		$1->names.push_back(*$3);
+		$1->names.push_back(*$2);
+		delete $2;
 		$$ = $1;
 	}
 	;
+
+qualified_id
+	: "::" id
+	{
+		$$ = $2;
+	}
+	;
+
+nested_name_specifier
+	: unqualified_id "::"
+	{
+		$$ = new QualifiedName(*$1);
+		delete $1;
+	}
+	| nested_name_specifier unqualified_id "::"
+	{
+		$1->names.push_back(*$2);
+		$$ = $1;
+	}
+	;
+
+unqualified_id
+	: IDENTIFIER
+	;
+
 
 /*
 string_literal
@@ -835,9 +943,20 @@ Module* run_parser(const string & filename, FILE* file) {
 	return module;
 }
 
-void cpp_parser_file(File* file) {
+void cpp_push_file(File* file) {
 	current_file = file;
 	file_scope = &current_file->scope;
+
+	// Add to front, because more recent inherits should be checked first
+	local_scope->inherits.push_front(file_scope);
+
+	scopes.push(file_scope);
+}
+
+void cpp_pop_to_file(File* file) {
+	current_file = file;
+	file_scope = &current_file->scope;
+	scopes.pop();
 }
 
 /* --- Helper Subroutines --- */
@@ -851,6 +970,11 @@ bool is_varname_free(const string& name, Scope* scope) {
 	// Namespace names conflict with variable names.
 	if(scope->namespaces.find(name) != scope->namespaces.end()) {
 		return false;
+	}
+
+	// Also check all the scopes that this scope inherits from
+	for(auto it = scope->inherits.begin(); it != scope->inherits.end(); ++it) {
+		if(!is_varname_free(name, *it)) { return false; }
 	}
 
 	return true;
@@ -868,6 +992,11 @@ bool is_typename_free(const string& name, Scope* scope) {
 		return false;
 	}
 
+	// Also check all the scopes that this scope inherits from
+	for(auto it = scope->inherits.begin(); it != scope->inherits.end(); ++it) {
+		if(!is_typename_free(name, *it)) { return false; }
+	}
+
 	return true;
 }
 
@@ -877,6 +1006,12 @@ Scope* resolve_scope(const string& name, Scope* scope) {
 
 	auto found_type = scope->types.find(name);
 	if(found_type != scope->types.end()) { return found_type->second->scope; }
+
+	// If we haven't found it, it might be in an inherited scope
+	for(auto it = scope->inherits.begin(); it != scope->inherits.end(); ++it) {
+		Scope* ret = resolve_scope(name, *it);
+		if(ret != NULL) { return ret; }
+	}
 
 	return NULL;
 }
@@ -915,11 +1050,20 @@ Scope* resolve_qualified(QualifiedName* name, Scope* scope) {
 Variable* get_variable(const string& name, Scope* scope) {
 	// Keep traversing up scopes till we find the name
 	while(scope != NULL) {
+		// Check for it in this scope
 		auto found = scope->variables.find(name);
 		if(found != scope->variables.end())
 		{
 			return found->second;
 		}
+
+		// Or it might be in an inherited scope
+		for(auto it = scope->inherits.begin(); it != scope->inherits.end(); ++it) {
+			Variable* var = get_variable(name, *it);
+			if(var != NULL) { return var; }
+		}
+
+		// Otherwise, check our parents instead
 		scope = scope->parent;
 	}
 
@@ -951,12 +1095,20 @@ Variable* get_variable(QualifiedName* name, Scope* scope) {
 Type* get_type(const string& name, Scope* scope) {
 	// Keep traversing up scopes till we find the name
 	while(scope != NULL) {
+		// Check for it in this scope
 		auto found = scope->types.find(name);
 		if(found != scope->types.end())
 		{
 			return found->second;
 		}
 
+		// Or it might be in an inherited scope
+		for(auto it = scope->inherits.begin(); it != scope->inherits.end(); ++it) {
+			Type* typ = get_type(name, *it);
+			if(typ != NULL) { return typ; }
+		}
+
+		// Otherwise, check our parents instead
 		scope = scope->parent;
 	}
 
@@ -985,6 +1137,29 @@ Type* get_type(QualifiedName* name, Scope* scope) {
 	return NULL;
 }
 
+Scope* get_namespace(const string& name, Scope* scope) {
+	// Keep traversing up scopes till we find the name
+	while(scope != NULL) {
+		// Check for it in this scope
+		auto found = scope->namespaces.find(name);
+		if(found != scope->namespaces.end())
+		{
+			return found->second;
+		}
+
+		// Or it might be in an inherited scope
+		for(auto it = scope->inherits.begin(); it != scope->inherits.end(); ++it) {
+			Scope* ns = get_namespace(name, *it);
+			if(ns != NULL) { return ns; }
+		}
+
+		// Otherwise, check our parents instead
+		scope = scope->parent;
+	}
+
+	return NULL;
+}
+
 string print_type_error(Subtype expected, Subtype received)
 {
 	return "TODO: Bad type";
@@ -1001,7 +1176,7 @@ string print_location(const Location* loc)
 	return print_location(*loc);
 }
 
-YYSTYPE merge_ambiguous_typename(YYSTYPE x0, YYSTYPE x1) {
+YYSTYPE merge_ambiguous(YYSTYPE x0, YYSTYPE x1) {
 	// TODO: Actually merge
 	return x0;
 }

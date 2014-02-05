@@ -53,13 +53,14 @@ IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
 BOOLEAN_LITERAL true|false
 OCTAL_LITERAL   0
 DECIMAL_LITERAL [1-9]+[0-9]*L?
+HEXNUM_LITERAL  0x[0-9a-fA-F]+
 FLOAT_LITERAL   (([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?
 
 /*
 // These regexs are correct to the specification, but we're using simplified
 //     versions until someone feels the need to implement them.
 
-HEXNUM_LITERAL  (0x[0-9a-fA-F]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+HEXNUM_LITERAL  (0x[0-9a-fA-F]+([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 BINARY_LITERAL  (0[bB][01]+([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 DECIMAL_LITERAL ([1-9]+[0-9]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 FLOATING_POINT  ((([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?[lLfF]?)
@@ -172,6 +173,19 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	return PRETOKEN_INTEGER;
 }
 
+{HEXNUM_LITERAL} {
+	// Hexidecimal literal
+	unsigned int v;
+	if(sscanf(yytext, "%x", &v) != 1) {
+		string msg = "Treesap failed to parser hex constant \"";
+		msg += yytext;
+		msg += "\".";
+		yyerror(msg.c_str());
+	}
+	yylval.integer = v;
+	return PRETOKEN_INTEGER;
+}
+
 {FLOAT_LITERAL} {
 	// Floating-point literals
 	yylval.floating = atof(yytext);
@@ -222,6 +236,12 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	// Eat whitespace
 }
 
+<macro_args>\([^\(\)]*\) {
+	// Eat paren-grouped objects
+	// TODO: Improve this for arbitrary nestings of parenthesis
+	current_value += yytext;
+}
+
 <macro_args>"," {
 	// Eat argument
 	current_macro.arg_values.push_back(current_value);
@@ -257,10 +277,13 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	BEGIN(INITIAL);
 }
 
+<macro_args>"\\\n" {
+	// Insert escaped newline as newline
+	current_value += '\n';
+}
+
 <macro_args>"\n" {
-	// Error on newline
-	yyerror("Unexpected newline in call to function macro.");
-	yyterminate();
+	// Ignore newline
 }
 
 <macro_args>. {

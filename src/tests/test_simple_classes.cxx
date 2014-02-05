@@ -1,4 +1,4 @@
-// Filename: test_simple_struct.cxx
+// Filename: test_simple_classes.cxx
 #include "testbase.h"
 #include "cpp/cpp.h"
 #include "cpp/parser/parser.h"

@@ -13,5 +13,6 @@ Module* run_parser(const std::string & filename, FILE* file);
 int cpp_errors();
 int cpp_warnings();
 
-/* Internal interface */
-void cpp_parser_file(File*);
+/* lexer-to-parser interface */
+void cpp_push_file(File*);
+void cpp_pop_to_file(File*);

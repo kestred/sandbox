@@ -31,6 +31,9 @@ static char file[] = "\n"
 // And we can have template classes with non-type arguments
 "template<bool> class L;\n"
 "template<int i> class M;\n"
+
+// We can also create a specialization with template arguments
+"template<typename X> class G<X, X>;\n"
 ;
 
 UNITTEST(test_simple_templates) {

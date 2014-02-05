@@ -72,13 +72,14 @@
 %right "!"
 
 /* Non-terminals */
-%type <boolean> expr_condition
+%type <boolean> defined
 %type <boolean> condition
-%type <boolean> cond_defined
-%type <boolean> cond_compare
+%type <boolean> non_arithmetic_condition
+%type <boolean> boolean_expression
+%type <boolean> logical_expression
 
-%type <floating> expr_equation
 %type <floating> number
+%type <floating> arithmetic_expression
 
 
 %%
@@ -89,71 +90,67 @@ grammar
 	;
 
 if_directive
-	: expr_condition { result = $1; }
-	| number { result = (bool)$1; }
+	: condition { result = $1; }
 	;
 
-expr_condition
-	: condition
-	| expr_condition "&&" condition
-	{
-		if($1) { $$ = $3; }
-		else { $$ = false; }
-	}
-	| expr_condition "||" condition
-	{
-		if($1) { $$ = true; }
-		else { $$ = $3; }
-	}
-	;
 
 condition
-	: cond_defined
-	| cond_compare
+	: non_arithmetic_condition
+	| arithmetic_expression { $$ = (bool)$1; }
+	;
+
+non_arithmetic_condition
+	: defined
+	| undefined { $$ = false; }
+	| logical_expression
+	| boolean_expression
 	| "!" condition { $$ = !$2; }
-	| '(' expr_condition ')' { $$ = $2; }
+	| '(' non_arithmetic_condition ')' { $$ = $2; }
 	;
 
-cond_compare
-	: expr_equation "==" expr_equation
-	{
-		$$ = ($1 == $3);
-	}
-	| expr_equation "!=" expr_equation
-	{
-		$$ = ($1 != $3);
-	}
-	| expr_equation "<=" expr_equation
-	{
-		$$ = ($1 <= $3);
-	}
-	| expr_equation ">=" expr_equation
-	{
-		$$ = ($1 >= $3);
-	}
-	| expr_equation "<" expr_equation
-	{
-		$$ = ($1 < $3);
-	}
-	| expr_equation ">" expr_equation
-	{
-		$$ = ($1 > $3);
-	}
-	| undefined "==" expr_equation { $$ = false; }
-	| undefined "!=" expr_equation { $$ = false; }
-	| undefined "<=" expr_equation { $$ = false; }
-	| undefined ">=" expr_equation { $$ = false; }
-	| undefined "<" expr_equation { $$ = false; }
-	| undefined ">" expr_equation { $$ = false; }
-	| expr_equation "==" undefined { $$ = false; }
-	| expr_equation "!=" undefined { $$ = false; }
-	| expr_equation "<=" undefined { $$ = false; }
-	| expr_equation ">=" undefined { $$ = false; }
-	| expr_equation "<" undefined { $$ = false; }
-	| expr_equation ">" undefined { $$ = false; }
+logical_expression
+	: condition "&&" condition { $$ = ($1 && $3); }
+	| condition "||" condition { $$ = ($1 || $3); }
 	;
 
-cond_defined
+boolean_expression
+	: arithmetic_expression "==" arithmetic_expression { $$ = ($1 == $3); }
+	| arithmetic_expression "!=" arithmetic_expression { $$ = ($1 != $3); }
+	| arithmetic_expression "<=" arithmetic_expression { $$ = ($1 <= $3); }
+	| arithmetic_expression ">=" arithmetic_expression { $$ = ($1 >= $3); }
+	| arithmetic_expression "<" arithmetic_expression { $$ = ($1 < $3); }
+	| arithmetic_expression ">" arithmetic_expression { $$ = ($1 > $3); }
+	| undefined "==" arithmetic_expression { $$ = (0 == $3); }
+	| undefined "!=" arithmetic_expression { $$ = (0 != $3); }
+	| undefined "<=" arithmetic_expression { $$ = (0 <= $3); }
+	| undefined ">=" arithmetic_expression { $$ = (0 >= $3); }
+	| undefined "<" arithmetic_expression { $$ = (0 < $3); }
+	| undefined ">" arithmetic_expression { $$ = (0 > $3); }
+	| arithmetic_expression "==" undefined { $$ = ($1 == 0); }
+	| arithmetic_expression "!=" undefined { $$ = ($1 != 0); }
+	| arithmetic_expression "<=" undefined { $$ = ($1 <= 0); }
+	| arithmetic_expression ">=" undefined { $$ = ($1 >= 0); }
+	| arithmetic_expression "<" undefined { $$ = ($1 < 0); }
+	| arithmetic_expression ">" undefined { $$ = ($1 > 0); }
+	;
+
+arithmetic_expression
+	: number
+	| arithmetic_expression ">>" arithmetic_expression { $$ = (int)($1 + 0.5) >> (int)($3 + 0.5); }
+	| arithmetic_expression "<<" arithmetic_expression { $$ = (int)($1 + 0.5) << (int)($3 + 0.5); }
+	| arithmetic_expression "+" arithmetic_expression { $$ = $1 + $3; }
+	| arithmetic_expression "-" arithmetic_expression { $$ = $1 - $3; }
+	| '(' arithmetic_expression ')' { $$ = $2; }
+	;
+
+number
+	: INTEGER { $$ = $1; }
+	| FLOAT
+	| CHAR { $$ = $1; }
+	| BOOLEAN { $$ = $1; }
+	;
+
+defined
 	: "defined" IDENTIFIER
 	{
 		if(macros.find(*$2) == macros.end()) {
@@ -172,22 +169,6 @@ cond_defined
 		}
 		delete $3;
 	}
-	;
-
-expr_equation
-	: number
-	| expr_equation ">>" expr_equation { $$ = (int)($1 + 0.5) >> (int)($3 + 0.5); }
-	| expr_equation "<<" expr_equation { $$ = (int)($1 + 0.5) << (int)($3 + 0.5); }
-	| expr_equation "+" expr_equation { $$ = $1 + $3; }
-	| expr_equation "-" expr_equation { $$ = $1 - $3; }
-	| '(' expr_equation ')' { $$ = $2; }
-	;
-
-number
-	: INTEGER { $$ = $1; }
-	| FLOAT
-	| CHAR { $$ = $1; }
-	| BOOLEAN { $$ = $1; }
 	;
 
 undefined

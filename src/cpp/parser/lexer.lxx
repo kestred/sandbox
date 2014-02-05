@@ -18,6 +18,7 @@
 	#define yylval cpplval
 	#define yylloc cpplloc
 	#define yyerror cpperror
+	#define yyerronce cpperronce
 	#define yywarning cppwarning
 	#define YY_DECL int cpplex(void)
 	using namespace std;
@@ -37,6 +38,7 @@
 		int condition_depth; // depth of #if statements
 
 		bool is_macro;
+		Macro* macro;
 		string macro_value;
 	};
 
@@ -54,10 +56,12 @@
 	static string current_value;
 	static map<string, string> prev_include_dir;
 
+	/* Function Declarations */
 	#define echo() \
 		cout << "Token(" << inputs.front()->name << "): " << yytext << "\n"
+	static ostream& echo_location(ostream& out, Input* info);
+	static ostream& echo_location(ostream& out, Location loc);
 
-	/* Function Declarations */
 	// emit outputs the specified token from the lexer with location information
 	#define emit(token)                                        \
 		yylloc.last_line = inputs.front()->line_number;        \
@@ -127,6 +131,7 @@ IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
 BOOLEAN_LITERAL true|false
 OCTAL_LITERAL   0
 DECIMAL_LITERAL [1-9]+[0-9]*L?
+HEXNUM_LITERAL  0x[0-9a-fA-F]+
 FLOAT_LITERAL   (([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?
 
 /*
@@ -295,8 +300,15 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 }
 
 <pragma>"GCC system_header".* {
-	// We're going to handle this header by ignoring it, until we actually have
+	// We're going to handle this directive by ignoring it, until we actually have
 	// to implement it (see http://gcc.gnu.org/onlinedocs/cpp/System-Headers.html).
+	accept();
+	yy_pop_state();
+}
+
+<pragma>"GCC visibility".* {
+	// We're also going to handle this directive by ignoring it, until we actually want
+	// to implement it (see http://gcc.gnu.org/onlinedocs/gcc/Visibility-Pragmas.html).
 	accept();
 	yy_pop_state();
 }
@@ -321,7 +333,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yyterminate();
 	} else {
 		yy_pop_state();
-		cpp_parser_file(inputs.front());
+		cpp_push_file(inputs.front());
 	}
 }
 <include>[<] {
@@ -332,7 +344,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yyterminate();
 	} else {
 		yy_pop_state();
-		cpp_parser_file(inputs.front());
+		cpp_push_file(inputs.front());
 	}
 }
 
@@ -344,7 +356,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yyterminate();
 	} else {
 		yy_pop_state();
-		cpp_parser_file(inputs.front());
+		cpp_push_file(inputs.front());
 	}
 }
 <include_next>[<] {
@@ -355,7 +367,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yyterminate();
 	} else {
 		yy_pop_state();
-		cpp_parser_file(inputs.front());
+		cpp_push_file(inputs.front());
 	}
 }
 
@@ -752,6 +764,21 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	emit(TOKEN_OP_STAR);
 }
 
+"+" {
+	accept();
+	emit(TOKEN_OP_PLUS);
+}
+
+"/" {
+	accept();
+	emit(TOKEN_OP_SLASH);
+}
+
+"-" {
+	accept();
+	emit(TOKEN_OP_DASH);
+}
+
 "<" {
 	accept();
 	emit(TOKEN_OP_ANGLE_L);
@@ -797,7 +824,10 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yylval.character = read_char_const();
 	if(peek_char() != '\'') {
 		yyerror("Treesap doesn't support multi-character character constants.");
-		scan_string_literal('\''); // Consome the rest of the characters
+		scan_string_literal('\''); // Consume the rest of the characters
+	} else {
+		// Eat closing (')
+		read_char();
 	}
 	emit(TOKEN_CHAR);
 }
@@ -827,6 +857,17 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	emit(TOKEN_INTEGER);
 }
 
+{HEXNUM_LITERAL} {
+	// Hexidecimal literal
+	accept();
+	unsigned int v;
+	if(sscanf(yytext, "%x", &v) != 1) {
+		yyerror("Treesap failed to parser hex constant \"" + string(yytext) + "\".");
+	}
+	yylval.integer = v;
+	emit(TOKEN_INTEGER);
+}
+
 {FLOAT_LITERAL} {
 	// Floating-point literals
 	accept();
@@ -840,18 +881,25 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	// Check if its a macro, and if it is, expand it
 	string identifier(yytext);
 	auto macro_it = module->macros.find(identifier);
-	if(macro_it !=  module->macros.end()) {
-		Macro macro = macro_it->second;
-		if(macro.is_function) {
+	if(macro_it !=  module->macros.end()
+			// We also check that its not self referencing, if it is
+			// we just want to output an identifier instead of expanding.
+			&& macro_it->second.identifier != inputs.front()->name) {
+
+		Macro* macro = &macro_it->second;
+		//cerr << "#expand " << macro->identifier.c_str() << " ";
+		//echo_location(cerr, inputs.front()) << "\n";
+		if(macro->is_function) {
 			yy_push_state(macro_start);
 			current_macro.identifier = identifier;
 			current_macro.values.clear();
-		} else if(!macro.replace_text.empty()) {
-			Input* input = new Input(macro.identifier);
+		} else if(!macro->replace_text.empty()) {
+			Input* input = new Input(macro->identifier);
 			inputs.push_front(input);
 
 			input->is_macro = true;
-			input->macro_value = macro.replace_text;
+			input->macro = macro;
+			input->macro_value = macro->replace_text;
 			FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
 			yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
 		}
@@ -893,7 +941,9 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 
 	// Check if we have a file to return to (for example, after an #include)
 	if(YY_CURRENT_BUFFER) {
-		cpp_parser_file(inputs.front());
+		if(!end_macro) {
+			cpp_pop_to_file(inputs.front());
+		}
 	} else {
 		// Check if we have inputs left in our queue
 		if(inputs.empty()) {
@@ -909,7 +959,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		yypush_buffer_state(yy_new_buffer(yyin, YY_BUF_SIZE));
 
 		if(!end_macro) {
-			cpp_parser_file(inputs.front());
+			cpp_push_file(inputs.front());
 		}
 	}
 }
@@ -932,6 +982,12 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	accept();
 }
 
+<macro_args>\([^\(\)]*\) {
+	// Eat paren-grouped objects
+	// TODO: Improve this for arbitrary nestings of parenthesis
+	current_value += yytext;
+}
+
 <macro_args>"," {
 	// Eat argument
 	accept();
@@ -951,6 +1007,7 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 		inputs.push_front(input);
 
 		input->is_macro = true;
+		input->macro = &macro;
 		input->macro_value = new_input;
 		FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
 		yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
@@ -961,11 +1018,15 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	yy_pop_state(); // pop macro_args
 }
 
-<macro_args>"\n" {
-	// Error on newline
+<macro_args>"\\\n" {
+	// Insert escaped newline as newline
 	accept();
-	yyerror("Unexpected newline in call to function macro.");
-	yyterminate();
+	current_value += '\n';
+}
+
+<macro_args>"\n" {
+	// Ignore newline
+	accept();
 }
 
 <macro_args>. {
@@ -1015,7 +1076,7 @@ inline char read_char_const(bool auto_escape) {
 static char read_char_const(int & line, int & col, bool auto_escape) {
 	int c;
 
-	if(!auto_escape) { c = '\\'; }
+	if(auto_escape) { c = '\\'; }
 	else { c = read_char(line, col); }
 
 	if(c != '\\') { return c; }
@@ -1095,6 +1156,8 @@ static void eat_space() {
 
 static void scan_define(const string& identifier) {
 	Macro def(identifier, Location(inputs.front()));
+	def.definition.first_line = inputs.front()->line_number;
+	def.definition.first_column = inputs.front()->col_number;
 
 	int c = peek_char();
 	if(c == '(') {
@@ -1123,6 +1186,39 @@ static void scan_define(const string& identifier) {
 				yyerror("Found newline in function macro definition.");
 				unput(c);
 				return;
+			} else if(c == '.') {
+				if(def.is_variadic) {
+					yyerror("Macro can only have one variadic parameter.");
+					return;
+				}
+
+				if(peek_char() == '.') {
+					read_char();
+				} else {
+					yyerror("The character '.' may not appear in macro parameter"
+					        " list, unless in a variadic expression \"...\".");
+					return;
+				}
+
+				if(peek_char() == '.') {
+					read_char();
+					def.is_variadic = true;
+					def.variadic_arg = arg;
+				} else {
+					yyerror("The string \"..\" may not appear in macro parameter"
+					        " list, unless in a variadic expression \"...\".");
+					return;
+				}
+
+				c = read_char();
+				if(c == ')') {
+					break;
+				} else {
+					yyerror("Variadic macro arg (...) must be at"
+					        " end of macro parameter list.");
+					return;
+				}
+
 			} else if(isalnum(c) || c == '_') {
 				arg += c;
 			} else if(!isblank(c)) {
@@ -1151,7 +1247,10 @@ static void scan_define(const string& identifier) {
 		read_char();
 		int p = peek_char();
 		if(c == '\\' && p == '\n') {
-			replace += read_char();
+			read_char();
+		} else if(c == '#' && p == '#') {
+			read_char();
+			//yywarning("Preprocessor concatentation may work incorrectly.");
 		} else {
 			replace += c;
 		}
@@ -1160,6 +1259,8 @@ static void scan_define(const string& identifier) {
 	}
 
 	def.replace_text = replace;
+	def.definition.last_line = inputs.front()->line_number;
+	def.definition.last_column = inputs.front()->col_number;
 	module->macros.emplace(identifier, def);
 }
 
@@ -1236,7 +1337,8 @@ static string scan_string_literal(char quote_mark) {
 
 	if(c == EOF)
 	{
-		yyerror("String const is missing a terminating (\") character."); 
+		string q(1, quote_mark);
+		yyerror("String const is missing a terminating (" + q + ") character."); 
 	}
 
 	inputs.front()->line_number = line;
@@ -1328,7 +1430,9 @@ static bool accept_include(char end_mark, bool next) {
 	inputs.front()->line_number = line;
 	inputs.front()->col_number = col;
 
+
 	c = peek_char();
+	bool is_junk = true;
 	while(c != EOF && c != '\n') {
 		read_char();
 		switch(c) {
@@ -1338,16 +1442,19 @@ static bool accept_include(char end_mark, bool next) {
 				break;
 			case '/':
 				// Ignore comments
-				goto finish;
+				is_junk = false;
+				break;
 			default:
-				yywarning("Junk characters after #include.");
-				goto finish;
+				if(is_junk) {
+					yywarning("Junk characters after #include.");
+					is_junk = false;
+				}
 		}
 		c = peek_char();
 	}
 
-	// Skip to here to exit the above loop from within "switch"
-  finish:
+	// Now that we've cleaned up the rest of the line,
+	//     lets actually switch to the included file
 	auto prev_include = module->files.find(fileref);
 	if(prev_include != module->files.end()) {
 		// We've already included this file so get a
@@ -1421,10 +1528,20 @@ static string expand_arg(const string & segment, const string & name, const stri
 
 static string expand_macro(Macro& macro, MacroCall& call) {
 	size_t num_args = macro.args.size();
-	if(num_args != call.values.size()) {
+	if(num_args != call.values.size() && !macro.is_variadic) {
 		string msg("Incorrect number of arguments for macro \"" + macro.identifier + "\".");
 		yyerror(msg);
 		return "";
+	}
+
+	string variadic_val;
+	if(macro.is_variadic) {
+		for(unsigned int i = macro.args.size(); i < call.values.size();) {
+			variadic_val += call.values[i];
+			if(++i != call.values.size()) {
+				variadic_val += ", ";
+			}
+		}
 	}
 
 	string result;
@@ -1436,22 +1553,41 @@ static string expand_macro(Macro& macro, MacroCall& call) {
 			continue;
 		}
 
+		string part = *it;
 		// Otherwise replace the args found in each segment
 		for(unsigned int i = 0; i < num_args; ++i) {
-			result += expand_arg(*it, macro.args[i], call.values[i]);
+			part = expand_arg(part, macro.args[i], call.values[i]);
 		}
+
+		if(macro.is_variadic) {
+			if(!macro.variadic_arg.empty()) {
+				part = expand_arg(part, macro.variadic_arg, variadic_val);
+			}
+
+			part = expand_arg(part, "__VA_ARGS__", variadic_val);
+		}
+
+		result += part;
 	}
 
 	return result;
 }
 
-static ostream& echo_location(ostream& out, Input* info) {
+ostream& echo_location(ostream& out, Input* info) {
 	if(info->is_macro) {
 		out << "in [Macro]" << info->name;
 	} else if(!info->name.empty()) {
 		out << "in " << info->name;
 	}
 	out << " at line " << info->line_number << ", column " << info->col_number;
+	return out;
+}
+
+ostream& echo_location(ostream& out, Location loc) {
+	if(loc.file != NULL) {
+		out << "in " <<  loc.file->name;
+	}
+	out << " at line " << loc.first_line << ", column " << loc.first_column;
 	return out;
 }
 
@@ -1515,8 +1651,23 @@ Module* init_lexer(const string & filename, FILE* file) {
 
 int cpp_errors() { return error_count; }
 int cpp_warnings() { return warning_count; }
-void cpperror(const string & msg)
+void cpperror(const string & msg, bool squelch);
+
+
+void cpperror(const string & msg) {
+	cpperror(msg, false);
+}
+void cpperronce(const string & msg) {
+	cpperror(msg, true);
+}
+
+static set<string> err_items;
+void cpperror(const string & msg, bool squelch)
 {
+	if(err_items.find(msg) != err_items.end()) {
+		return;
+	}
+
 	Input* info = inputs.front();
 
 	// Output warning with location
@@ -1540,6 +1691,9 @@ void cpperror(const string & msg)
 
 	// If we're a macro, we want to know where the macro is being used.
 	if(info->is_macro) {
+		cerr << "Defined ";
+		echo_location(cerr, info->macro->definition) << "\n";
+
 		auto it = ++inputs.begin();
 		while(it != inputs.end()) {
 			cerr << "Used ";
@@ -1550,10 +1704,17 @@ void cpperror(const string & msg)
 			it++;
 		}
 	}
+
+	if(squelch) {
+		err_items.insert(msg);
+		cerr << " -- Additional errors of this type have been squelched --\n";
+	}
+
 	cerr << "\n";
 
 	error_count++;
 }
+
 void cppwarning(const string & msg)
 {
 	Input* info = inputs.front();
@@ -1579,6 +1740,8 @@ void cppwarning(const string & msg)
 
 	// If we're a macro, we want to know where the macro is being used.
 	if(info->is_macro) {
+		cerr << "Defined ";
+		echo_location(cerr, info->macro->definition);
 		auto it = ++inputs.begin();
 		while(it != inputs.end()) {
 			cerr << "Used ";

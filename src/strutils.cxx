@@ -54,7 +54,7 @@ string replace_substr(const string & orig, const string & substr, const string &
 	while(where != string::npos) {
 		result += orig.substr(begin, where - begin);
 		result += replace;
-		begin = where - begin + substr.length();
+		begin = where + substr.length();
 		where = orig.find(substr, begin);
 	}
 	result += orig.substr(begin);

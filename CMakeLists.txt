@@ -11,12 +11,19 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+option(ENABLE_PROFILING
+  "This option enables the -pg compile flag,
+   such that binaries will output a gmon.out for gprof."
+  OFF)
+
 # Add per-compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
    CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -g -Wall")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -Wall -Werror")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wextra")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -Wall -Wextra")
+
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -24,13 +31,22 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+
   execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
   message(STATUS "GCC Version: ${GCC_VERSION}")
+
   if(GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7)
     add_definitions(-std=c++11) # Enable the new C++ standard
   else()
     add_definitions(-std=c++0x) # Enable the new C++ standard
   endif()
+
+  if(ENABLE_PROFILING)
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -pg")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -pg")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -pg")
+  endif()
+
 endif()
 
 # Generate parser source files
@@ -68,9 +84,13 @@ add_executable(test_simple_templates src/tests/test_simple_templates.cxx)
 target_link_libraries(test_simple_templates treesap)
 add_test(parse_simple_templates test_simple_templates)
 
+add_executable(test_macro_expansion src/tests/test_macro_expansion.cxx)
+target_link_libraries(test_macro_expansion treesap pthread)
+add_test(parse_macro_expansion test_macro_expansion)
+
 add_executable(test_system_stl src/tests/test_system_stl.cxx)
 target_link_libraries(test_system_stl treesap)
-add_test(parse_system_stl test_simple_stl)
+add_test(parse_system_stl test_system_stl)
 
 # The executable test_parse can be used to parse any random file passed as the first argument
 add_executable(test_parse src/tests/test_parse.cxx)

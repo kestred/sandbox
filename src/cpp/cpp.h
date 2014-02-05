@@ -76,10 +76,12 @@ struct Scope {
 
 	ScopeType type;
 	Scope* parent;
+	list<Scope*> inherits;
 
 	map<string, Type*> types;
 	map<string, Variable*> variables;
 	map<string, Scope*> namespaces;
+	list<Scope*> anonymous_scopes;
 };
 
 struct File {
@@ -99,6 +101,7 @@ enum Subtype {
 	CLASS_SUBTYPE,
 	TEMPLATE_SUBTYPE,
 	DEFERRED_SUBTYPE,
+	FUNDAMENTAL_SUBTYPE,
 	INVALID_SUBTYPE
 };
 
@@ -119,11 +122,14 @@ struct Type {
 };
 
 struct Class : Type {
+	Class();
+	Class(const string& name, Scope* scope);
+
 	list<Class*> parents;
 	virtual Class* as_class();
 };
 
-struct Template : Type {
+struct Template : Class {
 	Template();
 	Template(const string& name, Scope* scope);
 
@@ -131,9 +137,14 @@ struct Template : Type {
 	virtual Template* as_template();
 };
 
+enum FundamentalType {
+	INT_TYPE
+};
+
 struct Variable {
 	Variable();
-	Variable(const string& name, Type* type);
+	Variable(const string& name, FundamentalType);
+	Variable(const string& name, Type*);
 	string name;
 
 	Type* type;
@@ -151,4 +162,7 @@ struct Macro {
 
 	bool is_function;
 	vector<string> args;
+
+	bool is_variadic;
+	string variadic_arg;
 };
