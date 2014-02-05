@@ -31,7 +31,8 @@
 		Input(const string& name = "<??\?>");
 
 		string current_line; // holds the current line for error reporting
-		list<string> comments;
+		list<string> identifiers;
+
 		int line_number; // current line of the input
 		int col_number; // current col of the input
 		int times_included; // number of times the file has been included
@@ -814,7 +815,8 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 ["] {
 	// String literal (")
 	accept();
-	yylval.string = new string(scan_string_literal());
+	inputs.front()->identifiers.push_back(scan_string_literal());
+	yylval.string = &inputs.front()->identifiers.back();
 	emit(TOKEN_STRING);
 }
 

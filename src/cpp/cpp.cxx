@@ -42,6 +42,7 @@ Type::Type(const string& name, Subtype subtype)
 Type::~Type() {
 	delete scope;
 	delete definition;
+	declarations.clear();
 }
 Class* Type::as_class() { return NULL; }
 Template* Type::as_template() { return NULL; }
@@ -51,12 +52,21 @@ Class::Class(const string& name, Scope* scope)
 	: Type(name, CLASS_SUBTYPE) {
 	this->scope = scope;
 }
+Class::~Class() {
+	parents.clear();
+}
 Class* Class::as_class() { return this; }
 
 Template::Template() : Class() {}
 Template::Template(const string& name, Scope* scope)
 	: Class(name, scope) {
 	this->subtype = TEMPLATE_SUBTYPE;
+}
+Template::~Template() {
+	for(auto it = variants.begin(); it != variants.end(); ++it) {
+		delete *it;
+	}
+	variants.clear();
 }
 Template* Template::as_template() { return this; }
 

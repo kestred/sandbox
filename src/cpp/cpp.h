@@ -24,6 +24,7 @@ struct Class;
 struct Template;
 
 struct Variable;
+struct Value;
 
 struct Macro;
 
@@ -124,16 +125,25 @@ struct Type {
 struct Class : Type {
 	Class();
 	Class(const string& name, Scope* scope);
+	virtual ~Class();
 
 	list<Class*> parents;
 	virtual Class* as_class();
 };
 
-struct Template : Class {
+struct Specialization {
+	list<Type*> type_args;
+	list<Variable*> var_args;
+	map<Type*, Type*> type_defaults;
+	map<Variable*, Value> var_defaults;
+};
+
+struct Template : Class, Specialization {
 	Template();
 	Template(const string& name, Scope* scope);
+	virtual ~Template();
 
-	map<string, Type*> defaults;
+	list<Specialization*> variants;
 	virtual Template* as_template();
 };
 
@@ -148,7 +158,27 @@ struct Variable {
 	string name;
 
 	Type* type;
-	string value;
+	Value value;
+	bool is_deferred;
+};
+
+enum ValueType {
+	INTEGER_VALUE,
+	BOOLEAN_VALUE,
+	CHARACTER_VALUE,
+	FLOAT_VALUE,
+	STRING_VALUE
+};
+
+struct Value {
+	ValueType type;
+	union {
+		int integer;
+		bool boolean;
+		char character;
+		double floating;
+		std::string* string;
+	};
 };
 
 struct Macro {

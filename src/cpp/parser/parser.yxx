@@ -22,6 +22,9 @@
 	static stack<Scope*> scopes;
 	#define local_scope scopes.top()
 
+	// clear these variables after parse to reclaim memory
+	static list<QualifiedName> names;
+
 	// is_varname_free returns true if a provided identifer is not used as a
 	//     symbol or can be masked as a varname in a provided scope.
 	static bool is_varname_free(const string& name, Scope* scope);
@@ -33,7 +36,7 @@
 	// resolve_qualified finds the scope associated with the name
 	//     that is visible from the provided scope.
 	//     For example, "foo::bar::baz" would return the scope "bar"
-	//     in which the variable baz is expected to be found.
+	//     in which the identifier baz is expected to be found.
 	static Scope* resolve_qualified(QualifiedName* name, Scope* scope);
 
 	// get_variable returns a pointer to the variable visible in a provided
@@ -163,14 +166,15 @@
 /* Non-terminals */
 %type <string> class_declaration
 %type <string> struct_declaration
+%type <template_type> template_declaration
+%type <template_type> template_specialization
+%type <template_type> template_instance_type
 
 %type <name> id
 %type <name> type_id
 %type <name> qualified_id
 %type <name> nested_name_specifier
 %type <string> unqualified_id
-
-%type <template_type> template_declaration
 
 /* Formatting for debugging output */
 %printer { fprintf(yyoutput, "%c", $$); } <character>
@@ -511,7 +515,6 @@ template_declaration
 		scopes.pop();
 
 		string name = *$3;
-		
 
 		Type* type = get_type(name, local_scope);
 		if(type != NULL) {
@@ -556,7 +559,6 @@ template_declaration
 
 		string name = *$3;
 		
-
 		Type* type = get_type(name, local_scope);
 		if(type != NULL) {
 			if(type->subtype != TEMPLATE_SUBTYPE) {
@@ -614,14 +616,25 @@ template_definition
 	: template_declaration parent_list '{' '}'
 	| template_declaration parent_list '{' { scopes.push($1->scope); } class_body '}' { scopes.pop(); }
 	| template_specialization '{' '}'
-	| template_specialization '{' class_body '}'
+	| template_specialization '{' { scopes.push($1->scope); } class_body '}' { scopes.pop(); }
 	;
 
 template_specialization
-	: "template" "<" ">" "class" template_instance_type
-	| "template" "<" ">" "struct" template_instance_type
-	| template_arguments "class" template_instance_type { scopes.pop(); }
-	| template_arguments "struct" template_instance_type { scopes.pop(); }
+	: "template" "<" ">" "class" template_instance_type { $$ = $5; }
+	| "template" "<" ">" "struct" template_instance_type { $$ = $5; }
+	| template_arguments "class" template_instance_type
+	{
+		Scope* template_scope = local_scope;
+		scopes.pop();
+
+		$$ = $3;
+	}
+	| template_arguments "struct" template_instance_type
+	{
+		Scope* template_scope = local_scope;
+		scopes.pop();
+		$$ = $3;
+	}
 	;
 
 template_argument_list
@@ -686,6 +699,24 @@ template_type_argument
 
 template_instance_type
 	: type_id "<" template_instance_item_list ">"
+	{
+		QualifiedName* name = $1;
+		Type* type = get_type(name, local_scope);
+		if(type == NULL) {
+			current_error = "TODO: Can't specialize undefined template type";
+		}
+
+		if(type->subtype != TEMPLATE_SUBTYPE) {
+			current_error = "'template<...> class " + name->to_string() + '\''
+			                + print_type_error(type->subtype, CLASS_SUBTYPE)
+			                + "\n\tFirst declared: "
+			                + print_location(type->declarations.front()) + "\n";
+			YYERROR;
+		}
+
+		// TODO: Test template_instance_items match template_args
+		$$ = type->as_template();
+	}
 	;
 
 template_instance_item_list
@@ -872,13 +903,12 @@ float_type
 id  : qualified_id { $$ = $1; }
 	| unqualified_id 
 	{
-		$$ = new QualifiedName(*$1);
-		delete $1;
+		names.push_back(QualifiedName(*$1));
+		$$ = &names.back();
 	}
 	| nested_name_specifier unqualified_id
 	{
 		$1->names.push_back(*$2);
-		delete $2;
 		$$ = $1;
 	}
 	;
@@ -893,8 +923,8 @@ qualified_id
 nested_name_specifier
 	: unqualified_id "::"
 	{
-		$$ = new QualifiedName(*$1);
-		delete $1;
+		names.push_back(QualifiedName(*$1));
+		$$ = &names.back();
 	}
 	| nested_name_specifier unqualified_id "::"
 	{
