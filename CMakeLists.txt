@@ -80,9 +80,9 @@ add_executable(test_simple_classes src/tests/test_simple_classes.cxx)
 target_link_libraries(test_simple_classes treesap)
 add_test(parse_simple_classes test_simple_classes)
 
-add_executable(test_simple_templates src/tests/test_simple_templates.cxx)
-target_link_libraries(test_simple_templates treesap)
-add_test(parse_simple_templates test_simple_templates)
+add_executable(test_template_declarations src/tests/test_template_declarations.cxx)
+target_link_libraries(test_template_declarations treesap)
+add_test(parse_template_declarations test_template_declarations)
 
 add_executable(test_macro_expansion src/tests/test_macro_expansion.cxx)
 target_link_libraries(test_macro_expansion treesap pthread)
