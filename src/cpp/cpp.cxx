@@ -1,7 +1,7 @@
 #include <stdio.h> // FILE, popen, pclose, fgets, feof
 #include <sys/stat.h>  // stat
+#include "util/strings.h"
 #include "cpp.h"
-#include "strutils.h"
 using namespace std;
 
 static File internal_file("__treesap_builtin__", true);

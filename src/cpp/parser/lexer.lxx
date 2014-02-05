@@ -8,7 +8,7 @@
 
 	#include "cpp/cpp.h"
 	#include "cpp/preprocessor/parser.h"
-	#include "strutils.h"
+	#include "util/strings.h"
 
 
 	#include <cctype>        // isxdigit

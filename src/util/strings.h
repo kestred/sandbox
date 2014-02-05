@@ -1,4 +1,4 @@
-// Filename: strutils.h
+// Filename: strings.h  -- "util/strings.h" (treesap),  not <strings.h> (cstrings)
 #include <string> // std::string
 
 std::string trim(const std::string & str, const std::string & strip = " \t\n");

@@ -62,7 +62,7 @@ set(CPP_SOURCES
   src/cpp/preprocessor/lexer.cxx
   src/cpp/preprocessor/parser.cxx)
 set(UTIL_SOURCES
-  src/strutils.cxx)
+  src/util/strings.cxx)
 
 # Add include_directories for compiler
 include_directories(src)
