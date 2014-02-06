@@ -28,6 +28,26 @@ struct Value;
 
 struct Macro;
 
+/* Built-in objects */
+extern Type void_type;
+extern Type bool_type;
+extern Type int_type;
+extern Type char_type;
+extern Type short_type;
+extern Type long_type;
+extern Type llong_type;
+extern Type uint_type;
+extern Type uchar_type;
+extern Type ushort_type;
+extern Type ulong_type;
+extern Type ullong_type;
+extern Type float_type;
+extern Type double_type;
+extern Type ldouble_type;
+extern Type char16_type;
+extern Type char32_type;
+extern Type wchar_type;
+
 
 /* Utility Functions */
 // get_compiler_includes returns the include directories
@@ -122,46 +142,6 @@ struct Type {
 	virtual Template* as_template();
 };
 
-struct Class : Type {
-	Class();
-	Class(const string& name, Scope* scope);
-	virtual ~Class();
-
-	list<Class*> parents;
-	virtual Class* as_class();
-};
-
-struct Specialization {
-	list<Type*> type_args;
-	list<Variable*> var_args;
-	map<Type*, Type*> type_defaults;
-	map<Variable*, Value> var_defaults;
-};
-
-struct Template : Class, Specialization {
-	Template();
-	Template(const string& name, Scope* scope);
-	virtual ~Template();
-
-	list<Specialization*> variants;
-	virtual Template* as_template();
-};
-
-enum FundamentalType {
-	INT_TYPE
-};
-
-struct Variable {
-	Variable();
-	Variable(const string& name, FundamentalType);
-	Variable(const string& name, Type*);
-	string name;
-
-	Type* type;
-	Value value;
-	bool is_deferred;
-};
-
 enum ValueType {
 	INTEGER_VALUE,
 	BOOLEAN_VALUE,
@@ -179,6 +159,55 @@ struct Value {
 		double floating;
 		std::string* string;
 	};
+};
+
+struct Class : Type {
+	Class();
+	Class(const string& name);
+	virtual ~Class();
+
+	list<Class*> parents;
+	virtual Class* as_class();
+};
+
+enum ArgumentKind {
+	TYPE_ARGUMENT,
+	VARIABLE_ARGUMENT
+};
+
+struct TemplateArgument {
+	ArgumentKind kind;
+	union {
+		Type* typ;
+		Variable* var;
+	};
+	union {
+		Type* typ;
+		Value val;
+	} defaults;
+};
+
+struct Specialization {
+	list<TemplateArgument> args;
+};
+
+struct Template : Class, Specialization {
+	Template();
+	Template(const string& name);
+	virtual ~Template();
+
+	list<Specialization*> variants;
+	virtual Template* as_template();
+};
+
+struct Variable {
+	Variable();
+	Variable(const string& name, Type*);
+	string name;
+
+	Type* type;
+	Value value;
+	bool is_deferred;
 };
 
 struct Macro {

@@ -709,6 +709,11 @@ OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
 	emit(TOKEN_KW_VOID);
 }
 
+"nullptr" {
+	accept();
+	emit(TOKEN_KW_NULLPTR);
+}
+
 "decltype" {
 	accept();
 	emit(TOKEN_KW_DECLTYPE);

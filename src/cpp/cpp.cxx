@@ -4,7 +4,24 @@
 #include "cpp.h"
 using namespace std;
 
-static File internal_file("__treesap_builtin__", true);
+Type void_type("void", FUNDAMENTAL_SUBTYPE);
+Type bool_type("bool", FUNDAMENTAL_SUBTYPE);
+Type int_type("int", FUNDAMENTAL_SUBTYPE);
+Type char_type("char", FUNDAMENTAL_SUBTYPE);
+Type short_type("short", FUNDAMENTAL_SUBTYPE);
+Type long_type("long", FUNDAMENTAL_SUBTYPE);
+Type llong_type("llong", FUNDAMENTAL_SUBTYPE);
+Type uint_type("uint", FUNDAMENTAL_SUBTYPE);
+Type uchar_type("uchar", FUNDAMENTAL_SUBTYPE);
+Type ushort_type("ushort", FUNDAMENTAL_SUBTYPE);
+Type ulong_type("ulong", FUNDAMENTAL_SUBTYPE);
+Type ullong_type("ullong", FUNDAMENTAL_SUBTYPE);
+Type float_type("float", FUNDAMENTAL_SUBTYPE);
+Type double_type("double", FUNDAMENTAL_SUBTYPE);
+Type ldouble_type("ldouble", FUNDAMENTAL_SUBTYPE);
+Type char16_type("char", FUNDAMENTAL_SUBTYPE);
+Type char32_type("char", FUNDAMENTAL_SUBTYPE);
+Type wchar_type("char", FUNDAMENTAL_SUBTYPE);
 
 Location::Location(File * f)
 	: file(f), comment(NULL),
@@ -48,9 +65,8 @@ Class* Type::as_class() { return NULL; }
 Template* Type::as_template() { return NULL; }
 
 Class::Class() : Type() {}
-Class::Class(const string& name, Scope* scope)
-	: Type(name, CLASS_SUBTYPE) {
-	this->scope = scope;
+Class::Class(const string& name) : Type(name, CLASS_SUBTYPE) {
+	scope = new Scope(CLASS_SCOPE);
 }
 Class::~Class() {
 	parents.clear();
@@ -58,9 +74,9 @@ Class::~Class() {
 Class* Class::as_class() { return this; }
 
 Template::Template() : Class() {}
-Template::Template(const string& name, Scope* scope)
-	: Class(name, scope) {
-	this->subtype = TEMPLATE_SUBTYPE;
+Template::Template(const string& name) : Class(name) {
+	subtype = TEMPLATE_SUBTYPE;
+	scope->type = TEMPLATE_SCOPE;
 }
 Template::~Template() {
 	for(auto it = variants.begin(); it != variants.end(); ++it) {
@@ -70,22 +86,7 @@ Template::~Template() {
 }
 Template* Template::as_template() { return this; }
 
-static map<FundamentalType, Type*> fundamental_types;
-static void init_fundamental_types() {
-	if(fundamental_types.empty()) {
-		Type* type = new Type("int", FUNDAMENTAL_SUBTYPE);
-		type->definition = new Location(&internal_file);
-		type->declarations.push_back(*type->definition);
-		fundamental_types[INT_TYPE] = type;
-	}
-}
-
 Variable::Variable() : Variable("", NULL) {}
-Variable::Variable(const string& name, FundamentalType type)
-	: Variable(name, NULL) {
-	init_fundamental_types();
-	this->type = fundamental_types[type];
-}
 Variable::Variable(const string& name, Type* type)
 	: name(name), type(type), value() {}
 
@@ -177,7 +178,7 @@ vector<Macro> get_compiler_defines() {
 		init_gcc_env();
 
 		/* Conform to ISO C and C++11 standard */
-		Location treesap_builtin(&internal_file);
+		Location treesap_builtin(new File("__treesap_builtin__", true));
 		compiler_defines.push_back(Macro("__STDC__", "1", treesap_builtin));
 		compiler_defines.push_back(Macro("__STDC_VERSION__", "201112L", treesap_builtin));
 		compiler_defines.push_back(Macro("__cplusplus", "201103L", treesap_builtin));
