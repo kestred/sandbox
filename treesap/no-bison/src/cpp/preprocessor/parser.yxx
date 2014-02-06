@@ -1,0 +1,191 @@
+/* Filename: parser.yxx */
+
+%{
+	#include "lexer.h"
+	#include "parser.h"
+
+	#include "cpp/cpp.h"
+
+	using namespace std;
+
+	#define yylex pprlex
+	#define yylval pprlval
+
+	static bool result;
+	static Module* current_module;
+	#define macros (current_module->macros)
+%}
+
+/* Set Parser Options */
+%error-verbose // has bison output verbose errors
+
+//%define api.namespace {treesap}
+%define api.prefix {ppr}
+%define api.token.prefix {PRETOKEN_} // prefix tokens with PRETOKEN_ to avoid name conflicts
+
+/* Define our YYSTYPE */
+%union {
+	int integer;
+	bool boolean;
+	char character;
+	double floating;
+	std::string* string;
+}
+
+/* Lexing Symbols */
+%token END 0 "end of file" // error messages refer to "end of file" intead of $end
+
+/* Literal Tokens */
+%token <integer>   INTEGER
+%token <floating>  FLOAT
+%token <character> CHAR
+%token <boolean>   BOOLEAN
+
+/* Semantic Tokens */
+%token <string> IDENTIFIER
+
+/* Keyword Tokens */
+%token KW_DEFINED "defined"
+
+/* Operator Tokens */
+%token OP_AND "&&"
+%token OP_OR  "||"
+%token OP_EQ  "=="
+%token OP_NEQ "!="
+%token OP_GRE ">="
+%token OP_LTE "<="
+%token OP_LT  "<"
+%token OP_GR  ">"
+%token OP_NOT "!"
+%token OP_SUB "-"
+%token OP_ADD "+"
+%token OP_BITLEFT  "<<"
+%token OP_BITRIGHT ">>"
+
+/* Operator Precedence and Associativity */
+%left "||"
+%left "&&"
+%left "==" "!="
+%left "<" "<=" ">" ">="
+%left "<<" ">>"
+%right "+" "-"
+%right "!"
+
+/* Non-terminals */
+%type <boolean> defined
+%type <boolean> condition
+%type <boolean> non_arithmetic_condition
+%type <boolean> boolean_expression
+%type <boolean> logical_expression
+
+%type <floating> number
+%type <floating> arithmetic_expression
+
+
+%%
+
+
+grammar
+	: if_directive
+	;
+
+if_directive
+	: condition { result = $1; }
+	;
+
+
+condition
+	: non_arithmetic_condition
+	| arithmetic_expression { $$ = (bool)$1; }
+	;
+
+non_arithmetic_condition
+	: defined
+	| undefined { $$ = false; }
+	| logical_expression
+	| boolean_expression
+	| "!" condition { $$ = !$2; }
+	| '(' non_arithmetic_condition ')' { $$ = $2; }
+	;
+
+logical_expression
+	: condition "&&" condition { $$ = ($1 && $3); }
+	| condition "||" condition { $$ = ($1 || $3); }
+	;
+
+boolean_expression
+	: arithmetic_expression "==" arithmetic_expression { $$ = ($1 == $3); }
+	| arithmetic_expression "!=" arithmetic_expression { $$ = ($1 != $3); }
+	| arithmetic_expression "<=" arithmetic_expression { $$ = ($1 <= $3); }
+	| arithmetic_expression ">=" arithmetic_expression { $$ = ($1 >= $3); }
+	| arithmetic_expression "<" arithmetic_expression { $$ = ($1 < $3); }
+	| arithmetic_expression ">" arithmetic_expression { $$ = ($1 > $3); }
+	| undefined "==" arithmetic_expression { $$ = (0 == $3); }
+	| undefined "!=" arithmetic_expression { $$ = (0 != $3); }
+	| undefined "<=" arithmetic_expression { $$ = (0 <= $3); }
+	| undefined ">=" arithmetic_expression { $$ = (0 >= $3); }
+	| undefined "<" arithmetic_expression { $$ = (0 < $3); }
+	| undefined ">" arithmetic_expression { $$ = (0 > $3); }
+	| arithmetic_expression "==" undefined { $$ = ($1 == 0); }
+	| arithmetic_expression "!=" undefined { $$ = ($1 != 0); }
+	| arithmetic_expression "<=" undefined { $$ = ($1 <= 0); }
+	| arithmetic_expression ">=" undefined { $$ = ($1 >= 0); }
+	| arithmetic_expression "<" undefined { $$ = ($1 < 0); }
+	| arithmetic_expression ">" undefined { $$ = ($1 > 0); }
+	;
+
+arithmetic_expression
+	: number
+	| arithmetic_expression ">>" arithmetic_expression { $$ = (int)($1 + 0.5) >> (int)($3 + 0.5); }
+	| arithmetic_expression "<<" arithmetic_expression { $$ = (int)($1 + 0.5) << (int)($3 + 0.5); }
+	| arithmetic_expression "+" arithmetic_expression { $$ = $1 + $3; }
+	| arithmetic_expression "-" arithmetic_expression { $$ = $1 - $3; }
+	| '(' arithmetic_expression ')' { $$ = $2; }
+	;
+
+number
+	: INTEGER { $$ = $1; }
+	| FLOAT
+	| CHAR { $$ = $1; }
+	| BOOLEAN { $$ = $1; }
+	;
+
+defined
+	: "defined" IDENTIFIER
+	{
+		if(macros.find(*$2) == macros.end()) {
+			$$ = false;
+		} else {
+			$$ = true;
+		}
+		delete $2;
+	}
+	| "defined" '(' IDENTIFIER ')'
+	{
+		if(macros.find(*$3) == macros.end()) {
+			$$ = false;
+		} else {
+			$$ = true;
+		}
+		delete $3;
+	}
+	;
+
+undefined
+	: IDENTIFIER
+	{
+		delete $1;
+	}
+	;
+
+%%
+
+/* ---- User Subroutines ---- */
+bool parse_if_directive(Module * module, const std::string & input) {
+	init_prelexer(module, input);
+
+	result = false;
+	current_module = module;
+	if(yyparse() != 0) { return false; }
+	return result;
+}
