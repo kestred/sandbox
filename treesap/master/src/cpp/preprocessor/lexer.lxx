@@ -1,0 +1,355 @@
+/* Filename: prelexer.lxx */
+
+%{
+	#include "lexer.h"
+	#include "parser.h"
+	#include "parser.dxx"
+
+	#include "cpp/cpp.h"
+
+	#include <stack>    //std::stack
+	#include <iostream> // std::cerr, std::ostream
+	#include <string.h> // strchr
+
+	#define yylval pprlval
+	#define yyerror pprerror
+	#define yywarning pprwarning
+	#define YY_DECL int pprlex(void)
+
+	using namespace std;
+
+	struct MacroCall {
+		std::string identifier;
+		std::vector<std::string> arg_values;
+	};
+
+	static stack<string> inputs;
+	static Module* current_module;
+	#define macros (current_module->macros)
+	static MacroCall current_macro;
+	static string current_value;
+	static string* base_input;
+	static bool dont_expand_next;
+
+	static string replace_substr(string orig, string substr, string replace);
+%}
+
+/* Flex Options */
+%option stack
+%option warn
+%option nounput
+%option noyywrap
+%option noyy_push_state
+%option noyy_pop_state
+%option noyy_top_state
+
+/* Lexer States */
+%x macro_start
+%x macro_args
+%x block_comment
+
+/* Regex Definitions */
+IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
+BOOLEAN_LITERAL true|false
+OCTAL_LITERAL   0
+DECIMAL_LITERAL [1-9]+[0-9]*L?
+HEXNUM_LITERAL  0x[0-9a-fA-F]+
+FLOAT_LITERAL   (([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?
+
+/*
+// These regexs are correct to the specification, but we're using simplified
+//     versions until someone feels the need to implement them.
+
+HEXNUM_LITERAL  (0x[0-9a-fA-F]+([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+BINARY_LITERAL  (0[bB][01]+([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+DECIMAL_LITERAL ([1-9]+[0-9]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+FLOATING_POINT  ((([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?[lLfF]?)
+OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+*/
+
+%%
+
+[ \t\v\r\f] {
+	// Eat whitespace.
+}
+
+"//".* {
+	// Eat comment
+}
+
+"/*" {
+	BEGIN(block_comment);
+}
+
+<block_comment>"*/" {
+	BEGIN(INITIAL);
+}
+
+<block_comment>. {
+	// Eat characters inside block comment
+}
+
+<block_comment><<EOF>> {
+	yyerror("Found \"/*\" without closing \"*/\".");
+	yyterminate();
+}
+
+"defined" {
+	dont_expand_next = true;
+	return PRETOKEN_KW_DEFINED;
+}
+
+"&&" {
+	return PRETOKEN_OP_AND;
+}
+
+"||" {
+	return PRETOKEN_OP_OR;
+}
+
+"==" {
+	return PRETOKEN_OP_EQ;
+}
+
+"!=" {
+	return PRETOKEN_OP_NEQ;
+}
+
+">=" {
+	return PRETOKEN_OP_GRE;
+}
+
+"<=" {
+	return PRETOKEN_OP_LTE;
+}
+
+">>" {
+	return PRETOKEN_OP_BITRIGHT;
+}
+
+"<<" {
+	return PRETOKEN_OP_BITLEFT;
+}
+
+">" {
+	return PRETOKEN_OP_GR;
+}
+
+"<" {
+	return PRETOKEN_OP_LT;
+}
+
+"!" {
+	return PRETOKEN_OP_NOT;
+}
+
+"+" {
+	return PRETOKEN_OP_ADD;
+}
+
+"-" {
+	return PRETOKEN_OP_SUB;
+}
+
+{BOOLEAN_LITERAL} {
+	// Boolean literal
+	if(strcmp(yytext, "true") == 0) {
+		yylval.boolean = true;
+	} else {
+		yylval.boolean = false;
+	}
+	return PRETOKEN_BOOLEAN;
+}
+
+{OCTAL_LITERAL} {
+	// Octal literal (currently we just accept 0)
+	yylval.integer = 0;
+	return PRETOKEN_INTEGER;
+}
+
+{DECIMAL_LITERAL} {
+	// Decimal literal
+	yylval.integer = atoi(yytext);
+	return PRETOKEN_INTEGER;
+}
+
+{HEXNUM_LITERAL} {
+	// Hexidecimal literal
+	unsigned int v;
+	if(sscanf(yytext, "%x", &v) != 1) {
+		string msg = "Treesap failed to parser hex constant \"";
+		msg += yytext;
+		msg += "\".";
+		yyerror(msg.c_str());
+	}
+	yylval.integer = v;
+	return PRETOKEN_INTEGER;
+}
+
+{FLOAT_LITERAL} {
+	// Floating-point literals
+	yylval.floating = atof(yytext);
+	return PRETOKEN_FLOAT;
+}
+
+{IDENTIFIER} {
+	// Check if it is a macro, and if it is, expand it
+	string identifier(yytext);
+	auto macro_it = macros.find(identifier);
+	if(macro_it !=  macros.end() && !dont_expand_next) {
+		Macro macro = macro_it->second;
+		if(macro.is_function) {
+			BEGIN(macro_start);
+			current_macro.identifier = identifier;
+			current_macro.arg_values.clear();
+		} else if(!macro.replace_text.empty()) {
+			inputs.push(macro.replace_text);
+			FILE* f = fmemopen(&inputs.top()[0], inputs.top().length(), "r");
+			yypush_buffer_state(yy_new_buffer(f, inputs.top().length() + 1));
+		}
+	}
+
+	// Otherwise return it as an IDENTIFIER
+	else {
+		dont_expand_next = false;
+		yylval.string = new string(yytext);
+		return PRETOKEN_IDENTIFIER;
+	}
+}
+
+. {
+	// Send any other printable character as itself.
+	return yytext[0];
+}
+
+<macro_start>[ \t]*"(" {
+	// Eat whitespace and find opening paren
+	BEGIN(macro_args);
+}
+
+<macro_start>. {
+	yyerror("Unexpected character before opening paren '(' of macro-function.");
+	BEGIN(INITIAL);
+}
+
+<macro_args>[ \t]* {
+	// Eat whitespace
+}
+
+<macro_args>\([^\(\)]*\) {
+	// Eat paren-grouped objects
+	// TODO: Improve this for arbitrary nestings of parenthesis
+	current_value += yytext;
+}
+
+<macro_args>"," {
+	// Eat argument
+	current_macro.arg_values.push_back(current_value);
+	current_value.clear();
+}
+
+<macro_args>")" {
+	current_macro.arg_values.push_back(current_value);
+	current_value.clear();
+
+	Macro* macro = &macros.find(current_macro.identifier)->second;
+	size_t num_values = current_macro.arg_values.size();
+	size_t num_params = macro->args.size();
+	if(num_params != num_values) {
+		string msg("Incorrect number of arguments for macro \"" + current_macro.identifier + "\".");
+		yyerror(msg.c_str());
+	} else {
+		string new_input = macro->replace_text;
+		for(unsigned int i = 0; i < macro->args.size(); ++i) {
+			new_input = replace_substr(new_input, macro->args[i], current_macro.arg_values[i]);
+		}
+
+		if(!new_input.empty()) {
+			inputs.push(new_input);
+			FILE* f = fmemopen(&inputs.top()[0], inputs.top().length(), "r");
+			yypush_buffer_state(yy_new_buffer(f, inputs.top().length() + 1));
+		}
+	}
+
+	current_macro.identifier.clear();
+	current_macro.arg_values.clear();
+
+	BEGIN(INITIAL);
+}
+
+<macro_args>"\\\n" {
+	// Insert escaped newline as newline
+	current_value += '\n';
+}
+
+<macro_args>"\n" {
+	// Ignore newline
+}
+
+<macro_args>. {
+	current_value += yytext[0];
+}
+
+<<EOF>> {
+	// Stop reading our current file
+	yypop_buffer_state();
+	inputs.pop();
+
+	// Check if we have a file to return to (after a function-macro)
+	if(!YY_CURRENT_BUFFER) {
+		yyterminate();
+	}
+}
+
+%%
+
+static string replace_substr(string orig, string substr, string replace) {
+	string result;
+	size_t find = 0;
+	size_t end = orig.find(substr, find);
+	while(true) {
+		result += orig.substr(0, end);
+		result += replace;
+		find = result.length();
+		result += orig.substr(end + substr.length());
+
+		end = result.find(substr, find);
+		if(end == string::npos) {
+			break;
+		} else {
+			orig = result;
+			result = "";
+		}
+		result = "";
+	}
+	return result;
+}
+
+void pprerror(const char* msg) {
+	cerr << "\nError in preprocessor input:\n  #if "
+	     << *base_input << "\n";
+	if(inputs.size() > 1) {
+		cout << "at section: " << inputs.top() << "\n";
+	}
+	cout << "Error: " << msg << "\n";
+}
+
+void pprwarning(const char* msg) {
+	cerr << "\nWarning in preprocessor input:\n\t#if "
+	     << base_input << "\n";
+	if(inputs.size() > 1) {
+		cout << "at section: " << inputs.top() << "\n";
+	}
+	cout << "Warning: " << msg << "\n";
+}
+
+void init_prelexer(Module * module, const string & input) {
+	current_module = module;
+
+	inputs = stack<string>();
+	inputs.push(input);
+	base_input = &inputs.top();
+
+	yy_scan_string(inputs.top().c_str());
+	yyout = fopen("/dev/null", "w");
+}

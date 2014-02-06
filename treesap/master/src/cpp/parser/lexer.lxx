@@ -1,0 +1,1765 @@
+/* Filename: lexer.lxx */
+
+%{
+	#include "lexer.h"
+	#include "tokens.h"
+	#include "parser.h"
+	#include "parser.dxx"
+
+	#include "cpp/cpp.h"
+	#include "cpp/preprocessor/parser.h"
+	#include "util/strings.h"
+
+
+	#include <cctype>        // isxdigit
+	#include <iostream>      // std::cerr, std::ostream
+	#include <deque>         // std::deque
+
+	#define yylval cpplval
+	#define yylloc cpplloc
+	#define yyerror cpperror
+	#define yyerronce cpperronce
+	#define yywarning cppwarning
+	#define YY_DECL int cpplex(void)
+	using namespace std;
+
+
+	/* Struct Definitions */
+	// An Input holds extra per-file information while lexing and parsing
+	struct Input : File
+	{
+		Input(const string& name = "<??\?>");
+
+		string current_line; // holds the current line for error reporting
+		list<string> identifiers;
+
+		int line_number; // current line of the input
+		int col_number; // current col of the input
+		int times_included; // number of times the file has been included
+		int condition_depth; // depth of #if statements
+
+		bool is_macro;
+		Macro* macro;
+		string macro_value;
+	};
+
+	struct MacroCall {
+		std::string identifier;
+		std::vector<std::string> values;
+	};
+
+	/* Lexer State */
+	static int error_count;
+	static int warning_count;
+	static deque<Input*> inputs;
+	static Module* module = NULL;
+	static MacroCall current_macro;
+	static string current_value;
+	static map<string, string> prev_include_dir;
+
+	/* Function Declarations */
+	#define echo() \
+		cout << "Token(" << inputs.front()->name << "): " << yytext << "\n"
+	static ostream& echo_location(ostream& out, Input* info);
+	static ostream& echo_location(ostream& out, Location loc);
+
+	// emit outputs the specified token from the lexer with location information
+	#define emit(token)                                        \
+		yylloc.last_line = inputs.front()->line_number;        \
+		yylloc.last_column = inputs.front()->col_number;       \
+		if(!inputs.front()->comments.back().empty()) {         \
+			yylloc.comment = &inputs.front()->comments.back(); \
+			inputs.front()->comments.push_back("");            \
+		}                                                      \
+		return token
+
+	// accept is called below when receiving a regex from the lexer;
+	//     it increments the current column number, and sets some location information
+	static void accept();
+
+	// accept_include is an alternate accepts that handles the #include directive;
+	//     returns if there was an error with the include.
+	static bool accept_include(char end_mark, bool next = false);
+
+	// peek_char returns the character that will be returned in
+	//     the next call to read_char.
+	inline int peek_char();
+
+	// read_char reads and returns a single character,
+	//     incrementing the line and column numbers as appropriate.
+	inline int read_char();
+	static int read_char(int & line, int & col);
+
+	// todo: doc
+	inline char read_char_const(bool auto_escape = false);
+	static char read_char_const(int & line, int & col, bool auto_escape = false);
+
+	// todo: doc
+	static void scan_define(const string& identifier);
+	static string scan_if();
+	static string scan_block_comment();
+	static string scan_string_literal(char quote_mark = '"');
+
+	// todo: doc
+	static string expand_macro(Macro& macro, MacroCall& call);
+%}
+
+/* Flex Options */
+%option stack
+%option warn
+%option noyywrap
+%option noyy_top_state
+
+/* Lexer States */
+%x pragma
+%x include
+%x include_next
+%x ifdef
+%x ifndef
+%x define
+%x undef
+%x elseif
+%x endif
+
+%x ppr_warning
+%x ppr_error
+
+%x macro_start
+%x macro_args
+
+/* Regex Definitions */
+IDENTIFIER      [A-Za-z_][A-Za-z_0-9]*
+BOOLEAN_LITERAL true|false
+OCTAL_LITERAL   0
+DECIMAL_LITERAL [1-9]+[0-9]*L?
+HEXNUM_LITERAL  0x[0-9a-fA-F]+
+FLOAT_LITERAL   (([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?
+
+/*
+// These regexs are correct to the specification, but we're using simplified
+//     versions until someone feels the need to implement them.
+
+HEXNUM_LITERAL  (0x[0-9a-fA-F]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+BINARY_LITERAL  (0[bB][01]+([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+DECIMAL_LITERAL ([1-9]+[0-9]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+FLOATING_POINT  ((([0-9]+[.])|([0-9]*[.][0-9]+))([eE][+-]?[0-9]+)?[lLfF]?)
+OCTAL_LITERAL   (0[0-7]*([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)?)
+*/
+
+%%
+
+\n.* {
+	// New line.  Save a copy of the line so we can print it out for the
+	// benefit of the user in case we get an error.
+
+	inputs.front()->current_line = yytext+1;
+	inputs.front()->line_number++;
+	inputs.front()->col_number = 0;
+
+	// Return the whole line to the lexer, except the newline character, which we eat.
+	yyless(1);
+}
+
+\n[ \t]*\n.* {
+	// An empty line will clear our current comment
+	// This option overrides (\n.*) because it produces a longer output
+	if(!inputs.front()->comments.back().empty()) {
+		inputs.front()->comments.push_back("");
+	}
+
+	inputs.front()->current_line = yytext+2;
+	inputs.front()->line_number += 2;
+	inputs.front()->col_number = 0;
+
+	// Return the whole line to the lexer, except the newline characters, which we eat.
+	yyless(2);
+}
+
+[ \t\v\r\f]+ {
+	// Eat whitespace.
+	accept();
+}
+
+"#"[ \t]*"pragma"[ \t]+ {
+	// Preprocessor #pragma directive
+	accept();
+	yy_push_state(pragma);
+}
+
+"#"[ \t]*"include"[ \t]+ {
+	// Preprocessor #include directive
+	accept();
+	yy_push_state(include);
+}
+
+"#"[ \t]*"include_next"[ \t]+ {
+	// Preprocessor #include directive
+	accept();
+	yy_push_state(include_next);
+}
+
+"#"[ \t]*"if"[ \t]+ {
+	accept();
+
+	inputs.front()->condition_depth++;
+	string condition = scan_if();
+	if(!parse_if_directive(module, condition)) {
+		yy_push_state(elseif);
+	} else {
+		yy_push_state(INITIAL);
+	}
+}
+
+"#"[ \t]*"ifdef"[ \t]+ {
+	// Preprocessor #ifdef directive
+	accept();
+	yy_push_state(ifdef);
+}
+
+"#"[ \t]*"ifndef"[ \t]+ {
+	// Preprocessor #ifndef directive
+	accept();
+	yy_push_state(ifndef);
+}
+
+"#"[ \t]*"define"[ \t]+ {
+	// Preprocessor #define directive
+	accept();
+	yy_push_state(define);
+}
+
+"#"[ \t]*"undef"[ \t]+ {
+	// Preprocessor #undef directive
+	accept();
+	yy_push_state(undef);
+}
+
+"#"[ \t]*"else".* {
+	accept();
+	if(!inputs.front()->condition_depth) {
+		yyerror("Found #else without previous #if.");
+	} else {
+		yy_pop_state();
+		yy_push_state(endif);
+	}
+}
+
+"#"[ \t]*"elif".* {
+	accept();
+	if(!inputs.front()->condition_depth) {
+		yyerror("Found #elif without previous #if.");
+	} else {
+		yy_pop_state();
+		yy_push_state(endif);
+	}
+}
+
+"#"[ \t]*"endif".* {
+	// Preprocessor #endif directive
+	accept();
+	if(!inputs.front()->condition_depth) {
+		yyerror("Found #endif without previous #if.");
+	} else {
+		inputs.front()->condition_depth--;
+		yy_pop_state();
+	}
+}
+
+"#"[ \t]*"warning"[ \t]+ {
+	accept();
+	yy_push_state(ppr_warning);
+}
+
+"#"[ \t]*"error"[ \t]+ {
+	accept();
+	yy_push_state(ppr_error);
+}
+
+"#" {
+	// Fail on all other preprocessor ops
+	accept();
+	yyerror("Treesap hasn't implemented this preprocessor directive yet.");
+
+	// Consume the rest of the line, except the newline (\n) character
+	int c = peek_char();
+	while(c!= '\n' && c != EOF) {
+		read_char();
+		c = peek_char();
+	}
+}
+
+<pragma,include,ifndef,ifdef,define,undef>[ \t]* {
+	accept(); // eat whitespace everywhere
+}
+
+<pragma>"once".* {
+	accept();
+	if(inputs.front()->times_included > 1) {
+		inputs.pop_front();
+	}
+	yy_pop_state();
+}
+
+<pragma>"GCC system_header".* {
+	// We're going to handle this directive by ignoring it, until we actually have
+	// to implement it (see http://gcc.gnu.org/onlinedocs/cpp/System-Headers.html).
+	accept();
+	yy_pop_state();
+}
+
+<pragma>"GCC visibility".* {
+	// We're also going to handle this directive by ignoring it, until we actually want
+	// to implement it (see http://gcc.gnu.org/onlinedocs/gcc/Visibility-Pragmas.html).
+	accept();
+	yy_pop_state();
+}
+
+<pragma>[^ \t\n]+.* {
+	accept();
+
+	string msg;
+	msg += "Treesap doesn't currently support \"#pragma ";
+	msg += yytext;
+	msg += "\".";
+	yyerror(msg);
+
+	yy_pop_state();
+}
+
+<include>["] {
+	// Reads a quoted (") include (& following junk)
+	accept();
+
+	if(!accept_include('"')) {
+		yyterminate();
+	} else {
+		yy_pop_state();
+		cpp_push_file(inputs.front());
+	}
+}
+<include>[<] {
+	// Reads a braced (<>) include (& following junk)
+	accept();
+
+	if(!accept_include('>')) {
+		yyterminate();
+	} else {
+		yy_pop_state();
+		cpp_push_file(inputs.front());
+	}
+}
+
+<include_next>["] {
+	// Reads a quoted (") include (& following junk)
+	accept();
+
+	if(!accept_include('"', true)) {
+		yyterminate();
+	} else {
+		yy_pop_state();
+		cpp_push_file(inputs.front());
+	}
+}
+<include_next>[<] {
+	// Reads a braced (<>) include (& following junk)
+	accept();
+
+	if(!accept_include('>', true)) {
+		yyterminate();
+	} else {
+		yy_pop_state();
+		cpp_push_file(inputs.front());
+	}
+}
+
+
+<include,include_next>[^"< \t\n]+.* {
+	// Accepts any character except spaces, <, or "
+	accept();
+
+	string msg;
+	msg += "Found unexpected \"";
+	msg += yytext;
+	msg += "\" in #include directive.";
+	yyerror(msg);
+
+	yy_pop_state();
+}
+
+<ifdef>{IDENTIFIER} {
+	accept();
+	yy_pop_state();
+
+	// Is the identifer a defined macro?
+	inputs.front()->condition_depth++;
+	if(module->macros.find(yytext) == module->macros.end()) {
+		yy_push_state(elseif);
+	} else {
+		yy_push_state(INITIAL);
+	}
+
+	// Consume the rest of the line, except the newline (\n) character
+	int c = peek_char();
+	while(c!= '\n' && c != EOF) {
+		read_char();
+		c = peek_char();
+	}
+}
+
+<ifdef>. {
+	accept();
+	yy_pop_state();
+
+	string msg;
+	msg += "Found unexpected \"";
+	msg += yytext;
+	msg += "\" after #ifdef directive.";
+	yyerror(msg);
+
+	yy_push_state(endif);
+}
+
+<ifndef>{IDENTIFIER} {
+	accept();
+	yy_pop_state();
+
+	// Is the identifier undefined as a macro?
+	inputs.front()->condition_depth++;
+	if(module->macros.find(yytext) != module->macros.end()) {
+		yy_push_state(elseif);
+	} else {
+		yy_push_state(INITIAL);
+	}
+
+	// Consume the rest of the line, except the newline (\n) character
+	int c = peek_char();
+	while(c!= '\n' && c != EOF) {
+		read_char();
+		c = peek_char();
+	}
+}
+
+<ifndef>. {
+	accept();
+	yy_pop_state();
+
+	string msg;
+	msg += "Found unexpected \"";
+	msg += yytext;
+	msg += "\" in #ifndef directive.";
+	yyerror(msg);
+
+	yy_push_state(endif);
+}
+
+<define>{IDENTIFIER} {
+	accept();
+	scan_define(yytext);
+	yy_pop_state();
+}
+
+<undef>{IDENTIFIER} {
+	accept();
+	module->macros.erase(yytext);
+
+	// Consume the rest of the line, except the newline (\n) character
+	int c = peek_char();
+	while(c!= '\n' && c != EOF) {
+		read_char();
+		c = peek_char();
+	}
+
+	yy_pop_state();
+}
+
+<undef>. {
+	accept();
+
+	string msg;
+	msg += "Found unexpected \"";
+	msg += yytext;
+	msg += "\" in #undef directive.";
+	yyerror(msg);
+
+	// Consume the rest of the line, except the newline (\n) character
+	int c = peek_char();
+	while(c!= '\n' && c != EOF) {
+		read_char();
+		c = peek_char();
+	}
+
+	yy_pop_state();
+}
+
+<elseif>"#"[ \t]*"if".* {
+	// If we find (if|ifdef|ifndef), increment our depth by 1 and find #end
+	accept();
+	inputs.front()->condition_depth++;
+	yy_push_state(endif);
+}
+
+<elseif>"#"[ \t]*"else"[\ t]* {
+	// If we find #else while looking for #else, tokenize the else code
+	yy_pop_state();
+	yy_push_state(INITIAL);
+}
+
+<elseif>"#"[ \t]*"elif"[ \t]+ {
+	// If we find #elif while looking for #else, test the #if
+	accept();
+
+	string condition = scan_if();
+	if(parse_if_directive(module, condition)) {
+		yy_pop_state();
+		yy_push_state(INITIAL);
+	}
+}
+
+<elseif>"#"[ \t]*"endif"[ \t]* {
+	accept();
+
+	if(inputs.front()->condition_depth == 0) {
+		yyerror("Found #endif with no matching #if/#ifdef/#ifndef.");
+	} else {
+		inputs.front()->condition_depth--;
+	}
+	yy_pop_state();
+
+}
+
+<endif>"#"[ \t]*"if".* {
+	// If we find (if|ifdef|ifndef), increment our depth by 1
+	accept();
+	inputs.front()->condition_depth++;
+	yy_push_state(endif);
+}
+
+<endif>"#"[ \t]*"else"[ \t]* {
+	// Consume any else
+	accept();
+}
+
+<endif>"#"[ \t]*"elif"[ \t]+ {
+	// Consume any elif
+	accept();
+}
+
+<endif>"#"[ \t]*"endif"[ \t]* {
+	accept();
+	if(inputs.front()->condition_depth == 0) {
+		yyerror("Found #endif with no matching #if/#ifdef/#ifndef.");
+	} else {
+		inputs.front()->condition_depth--;
+	}
+	yy_pop_state();
+}
+
+<elseif,endif>\n.* {
+	accept();
+
+	// Increment the line count
+	inputs.front()->current_line = yytext+1;
+	inputs.front()->line_number++;
+	inputs.front()->col_number = 0;
+
+	yyless(1);
+}
+
+<elseif,endif>. {
+	accept();
+}
+
+<ppr_warning>.* {
+	accept();
+	inputs.front()->current_line = string("#warning ") + yytext;
+	yywarning(yytext);
+	yy_pop_state();
+}
+
+<ppr_error>.* {
+	accept();
+	inputs.front()->current_line = string("#error ") + yytext;
+	yyerror(yytext);
+	yy_pop_state();
+}
+
+<pragma,include,ifndef,ifdef,define,elseif,endif,ppr_warning,ppr_error>. {
+	accept();
+	yyerror("Treesap failed to handled characters following pre-processor directive.");
+	yyterminate();
+}
+
+"namespace" {
+	accept();
+	emit(TOKEN_KW_NAMESPACE);
+}
+
+"public" {
+	accept();
+	emit(TOKEN_KW_PUBLIC);
+}
+
+"protected" {
+	accept();
+	emit(TOKEN_KW_PRIVATE);
+}
+
+"private" {
+	accept();
+	emit(TOKEN_KW_PRIVATE);
+}
+
+"enum" {
+	accept();
+	emit(TOKEN_KW_ENUM);
+}
+
+"class" {
+	accept();
+	emit(TOKEN_KW_CLASS);
+}
+
+"struct" {
+	accept();
+	emit(TOKEN_KW_STRUCT);
+}
+
+"template" {
+	accept();
+	emit(TOKEN_KW_TEMPLATE);
+}
+
+"typename" {
+	accept();
+	emit(TOKEN_KW_TYPENAME);
+}
+
+"typedef" {
+	accept();
+	emit(TOKEN_KW_TYPEDEF);
+}
+
+"const" {
+	accept();
+	emit(TOKEN_KW_CONST);
+}
+
+"int" {
+	accept();
+	emit(TOKEN_KW_INT);
+}
+
+"short" {
+	accept();
+	emit(TOKEN_KW_SHORT);
+}
+
+"long" {
+	accept();
+	emit(TOKEN_KW_LONG);
+}
+
+"char" {
+	accept();
+	emit(TOKEN_KW_CHAR);
+}
+
+"char16_t" {
+	accept();
+	emit(TOKEN_KW_CHAR16_T);
+}
+
+"char32_t" {
+	accept();
+	emit(TOKEN_KW_CHAR32_T);
+}
+
+"wchar_t" {
+	accept();
+	emit(TOKEN_KW_WCHAR_T);
+}
+
+"bool" {
+	accept();
+	emit(TOKEN_KW_BOOL);
+}
+
+"float" {
+	accept();
+	emit(TOKEN_KW_FLOAT);
+}
+
+"double" {
+	accept();
+	emit(TOKEN_KW_DOUBLE);
+}
+
+"signed" {
+	accept();
+	emit(TOKEN_KW_SIGNED);
+}
+
+"unsigned" {
+	accept();
+	emit(TOKEN_KW_UNSIGNED);
+}
+
+"void" {
+	accept();
+	emit(TOKEN_KW_VOID);
+}
+
+"decltype" {
+	accept();
+	emit(TOKEN_KW_DECLTYPE);
+}
+
+"sizeof" {
+	accept();
+	emit(TOKEN_KW_SIZEOF);
+}
+
+"__attribute__" {
+	accept();
+	emit(TOKEN_KW_ATTRIBUTE);
+}
+
+"__visibility__" {
+	accept();
+	emit(TOKEN_ATTR_VISIBILITY);
+}
+
+"__noreturn__" {
+	accept();
+	emit(TOKEN_ATTR_NORETURN);
+}
+
+"::" {
+	// Scoping operator
+	accept();
+	emit(TOKEN_OP_CONS);
+}
+
+"&&" {
+	accept();
+	emit(TOKEN_OP_ANDAND);
+}
+
+"&" {
+	accept();
+	emit(TOKEN_OP_AND);
+}
+
+"||" {
+	accept();
+	emit(TOKEN_OP_BARBAR);
+}
+
+"|" {
+	accept();
+	emit(TOKEN_OP_BAR);
+}
+
+"*" {
+	accept();
+	emit(TOKEN_OP_STAR);
+}
+
+"+" {
+	accept();
+	emit(TOKEN_OP_PLUS);
+}
+
+"/" {
+	accept();
+	emit(TOKEN_OP_SLASH);
+}
+
+"-" {
+	accept();
+	emit(TOKEN_OP_DASH);
+}
+
+"<" {
+	accept();
+	emit(TOKEN_OP_ANGLE_L);
+}
+
+">" {
+	accept();
+	emit(TOKEN_OP_ANGLE_R);
+}
+
+"=" {
+	accept();
+	emit(TOKEN_OP_ASSIGN);
+}
+
+"==" {
+	accept();
+	emit(TOKEN_OP_EQUALS);
+}
+
+"/*" {
+	// Comment block
+	accept();
+	inputs.front()->comments.back() += scan_block_comment();
+}
+
+"//".* {
+	// C++-style comment
+	accept();
+	inputs.front()->comments.back() += (yytext + 2);
+}
+
+["] {
+	// String literal (")
+	accept();
+	inputs.front()->identifiers.push_back(scan_string_literal());
+	yylval.string = &inputs.front()->identifiers.back();
+	emit(TOKEN_STRING);
+}
+
+['] {
+	// Character literal (')
+	accept();
+	yylval.character = read_char_const();
+	if(peek_char() != '\'') {
+		yyerror("Treesap doesn't support multi-character character constants.");
+		scan_string_literal('\''); // Consume the rest of the characters
+	} else {
+		// Eat closing (')
+		read_char();
+	}
+	emit(TOKEN_CHAR);
+}
+
+{BOOLEAN_LITERAL} {
+	// Boolean literal
+	accept();
+	if(strcmp(yytext, "true") == 0) {
+		yylval.boolean = true;
+	} else {
+		yylval.boolean = false;
+	}
+	emit(TOKEN_BOOLEAN);
+}
+
+{OCTAL_LITERAL} {
+	// Octal literal (currently we just accept 0)
+	accept();
+	yylval.integer = 0;
+	emit(TOKEN_INTEGER);
+}
+
+{DECIMAL_LITERAL} {
+	// Decimal literal
+	accept();
+	yylval.integer = atoi(yytext);
+	emit(TOKEN_INTEGER);
+}
+
+{HEXNUM_LITERAL} {
+	// Hexidecimal literal
+	accept();
+	unsigned int v;
+	if(sscanf(yytext, "%x", &v) != 1) {
+		yyerror("Treesap failed to parser hex constant \"" + string(yytext) + "\".");
+	}
+	yylval.integer = v;
+	emit(TOKEN_INTEGER);
+}
+
+{FLOAT_LITERAL} {
+	// Floating-point literals
+	accept();
+	yylval.floating = atof(yytext);
+	emit(TOKEN_FLOAT);
+}
+
+{IDENTIFIER} {
+	accept();
+
+	// Check if its a macro, and if it is, expand it
+	string identifier(yytext);
+	auto macro_it = module->macros.find(identifier);
+	if(macro_it !=  module->macros.end()
+			// We also check that its not self referencing, if it is
+			// we just want to output an identifier instead of expanding.
+			&& macro_it->second.identifier != inputs.front()->name) {
+
+		Macro* macro = &macro_it->second;
+		//cerr << "#expand " << macro->identifier.c_str() << " ";
+		//echo_location(cerr, inputs.front()) << "\n";
+		if(macro->is_function) {
+			yy_push_state(macro_start);
+			current_macro.identifier = identifier;
+			current_macro.values.clear();
+		} else if(!macro->replace_text.empty()) {
+			Input* input = new Input(macro->identifier);
+			inputs.push_front(input);
+
+			input->is_macro = true;
+			input->macro = macro;
+			input->macro_value = macro->replace_text;
+			FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
+			yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
+		}
+	}
+
+	// Otherwise return it as an IDENTIFIER
+	else {
+		yylval.string = new string(yytext);
+		emit(TOKEN_IDENTIFIER);
+	}
+}
+
+. {
+	// Send any other printable character as itself.
+	accept();
+	emit(yytext[0]);
+}
+
+<<EOF>> {
+	// Check for unclosed conditionals
+	while(inputs.front()->condition_depth > 0) {
+		if(inputs.front()->condition_depth > 8) {
+			yyerror("8+ unclosed #if directives in file.");
+			break;
+		}
+		yyerror("Missing #endif in current file.");
+		inputs.front()->condition_depth--;
+	}
+
+	// Stop reading our current file
+	yypop_buffer_state();
+
+	// Check if we need to cleanup after a macro
+	bool end_macro = inputs.front()->is_macro;
+	if(end_macro) {
+		delete inputs.front();		
+	}
+	inputs.pop_front();
+
+	// Check if we have a file to return to (for example, after an #include)
+	if(YY_CURRENT_BUFFER) {
+		if(!end_macro) {
+			cpp_pop_to_file(inputs.front());
+		}
+	} else {
+		// Check if we have inputs left in our queue
+		if(inputs.empty()) {
+			yyterminate();
+		}
+
+		yyin = fopen(inputs.front()->name.c_str(), "r");
+		if(!yyin) {
+			yyerror("Could not open file \"" + inputs.front()->name + "\" for scanning.");
+			yyterminate();
+		}
+
+		yypush_buffer_state(yy_new_buffer(yyin, YY_BUF_SIZE));
+
+		if(!end_macro) {
+			cpp_push_file(inputs.front());
+		}
+	}
+}
+
+<macro_start>[ \t]*"(" {
+	// Eat whitespace and find opening paren
+	accept();
+	yy_pop_state(); // pop <macro_start>
+	yy_push_state(macro_args); // push <macro_args>
+}
+
+<macro_start>. {
+	accept();
+	yyerror("Unexpected character before opening paren '(' of macro-function.");
+	yy_pop_state(); // pop <macro_start>
+}
+
+<macro_args>[ \t]* {
+	// Eat whitespace
+	accept();
+}
+
+<macro_args>\([^\(\)]*\) {
+	// Eat paren-grouped objects
+	// TODO: Improve this for arbitrary nestings of parenthesis
+	current_value += yytext;
+}
+
+<macro_args>"," {
+	// Eat argument
+	accept();
+	current_macro.values.push_back(current_value);
+	current_value.clear();
+}
+
+<macro_args>")" {
+	accept();
+	current_macro.values.push_back(current_value);
+	current_value.clear();
+
+	Macro& macro = module->macros.find(current_macro.identifier)->second;
+	string new_input = expand_macro(macro, current_macro);
+	if(!new_input.empty()) {
+		Input* input = new Input(macro.identifier);
+		inputs.push_front(input);
+
+		input->is_macro = true;
+		input->macro = &macro;
+		input->macro_value = new_input;
+		FILE* f = fmemopen(&input->macro_value[0], input->macro_value.length(), "r");
+		yypush_buffer_state(yy_new_buffer(f, input->macro_value.length() + 1));
+	}
+
+	current_macro.identifier.clear();
+	current_macro.values.clear();
+	yy_pop_state(); // pop macro_args
+}
+
+<macro_args>"\\\n" {
+	// Insert escaped newline as newline
+	accept();
+	current_value += '\n';
+}
+
+<macro_args>"\n" {
+	// Ignore newline
+	accept();
+}
+
+<macro_args>. {
+	accept();
+	current_value += yytext[0];
+}
+	
+
+%%
+
+// accept is called above as each piece is pulled off and
+// accepted by the lexer; it increments the current column number.
+static void accept() {
+	yylloc.file = inputs.front();
+	yylloc.first_line = inputs.front()->line_number;
+	yylloc.first_column = inputs.front()->col_number;
+	inputs.front()->col_number += yyleng;
+}
+
+// peek_char returns the character that will be returned by read_char next.
+inline int peek_char()
+{
+	int c = yyinput();
+	unput(c);
+	return c;
+}
+
+// read_char reads and returns a single character,
+//     incrementing the line and column numbers as appropriate.
+inline int read_char() {
+	return read_char(inputs.front()->line_number, inputs.front()->col_number);
+}
+static int read_char(int & line, int & col) {
+	int c = yyinput();
+	if (c == '\n') {
+		line++;
+		col = 0;
+	} else {
+		col++;
+	}
+	return c;
+}
+
+inline char read_char_const(bool auto_escape) {
+	return read_char_const(inputs.front()->line_number, inputs.front()->col_number, auto_escape);
+}
+static char read_char_const(int & line, int & col, bool auto_escape) {
+	int c;
+
+	if(auto_escape) { c = '\\'; }
+	else { c = read_char(line, col); }
+
+	if(c != '\\') { return c; }
+
+	// Handle escape sequence
+	c = read_char(line, col);
+	switch(c) {
+		case 'a':
+			return '\a';
+		case 'b':
+			return '\b';
+		case 'f':
+			return '\f';
+		case 'n':
+			return '\n';
+		case 'r':
+			return '\r';
+		case 't':
+			return '\t';
+		case 'v':
+			return '\v';
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		{
+			int oct = (c - '0'); // integer value
+
+			c = peek_char();
+			if(c < '0' || c > '7') { return oct; }
+			for(int i = 0; i < 2; ++i) {
+				read_char(line, col);
+				oct = oct * 8 + (c - '0');
+
+				c = peek_char();
+				if(c < '0' || c > '7') { return oct; }
+			}
+			if(oct > 255) {
+				yyerror("Octal escape sequence out of range.");
+			}
+			return (char)oct;
+		}
+		case 'x':
+		{
+			int hex = 0;
+
+			c = peek_char();
+			if(!isxdigit(c)) { return hex; }
+			for(int i = 0; i < 2; i++) {
+				read_char(line, col);
+				hex = hex * 16 + (isdigit(c) ? (c - '0') : tolower(c) - 'a' + 10);
+
+				c = peek_char();
+				if(!isxdigit(c)) { return hex; }
+			}
+			return (char)hex;
+		}
+		case 'u':
+			yyerror("Treesap hasn't implement unicode escape sequences yet!");
+			return 'u';
+		default:
+			return c;
+	}
+}
+
+static void eat_space() {
+	int c = peek_char();
+	while(isblank(c)) {
+		read_char();
+		c = peek_char();
+	}
+}
+
+static void scan_define(const string& identifier) {
+	Macro def(identifier, Location(inputs.front()));
+	def.definition.first_line = inputs.front()->line_number;
+	def.definition.first_column = inputs.front()->col_number;
+
+	int c = peek_char();
+	if(c == '(') {
+		read_char();
+		def.is_function = true;
+
+		// Read function macro
+		string arg;
+		c = read_char();
+		while(c != EOF) {
+			if(c == ',') {
+				if(arg.empty()) {
+					yywarning("Found extra ',' character in macro definition.");
+				}
+
+				def.args.push_back(arg);
+				arg = "";
+			} else if(c == ')') {
+				if(arg.empty() && def.args.size() > 0) {
+					yywarning("Found extra ',' character in macro definition.");
+				}
+
+				def.args.push_back(arg);
+				break;
+			} else if(c == '\n') {
+				yyerror("Found newline in function macro definition.");
+				unput(c);
+				return;
+			} else if(c == '.') {
+				if(def.is_variadic) {
+					yyerror("Macro can only have one variadic parameter.");
+					return;
+				}
+
+				if(peek_char() == '.') {
+					read_char();
+				} else {
+					yyerror("The character '.' may not appear in macro parameter"
+					        " list, unless in a variadic expression \"...\".");
+					return;
+				}
+
+				if(peek_char() == '.') {
+					read_char();
+					def.is_variadic = true;
+					def.variadic_arg = arg;
+				} else {
+					yyerror("The string \"..\" may not appear in macro parameter"
+					        " list, unless in a variadic expression \"...\".");
+					return;
+				}
+
+				c = read_char();
+				if(c == ')') {
+					break;
+				} else {
+					yyerror("Variadic macro arg (...) must be at"
+					        " end of macro parameter list.");
+					return;
+				}
+
+			} else if(isalnum(c) || c == '_') {
+				arg += c;
+			} else if(!isblank(c)) {
+				string msg;
+				msg += "Found unexpeced character '";
+				msg += c;
+				msg += "' in argument for macro definition.";
+				yyerror(msg);
+			}
+			c = read_char();
+		}
+
+		if(c == EOF) {
+			yyerror("Unexpected EOF in function macro definition.");
+			unput(c);
+			return;
+		}
+	}
+
+	eat_space();
+
+	// Read value for macro
+	string replace;
+	c = peek_char();
+	while(c != EOF && c != '\n') {
+		read_char();
+		int p = peek_char();
+		if(c == '\\' && p == '\n') {
+			read_char();
+		} else if(c == '#' && p == '#') {
+			read_char();
+			//yywarning("Preprocessor concatentation may work incorrectly.");
+		} else {
+			replace += c;
+		}
+
+		c = peek_char();
+	}
+
+	def.replace_text = replace;
+	def.definition.last_line = inputs.front()->line_number;
+	def.definition.last_column = inputs.front()->col_number;
+	module->macros.emplace(identifier, def);
+}
+
+static string scan_if() {
+
+	string result;
+	int c = read_char();
+	while(c != EOF && c != '\n') {
+		if(c == '\\' && peek_char() == '\n') {
+			c = read_char();
+		}
+
+		result += c;
+		c = read_char();
+	}
+
+	return result;
+}
+
+static string scan_block_comment() {
+	// We don't touch the current line number and column number during
+	// scanning, so that if we detect a warning while scanning the comment
+	// (e.g. an unterminated block comment), we'll report the warning as
+	// occurring at the start of the comment, not at the end--somewhat
+	// more convenient for the user.
+	string result;
+	int line = inputs.front()->line_number;
+	int col = inputs.front()->col_number;
+
+	int c = read_char(line, col);
+	while(c != EOF) {
+		if(c == '*' && peek_char() == '/') { break; }
+		c = read_char(line, col);
+	}
+
+	if(c == EOF) {
+		yyerror("Block comment is missing a terminating \"*/\"."); 
+	} else {
+		read_char(line, col); // consume '/' following the '*'
+	}
+
+	inputs.front()->line_number = line;
+	inputs.front()->col_number = line;
+
+	return result;
+}
+
+static string scan_string_literal(char quote_mark) {
+	// We don't touch the current line number and column number during
+	// scanning, so that if we detect an error while scanning the string
+	// (e.g. an unterminated string), we'll report the error as
+	// occurring at the start of the string, not at the end--somewhat
+	// more convenient for the user.
+	string result;
+	int line = inputs.front()->line_number;
+	int col = inputs.front()->col_number;
+
+	int c = read_char(line, col);
+	while(c != quote_mark && c != EOF) {
+		// A newline is not allowed within a string unless it is escaped.
+		if(c == '\n') {
+			c = EOF;
+			break;
+		}
+
+		if(c == '\\') {
+			result += read_char_const(line, col, true);
+		} else {
+			result += c;
+		}
+
+		c = read_char(line, col);
+	}
+
+	if(c == EOF)
+	{
+		string q(1, quote_mark);
+		yyerror("String const is missing a terminating (" + q + ") character."); 
+	}
+
+	inputs.front()->line_number = line;
+	inputs.front()->col_number = line;
+
+	return result;
+}
+
+static bool accept_include(char end_mark, bool next) {
+	// Get the string between the quotes
+	string filename;
+	int line = inputs.front()->line_number;
+	int col = inputs.front()->col_number;
+
+	int c = read_char(line, col);
+	while(c != end_mark && c != EOF) {
+		filename += c;
+		c = read_char(line, col);
+	}
+
+	if(c == EOF) {
+		string msg = "#include filename missing a terminating (";
+		yyerror(msg + "\") character.");
+		return false;
+	}
+
+	if(filename.empty()) {
+		yyerror("#include must be given a filename.");
+		return false;
+	}
+
+	// For include_next we have to keep track of the last
+	//     version of the file we included.
+	string prevdir;
+	bool found_prev = false;
+	if(next && prev_include_dir.find(filename) != prev_include_dir.end()) {
+		prevdir = prev_include_dir.find(filename)->second;
+	}
+	if(prevdir == "") { found_prev = true; }
+
+	// Now we're going to start looking for a file
+	string fileref;
+	vector<string> dirs;
+
+	// Try to find the file as a local include
+	if(end_mark == '\"' && (!next || found_prev)) {
+		yyin = fopen(filename.c_str(), "r");
+		if(yyin) {
+			prev_include_dir.emplace(filename, ".");
+			fileref = filename;
+			goto eatline;
+		}
+	}
+
+	// Try to find the file as a system include
+	if(prevdir == ".") { found_prev = true; }
+	dirs = get_compiler_includes();
+	for(auto it = dirs.begin(); it != dirs.end(); ++it) {
+		if(next) {
+			if(!found_prev) {
+				if(prevdir == (*it)) {
+					found_prev = true;
+				}
+				continue;
+			}
+		}
+
+		string filepath = (*it) + filename;
+		yyin = fopen(filepath.c_str(), "r");
+		if(yyin) {
+			prev_include_dir.emplace(filename, *it);
+			fileref = filepath;
+			goto eatline;
+		}
+	}
+
+	// If we get here, we have failed to open a new input
+	if(next) {
+		yyerror("Could not open file " + filename + " for scanning,"
+			    " no more version of the file exist in #include_next.");
+	} else {
+		yyerror("Could not open file " + filename + " for scanning.");
+	}
+	return false;
+
+	// Skip to here after we finished loading the file to ignore
+	//     any junk up to the end of the file.
+  eatline:
+	inputs.front()->line_number = line;
+	inputs.front()->col_number = col;
+
+
+	c = peek_char();
+	bool is_junk = true;
+	while(c != EOF && c != '\n') {
+		read_char();
+		switch(c) {
+			case ' ':
+			case '\t':
+				// Eat any whitespace
+				break;
+			case '/':
+				// Ignore comments
+				is_junk = false;
+				break;
+			default:
+				if(is_junk) {
+					yywarning("Junk characters after #include.");
+					is_junk = false;
+				}
+		}
+		c = peek_char();
+	}
+
+	// Now that we've cleaned up the rest of the line,
+	//     lets actually switch to the included file
+	auto prev_include = module->files.find(fileref);
+	if(prev_include != module->files.end()) {
+		// We've already included this file so get a
+		//     pointer to the existing file object.
+		if(prev_include->second->is_internal) {
+			yyerror("Name conflict with compiler file.");
+			return false;
+		}
+
+		Input* input = (Input*)(prev_include->second);
+		inputs.push_front(input);
+		input->times_included++;
+	} else {
+		// This is a new file, lets create an Input to represent it.
+		Input* input = new Input(fileref);
+		inputs.push_front(input);
+		module->files.emplace(input->name, input);
+	}
+
+	// Switch to the new buffer
+	yypush_buffer_state(yy_new_buffer(yyin, YY_BUF_SIZE));
+	return true;
+}
+
+static vector<string> split_string_literals(const string & base) {
+	vector<string> parts;
+
+	int start = 0;
+	bool literal = false;
+	for(unsigned int i = 0; i < base.length(); ++i) {
+		if(base[i] == '"') {
+			if(literal) { i++; }
+			literal = !literal;
+
+			parts.push_back(base.substr(start, i - start));
+			start = i;
+		}
+	}
+
+	parts.push_back(base.substr(start));
+
+	return parts;
+}
+
+static string expand_arg(const string & segment, const string & name, const string & value) {
+	string result = "";
+
+	// If value is "#v" handle stringification
+	size_t where = segment.find("#" + name);
+	if(where != string::npos) {
+		string escaped = stringify(trim(value, " \t"));
+		string replaced = replace_substr(segment, "#" + name, escaped);
+		vector<string> parts = split_string_literals(replaced);
+		for(auto it = parts.begin(); it != parts.end(); ++it) {
+			if((*it)[0] == '"') {
+				result += *it;
+				continue; // Don't replace anything in string literals
+			}
+
+			result += replace_substr(*it, name, value);
+		}
+	}
+
+	// Otherwise do a normal replace
+	else {
+		result = replace_substr(segment, name, value);
+	}
+
+	return result;
+}
+
+static string expand_macro(Macro& macro, MacroCall& call) {
+	size_t num_args = macro.args.size();
+	if(num_args != call.values.size() && !macro.is_variadic) {
+		string msg("Incorrect number of arguments for macro \"" + macro.identifier + "\".");
+		yyerror(msg);
+		return "";
+	}
+
+	string variadic_val;
+	if(macro.is_variadic) {
+		for(unsigned int i = macro.args.size(); i < call.values.size();) {
+			variadic_val += call.values[i];
+			if(++i != call.values.size()) {
+				variadic_val += ", ";
+			}
+		}
+	}
+
+	string result;
+	vector<string> parts = split_string_literals(macro.replace_text);
+	for(auto it = parts.begin(); it != parts.end(); ++it) {
+		// Don't replace anything in string literals
+		if((*it)[0] == '"') {
+			result += *it;
+			continue;
+		}
+
+		string part = *it;
+		// Otherwise replace the args found in each segment
+		for(unsigned int i = 0; i < num_args; ++i) {
+			part = expand_arg(part, macro.args[i], call.values[i]);
+		}
+
+		if(macro.is_variadic) {
+			if(!macro.variadic_arg.empty()) {
+				part = expand_arg(part, macro.variadic_arg, variadic_val);
+			}
+
+			part = expand_arg(part, "__VA_ARGS__", variadic_val);
+		}
+
+		result += part;
+	}
+
+	return result;
+}
+
+ostream& echo_location(ostream& out, Input* info) {
+	if(info->is_macro) {
+		out << "in [Macro]" << info->name;
+	} else if(!info->name.empty()) {
+		out << "in " << info->name;
+	}
+	out << " at line " << info->line_number << ", column " << info->col_number;
+	return out;
+}
+
+ostream& echo_location(ostream& out, Location loc) {
+	if(loc.file != NULL) {
+		out << "in " <<  loc.file->name;
+	}
+	out << " at line " << loc.first_line << ", column " << loc.first_column;
+	return out;
+}
+
+
+static ostream& indent(ostream& out, unsigned int indent_level, char c = ' ') {
+	for(unsigned int i = 0; i < indent_level; i++) {
+		out << c;
+	}
+	return out;
+}
+
+Module* init_lexer(const string & filename) {
+	error_count = 0;
+	warning_count = 0;
+
+	module = new Module();
+
+	module->macros.clear();
+	vector<Macro> predefines = get_compiler_defines();
+	for(auto it = predefines.begin(); it != predefines.end(); ++it) {
+		module->macros.emplace(it->identifier, (*it));
+	}
+
+	inputs.clear();
+	Input* input = new Input(filename);
+	inputs.push_front(input);
+	module->files.emplace(filename, input);
+
+	yyout = fopen("/dev/null", "w");
+	yyin = fopen(filename.c_str(), "r");
+	if(!yyin) {
+		cpperror("Could not open file for reading.");
+		return NULL;
+	}
+
+	return module;
+}
+
+Module* init_lexer(const string & filename, FILE* file) {
+	error_count = 0;
+	warning_count = 0;
+
+	module = new Module();
+
+	module->macros.clear();
+	vector<Macro> predefines = get_compiler_defines();
+	for(auto it = predefines.begin(); it != predefines.end(); ++it) {
+		module->macros.emplace(it->identifier, (*it));
+	}
+
+	inputs.clear();
+	Input* input = new Input(filename);
+	inputs.push_front(input);
+	module->files.emplace(filename, input);
+
+	yyout = fopen("/dev/null", "w");
+	yyin = file;
+
+	return module;
+}
+
+int cpp_errors() { return error_count; }
+int cpp_warnings() { return warning_count; }
+void cpperror(const string & msg, bool squelch);
+
+
+void cpperror(const string & msg) {
+	cpperror(msg, false);
+}
+void cpperronce(const string & msg) {
+	cpperror(msg, true);
+}
+
+static set<string> err_items;
+void cpperror(const string & msg, bool squelch)
+{
+	if(err_items.find(msg) != err_items.end()) {
+		return;
+	}
+
+	Input* info = inputs.front();
+
+	// Output warning with location
+	cerr << "\nError ";
+	echo_location(cerr, info) << ":\n";
+
+	// Output current line
+	if(info->is_macro) {
+		cerr << info->macro_value << "\n";
+	} else {
+		cerr << info->current_line << "\n";
+	}
+
+	// Output carot (^) pointing to value in current line
+	int ident = info->col_number - 1 < 0 ? 0 : info->col_number - 1;
+	if(ident > 100) { ident = 100; }
+	indent(cerr, ident, '.') << "^\n";
+
+	// Output error message
+	cerr << msg << "\n";
+
+	// If we're a macro, we want to know where the macro is being used.
+	if(info->is_macro) {
+		cerr << "Defined ";
+		echo_location(cerr, info->macro->definition) << "\n";
+
+		auto it = ++inputs.begin();
+		while(it != inputs.end()) {
+			cerr << "Used ";
+			echo_location(cerr, *it) << "\n";
+			if(!(*it)->is_macro) {
+				break;
+			}
+			it++;
+		}
+	}
+
+	if(squelch) {
+		err_items.insert(msg);
+		cerr << " -- Additional errors of this type have been squelched --\n";
+	}
+
+	cerr << "\n";
+
+	error_count++;
+}
+
+void cppwarning(const string & msg)
+{
+	Input* info = inputs.front();
+
+	// Output warning with location
+	cerr << "\nWarning ";
+	echo_location(cerr, info) << ":\n";
+
+	// Output current line
+	if(info->is_macro) {
+		cerr << info->macro_value << "\n";
+	} else {
+		cerr << info->current_line << "\n";
+	}
+
+	// Output carot (^) pointing to value in current line
+	int ident = info->col_number - 1 < 0 ? 0 : info->col_number - 1;
+	if(ident > 100) { ident = 100; }
+	indent(cerr, ident) << "^\n";
+
+	// Output error message
+	cerr << msg << "\n";
+
+	// If we're a macro, we want to know where the macro is being used.
+	if(info->is_macro) {
+		cerr << "Defined ";
+		echo_location(cerr, info->macro->definition);
+		auto it = ++inputs.begin();
+		while(it != inputs.end()) {
+			cerr << "Used ";
+			echo_location(cerr, *it) << "\n";
+			if(!(*it)->is_macro) {
+				break;
+			}
+			it++;
+		}
+	}
+	cerr << "\n";
+
+	warning_count++;
+}
+
+Input::Input(const string& name) : File(name),
+	line_number(1), col_number(0), times_included(1), condition_depth(0), is_macro(0) {
+	comments.push_back(string());
+}
