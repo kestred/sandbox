@@ -47,7 +47,7 @@ string stringify(const string & str) {
 }
 
 // replace_substr
-string replace_substr(const string & orig, const string & substr, const string & replace) {
+string replace(const string & orig, const string & substr, const string & replace) {
 	string result = "";
 	size_t begin = 0;
 	size_t where = orig.find(substr, begin);

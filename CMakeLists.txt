@@ -57,6 +57,7 @@ add_parser_directory(ppr src/cpp/preprocessor)
 # List normal source files
 set(CPP_SOURCES
   src/cpp/cpp.cxx
+  src/cpp/compiler.cxx
   src/cpp/parser/lexer.cxx
   src/cpp/parser/parser.cxx
   src/cpp/preprocessor/lexer.cxx
