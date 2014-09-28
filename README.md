@@ -1,5 +1,12 @@
 go.xmpp - a Complete XMPP Package
 -------------------------------
+
+> ## WARNING ##
+> Code in this repository is incomplete. Work hasn't been active since Aug 2013.
+> If you would like to use this as a base for your own work, or contribute to this project
+> then I am readily available on GitHub and would be happy to continue work on the project.
+
+
 Package xmpp implements the XMPP protocol as defined in RFC 6120, 6121, 6122 and common extensions, with interopability to the RFC 3920... specifcation.
 
 The package provides a complete XMPP API to build extensible XMPP Clients and Servers.
